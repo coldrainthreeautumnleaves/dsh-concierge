@@ -80,25 +80,19 @@ window.__ModuleLoader__.load({
     const longTaskLog = []
     const PERF_STORAGE_KEY = 'dsh-concierge:perf'
 
+    // Only animation timing is touched: changing backdrop-filter or box-shadow
+    // repaints the whole chat and reads as a flash, so those are left alone.
     const PERF_CSS = `
 html[data-dsh-perf="low"] [data-conversation-region] *,
 html[data-dsh-perf="low"] [data-conversation-region] {
   animation-duration: 0s !important;
   animation-delay: 0s !important;
   transition-duration: 0s !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  box-shadow: none !important;
 }
 html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
   animation-duration: 0s !important;
   animation-delay: 0s !important;
   transition-duration: 0s !important;
-}
-html[data-dsh-stream="1"] [data-conversation-region] *,
-html[data-dsh-stream="1"] [data-conversation-region] {
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
 }
 `
 
@@ -268,8 +262,10 @@ html[data-dsh-stream="1"] [data-conversation-region] {
           const samples = perf.samples.length >= 5 ? perf.samples.slice(-4) : perf.samples.slice()
           samples.push(fps)
           const average = Math.min(effectiveRefresh, Math.round(samples.reduce((sum, value) => sum + value, 0) / samples.length))
-          const lowThreshold = Math.max(30, Math.round(effectiveRefresh * 0.75))
-          const goodThreshold = Math.max(lowThreshold + 5, Math.round(effectiveRefresh * 0.9))
+          // Only really bad frame rates should flip the mode; at 75% of a 120Hz
+          // panel normal streaming kept crossing the line and the chat flashed.
+          const lowThreshold = Math.max(30, Math.round(effectiveRefresh * 0.5))
+          const goodThreshold = Math.max(lowThreshold + 5, Math.round(effectiveRefresh * 0.65))
           let low = perf.low
           if (perf.auto) {
             if (average < lowThreshold) {
@@ -282,8 +278,8 @@ html[data-dsh-stream="1"] [data-conversation-region] {
               lowFor = 0
               goodFor = 0
             }
-            if (lowFor >= 2) low = true
-            if (goodFor >= 3) low = false
+            if (lowFor >= 3) low = true
+            if (goodFor >= 5) low = false
           } else {
             low = false
           }
@@ -370,7 +366,9 @@ html[data-dsh-stream="1"] [data-conversation-region] {
 
     /* ------------------------------------------------------------ typewriter -- */
 
-    const typer = { enabled: true, speed: 60 }
+    // Off by default: revealing Markdown character by character re-renders the
+    // message about 20 times a second, which reads as flicker on some layouts.
+    const typer = { enabled: false, speed: 60 }
     const typerListeners = new Set()
     const TYPER_STORAGE_KEY = 'dsh-concierge:typer'
     const typerUpdate = () => {

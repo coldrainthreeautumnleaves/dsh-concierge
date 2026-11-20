@@ -758,6 +758,7 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
       typerEnabledHint: '流式输出的文字逐字显示，思考、工具调用、图片保持原样',
       tabUpdate: '更新',
       tabPlugins: '插件',
+      tabAdd: '添加',
       tabPerf: '性能',
       tabTyper: '打字机',
       searchPlugins: '查找插件：名称或标题',
@@ -926,6 +927,7 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
       typerEnabledHint: 'Streaming text is revealed gradually; reasoning, tool rows and images stay native',
       tabUpdate: 'Update',
       tabPlugins: 'Plugins',
+      tabAdd: 'Add',
       tabPerf: 'Performance',
       tabTyper: 'Typewriter',
       searchPlugins: 'Find a plugin by name or title',
@@ -1110,6 +1112,36 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
 .uc-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--dsw-alias-label-secondary); font-size: 11px; flex-wrap: wrap; }
 .uc-foot a { color: var(--dsw-alias-label-secondary); text-decoration: none; border-bottom: 1px dotted var(--dsw-alias-border-l2); }
 .uc-foot a:hover { color: var(--dsw-alias-label-primary); }
+
+/* --- polish --- */
+.uc-root { gap: 20px; padding: 10px 0 40px; }
+.uc-title { font-size: 21px; }
+.uc-tabs { gap: 4px; }
+.uc-tab { padding: 9px 12px 11px; border-radius: 9px 9px 0 0; }
+.uc-tab:hover { background: var(--dsw-alias-bg-layer-2); }
+.uc-tab[data-active="true"] { color: var(--uc-accent); border-bottom-color: var(--uc-accent); font-weight: 600; }
+.uc-card { border-radius: 16px; box-shadow: 0 1px 2px rgba(0, 0, 0, .04); }
+.uc-card-head { padding: 16px 20px 12px; }
+.uc-row { padding: 13px 20px; }
+.uc-row:hover { background: var(--dsw-alias-bg-layer-2); }
+.uc-btn { min-height: 30px; border-radius: 10px; }
+.uc-btn-ghost:hover:not(:disabled) { color: var(--dsw-alias-label-primary); background: var(--dsw-alias-bg-layer-2); }
+.uc-install { padding: 14px 20px 4px; }
+.uc-search { padding: 14px 20px 4px; }
+.uc-install input, .uc-search input { border-radius: 11px; padding: 9px 13px; transition: border-color .15s ease, box-shadow .15s ease; }
+.uc-install input:focus, .uc-search input:focus { border-color: var(--uc-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--uc-accent) 20%, transparent); }
+.uc-stat { border-radius: 14px; padding: 14px 16px; }
+.uc-stat-value { font-size: 22px; }
+.uc-hero { border-radius: 16px; padding: 20px 22px; }
+.uc-notice { border-radius: 12px; }
+.uc-source { padding: 12px 20px; }
+.uc-source:hover { background: var(--dsw-alias-bg-layer-2); }
+.uc-sources { padding: 2px 0 10px; }
+.uc-token-doc { padding: 4px 20px 16px; }
+.uc-perf { padding: 4px 20px 16px; }
+.uc-empty { padding: 28px 20px; }
+.uc-guide { margin: 0 20px 14px; }
+.uc-safe { padding: 12px 16px; border-radius: 12px; }
 `
 
     const BANNER_CSS = `
@@ -1861,6 +1893,7 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
         h('div', { className: 'uc-tabs', role: 'tablist' },
           tabButton('update', t('tabUpdate')),
           tabButton('plugins', t('tabPlugins')),
+          tabButton('add', t('tabAdd')),
           tabButton('perf', t('tabPerf')),
           tabButton('typer', t('tabTyper')),
         ),
@@ -2048,32 +2081,7 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
             )
           : null,
 
-        tab === 'plugins'
-          ? h('section', { className: 'uc-card' },
-              h('div', { className: 'uc-card-head' },
-                h('div', { className: 'uc-card-title' }, t('installNpm')),
-              ),
-              h('div', { className: 'uc-install' },
-                h('input', {
-                  type: 'text',
-                  value: npmSpec,
-                  placeholder: t('installNpmPlaceholder'),
-                  onChange: (event) => setNpmSpec(event.target.value),
-                  onKeyDown: (event) => {
-                    if (event.key === 'Enter') installNpm()
-                  },
-                }),
-                h('button', {
-                  type: 'button',
-                  className: 'uc-btn uc-btn-accent',
-                  disabled: installingNpm || npmSpec.trim() === '',
-                  onClick: installNpm,
-                }, installingNpm ? t('installingNpm') : t('installNpm')),
-              ),
-            )
-          : null,
-
-        data && tab === 'plugins'
+        data && tab === 'add'
           ? h('section', { className: 'uc-card' },
               h('div', { className: 'uc-card-head' },
                 h('div', { className: 'uc-card-title' }, t('sourcesTitle')),
@@ -2163,7 +2171,32 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
             )
           : null,
 
-        data && tab === 'plugins'
+        tab === 'add'
+          ? h('section', { className: 'uc-card' },
+              h('div', { className: 'uc-card-head' },
+                h('div', { className: 'uc-card-title' }, t('installNpm')),
+              ),
+              h('div', { className: 'uc-install' },
+                h('input', {
+                  type: 'text',
+                  value: npmSpec,
+                  placeholder: t('installNpmPlaceholder'),
+                  onChange: (event) => setNpmSpec(event.target.value),
+                  onKeyDown: (event) => {
+                    if (event.key === 'Enter') installNpm()
+                  },
+                }),
+                h('button', {
+                  type: 'button',
+                  className: 'uc-btn uc-btn-accent',
+                  disabled: installingNpm || npmSpec.trim() === '',
+                  onClick: installNpm,
+                }, installingNpm ? t('installingNpm') : t('installNpm')),
+              ),
+            )
+          : null,
+
+        data && tab === 'add'
           ? h('section', { className: 'uc-card' },
               h('div', { className: 'uc-card-head' },
                 h('div', { className: 'uc-card-title' }, t('tokenTitle')),

@@ -1,6 +1,6 @@
 # Maintenance center
 
-Settings → Maintenance center is split into five tabs: **Update** (app version, updates and the auto-update switch), **Plugins** (installed list, search, update / rollback / enable / uninstall), **Add** (GitHub sources, install from npm and the GitHub token — every input lives here), **Performance** (FPS, long tasks and the degrade switches) and **Typewriter** (gradual reveal, stream throttle and speed).
+Settings → Maintenance center is split into five tabs: **Update** (app version, updates and the auto-update switch), **Plugins** (installed list, search, update / rollback / enable / uninstall), **Add** (GitHub sources, install from npm, the GitHub token and the folder shortcuts — every input and the open-plugins / open-config / open-safe-mode buttons live here), **Performance** (FPS, long tasks and the degrade switches) and **Typewriter** (gradual reveal, stream throttle and speed).
 
 ## What it checks
 

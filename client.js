@@ -695,6 +695,7 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
       perfRefreshAuto: '自动识别',
       pendingDisabled: '上次启动时有 {count} 个插件加载失败被禁用：{names}',
       enableAll: '全部启用',
+      foldersTitle: '目录与配置',
       openPlugins: '打开插件目录',
       openConfig: '打开配置',
       installGit: '从 Git 安装',
@@ -864,6 +865,7 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
       perfRefreshAuto: 'Auto detect',
       pendingDisabled: '{count} plugin(s) failed to load after the last start and were disabled: {names}',
       enableAll: 'Enable all',
+      foldersTitle: 'Folders',
       openPlugins: 'Open plugins folder',
       openConfig: 'Open config',
       installGit: 'Install from Git',
@@ -1142,6 +1144,8 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
 .uc-empty { padding: 28px 20px; }
 .uc-guide { margin: 0 20px 14px; }
 .uc-safe { padding: 12px 16px; border-radius: 12px; }
+.uc-folder-actions { display: flex; flex-wrap: wrap; gap: 8px; padding: 2px 20px 10px; }
+.uc-folder-hint { margin: 0; padding: 0 20px 16px; font-size: 11px; line-height: 1.6; color: var(--dsw-alias-label-secondary); }
 `
 
     const BANNER_CSS = `
@@ -2070,17 +2074,6 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
 
 
 
-        tab === 'plugins'
-          ? h('div', { className: 'uc-safe' },
-              h('span', { className: 'uc-safe-text' }, t('safeModeHint')),
-              h('button', {
-                type: 'button',
-                className: 'uc-btn uc-btn-ghost',
-                onClick: () => openFolder('safe'),
-              }, t('openSafeFolder')),
-            )
-          : null,
-
         data && tab === 'add'
           ? h('section', { className: 'uc-card' },
               h('div', { className: 'uc-card-head' },
@@ -2244,13 +2237,25 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
             )
           : null,
 
+        tab === 'add'
+          ? h('section', { className: 'uc-card' },
+              h('div', { className: 'uc-card-head' },
+                h('div', { className: 'uc-card-title' }, t('foldersTitle')),
+              ),
+              h('div', { className: 'uc-folder-actions' },
+                h('button', { type: 'button', className: 'uc-btn uc-btn-ghost', onClick: () => openFolder('plugins') }, t('openPlugins')),
+                h('button', { type: 'button', className: 'uc-btn uc-btn-ghost', onClick: () => openFolder('config') }, t('openConfig')),
+                h('button', { type: 'button', className: 'uc-btn uc-btn-ghost', onClick: () => openFolder('safe') }, t('openSafeFolder')),
+              ),
+              h('p', { className: 'uc-folder-hint' }, t('safeModeHint')),
+            )
+          : null,
+
         data && tab === 'plugins'
           ? h('section', { className: 'uc-card' },
               h('div', { className: 'uc-card-head' },
                 h('div', { className: 'uc-card-title' }, t('plugins')),
                 h('div', { className: 'uc-card-actions' },
-                  h('button', { type: 'button', className: 'uc-btn uc-btn-ghost', onClick: () => openFolder('plugins') }, t('openPlugins')),
-                  h('button', { type: 'button', className: 'uc-btn uc-btn-ghost', onClick: () => openFolder('config') }, t('openConfig')),
                   h('div', { className: 'uc-segment' },
                     h('button', {
                       type: 'button',

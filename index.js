@@ -37,6 +37,36 @@ const PENDING_FILE = path.join(homedir(), '.dsh', 'update-center', 'pending.json
 // starting, nothing inside the app can fix it, so the plugin writes a pair of
 // double-click scripts that disable third-party bundles before launch.
 const SAFE_DIR = path.join(homedir(), '.dsh', 'update-center')
+const SETTINGS_FILE = path.join(SAFE_DIR, 'settings.json')
+
+// A GitHub token raises the anonymous 60 requests/hour to 5,000. It can come
+// from the environment or from the settings file the page writes.
+let storedToken = null
+
+async function readSettings() {
+  try {
+    const text = await readFile(SETTINGS_FILE, 'utf8')
+    const parsed = JSON.parse(text)
+    if (parsed && typeof parsed.githubToken === 'string') storedToken = parsed.githubToken
+  } catch {
+    /* no settings yet */
+  }
+}
+
+async function writeSettings() {
+  try {
+    await mkdir(SAFE_DIR, { recursive: true })
+    await writeFile(SETTINGS_FILE, JSON.stringify({ githubToken: storedToken || '' }, null, 2), 'utf8')
+  } catch {
+    /* best effort */
+  }
+}
+
+function maskToken(token) {
+  if (!token) return null
+  if (token.length <= 8) return '****'
+  return `${token.slice(0, 4)}…${token.slice(-4)}`
+}
 
 const SAFE_MODE_PS1 = String.raw`$ErrorActionPreference = 'Stop'
 $profileDir = Join-Path $env:USERPROFILE '.dsh\profiles\desktop'
@@ -94,15 +124,52 @@ Start-Process -FilePath $exe
 Read-Host '按回车关闭窗口'
 `
 
+const SAFE_LAUNCH_PS1 = String.raw`$ErrorActionPreference = 'Stop'
+$exe = Join-Path $env:LOCALAPPDATA 'Programs\DeepSeek Harness\DeepSeek Harness.exe'
+$profileDir = Join-Path $env:USERPROFILE '.dsh\profiles\desktop'
+$pkg = Join-Path $profileDir 'package.json'
+$patch = Join-Path $profileDir 'cordis.patch.yml'
+$backupDir = Join-Path $env:USERPROFILE '.dsh\update-center\safe-backup'
+
+$running = Get-Process -Name 'DeepSeek Harness' -ErrorAction SilentlyContinue
+if ($running) { Write-Host '应用已经在运行。' -ForegroundColor Yellow; Read-Host '按回车退出'; exit 0 }
+
+Start-Process -FilePath $exe
+Write-Host '正在启动，观察 30 秒看是否崩溃...'
+Start-Sleep -Seconds 30
+$alive = Get-Process -Name 'DeepSeek Harness' -ErrorAction SilentlyContinue
+if ($alive) { Write-Host '启动正常。' -ForegroundColor Green; exit 0 }
+
+Write-Host '检测到启动失败，自动进入安全模式...' -ForegroundColor Yellow
+Get-Process -Name 'DeepSeek Harness' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+Start-Sleep -Seconds 2
+
+New-Item -ItemType Directory -Force -Path $backupDir | Out-Null
+Copy-Item $pkg (Join-Path $backupDir 'package.json') -Force
+if (Test-Path $patch) { Copy-Item $patch (Join-Path $backupDir 'cordis.patch.yml') -Force }
+
+$json = Get-Content $pkg -Raw -Encoding UTF8 | ConvertFrom-Json
+$json.dsh.profile.bundles = @($json.dsh.profile.bundles | Where-Object { $_ -like '@deepseek-ai/*' })
+$json | ConvertTo-Json -Depth 100 | Set-Content $pkg -Encoding UTF8
+
+Start-Process -FilePath $exe
+Write-Host '已用安全模式重启（只加载官方插件）。修好后双击 restore-mode.cmd 恢复。' -ForegroundColor Green
+Read-Host '按回车关闭窗口'
+`
+
 const CMD_WRAPPER = (script) => `@echo off\r\npowershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0${script}"\r\n`
 
 async function writeSafeModeScripts() {
   try {
     await mkdir(SAFE_DIR, { recursive: true })
-    await writeFile(path.join(SAFE_DIR, 'safe-mode.ps1'), SAFE_MODE_PS1, 'utf8')
-    await writeFile(path.join(SAFE_DIR, 'restore-mode.ps1'), RESTORE_PS1, 'utf8')
+    // A BOM keeps Windows PowerShell 5.1 from reading the Chinese text as ANSI.
+    const bom = '\uFEFF'
+    await writeFile(path.join(SAFE_DIR, 'safe-mode.ps1'), bom + SAFE_MODE_PS1, 'utf8')
+    await writeFile(path.join(SAFE_DIR, 'restore-mode.ps1'), bom + RESTORE_PS1, 'utf8')
     await writeFile(path.join(SAFE_DIR, 'safe-mode.cmd'), CMD_WRAPPER('safe-mode.ps1'), 'utf8')
     await writeFile(path.join(SAFE_DIR, 'restore-mode.cmd'), CMD_WRAPPER('restore-mode.ps1'), 'utf8')
+    await writeFile(path.join(SAFE_DIR, 'safe-launch.ps1'), bom + SAFE_LAUNCH_PS1, 'utf8')
+    await writeFile(path.join(SAFE_DIR, 'safe-launch.cmd'), CMD_WRAPPER('safe-launch.ps1'), 'utf8')
   } catch {
     /* best effort */
   }
@@ -217,6 +284,15 @@ export function apply(ctx) {
     'dsh-concierge: install npm route',
   )
 
+  ctx.effect(
+    () => ctx.webServer.register({
+      kind: 'exact',
+      path: `${ROUTE}/settings`,
+      handler: (request, response) => handleSettings(request, response),
+    }),
+    'dsh-concierge: settings route',
+  )
+
   // A plugin updated into a broken state should not keep breaking every start.
   ctx.effect(() => {
     const timer = setTimeout(() => {
@@ -229,6 +305,7 @@ export function apply(ctx) {
   // the app cannot start any more.
   ctx.effect(() => {
     void writeSafeModeScripts()
+    void readSettings()
     return () => {}
   }, 'dsh-concierge: safe-mode scripts')
 }
@@ -342,6 +419,40 @@ function normalizeSourceRepo(input) {
   const bare = /^([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)$/.exec(text)
   if (bare) return `${bare[1]}/${bare[2]}`
   return null
+}
+
+async function handleSettings(request, response) {
+  try {
+    if (request.method === 'GET') {
+      const env = process.env.GITHUB_TOKEN || process.env.GH_TOKEN || null
+      sendNodeJson(response, {
+        ok: true,
+        hasToken: Boolean(env || storedToken),
+        fromEnv: Boolean(env),
+        masked: maskToken(env || storedToken),
+      }, 200)
+      return
+    }
+    if (request.method !== 'POST') {
+      response.statusCode = 405
+      response.setHeader('allow', 'GET, POST')
+      response.end()
+      return
+    }
+    const body = await readNodeJson(request)
+    const token = typeof body.githubToken === 'string' ? body.githubToken.trim() : ''
+    storedToken = token || null
+    await writeSettings()
+    const env = process.env.GITHUB_TOKEN || process.env.GH_TOKEN || null
+    sendNodeJson(response, {
+      ok: true,
+      hasToken: Boolean(token || env),
+      fromEnv: Boolean(env),
+      masked: maskToken(env || storedToken),
+    }, 200)
+  } catch (error) {
+    sendNodeJson(response, { ok: false, error: messageOf(error) }, 500)
+  }
 }
 
 function normalizeNpmSpec(input) {
@@ -1612,7 +1723,7 @@ function githubHeaders() {
     'user-agent': 'dsh-concierge',
     'x-github-api-version': '2022-11-28',
   }
-  const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN
+  const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN || storedToken || ''
   if (token) headers.authorization = `Bearer ${token}`
   return headers
 }

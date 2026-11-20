@@ -70,12 +70,22 @@ Git 插件走「GitHub releases（没有 release 时退回 tags）→ 下载 →
 
 ## 安全模式
 
-如果某个插件损坏、应用起不来，插件本身也没机会运行——所以本插件在启动时会把两个脚本写到 `~/.dsh/update-center/`：
+如果某个插件损坏、应用起不来，插件本身也没机会运行——所以本插件在启动时会把几个脚本写到 `~/.dsh/update-center/`：
 
 - **`safe-mode.cmd`**：双击后先把 profile 的 `package.json` 和 `cordis.patch.yml` 备份到 `safe-backup/`，再把 `dsh.profile.bundles` 过滤成只留官方插件（`@deepseek-ai/*`），然后启动应用；
-- **`restore-mode.cmd`**：应用退出后双击，恢复备份并重启。
+- **`restore-mode.cmd`**：应用退出后双击，恢复备份并重启；
+- **`safe-launch.cmd`**：**自动版**——启动应用后观察 30 秒，如果进程没活下来就判定启动失败，自动备份、切到安全模式再重启一次；启动正常则什么都不做。
 
-两个脚本都要求应用已完全退出，不需要管理员权限。插件页底部有一条提示和「打开目录」按钮，直接定位到这个目录。
+把桌面快捷方式指向 `safe-launch.cmd`，以后应用起不来会自动落到安全模式，不用手动判断。所有脚本都要求应用已完全退出，不需要管理员权限；`.ps1` 带 UTF-8 BOM，Windows PowerShell 5.1 读中文不会乱码。插件页底部有一条提示和「打开目录」按钮，直接定位到这个目录。
+
+## GitHub Token
+
+更新页可以填一个 GitHub token（`ghp_…` / `github_pat_…`），存在 `~/.dsh/update-center/settings.json`：
+
+- 不带 token：GitHub API 每小时 60 次（按 IP），几条 GitHub 来源就够用完；
+- 带 token：每小时 5000 次（按账号）。
+
+只读公开仓库的 token 就够（classic 全不勾权限，或 fine-grained 只给 public repo 读）。环境变量 `GITHUB_TOKEN` / `GH_TOKEN` 优先级更高，设了环境变量时页面里的输入会被覆盖。保存后立即生效，不用重启。
 
 ## 后台检查
 

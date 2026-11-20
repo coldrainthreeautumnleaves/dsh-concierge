@@ -50,12 +50,17 @@ dsh plugin --profile <profile> add github:coldrainthreeautumnleaves/dsh-concierg
 
 ## 安全模式
 
-如果某个插件损坏、应用起不来，插件自己也没机会运行——所以启动时它会把两个脚本写到 `~/.dsh/update-center/`：
+如果某个插件损坏、应用起不来，插件自己也没机会运行——所以启动时它会把脚本写到 `~/.dsh/update-center/`：
 
-- 双击 `safe-mode.cmd`：备份配置 → 只加载官方插件启动应用；
-- 双击 `restore-mode.cmd`：恢复配置并重启。
+- `safe-launch.cmd`：**自动版**，启动后观察 30 秒，崩溃就自动切安全模式重启；把桌面快捷方式指向它即可；
+- `safe-mode.cmd`：手动版，双击后备份配置 → 只加载官方插件启动；
+- `restore-mode.cmd`：恢复配置并重启。
 
-两个脚本都要求应用已退出，不需要管理员权限。
+脚本都要求应用已退出，不需要管理员权限。
+
+## GitHub Token
+
+更新页可以填一个 GitHub token：不带时 GitHub API 每小时 60 次（按 IP），带了是 5000 次（按账号）。存在 `~/.dsh/update-center/settings.json`，只读公开仓库的 token 就够；环境变量 `GITHUB_TOKEN` / `GH_TOKEN` 优先。
 
 ## 要求
 

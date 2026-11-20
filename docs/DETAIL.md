@@ -70,12 +70,22 @@ Local installs (`link:` / `file:`) have no registry and no release feed, so the 
 
 ## Safe mode
 
-When a broken plugin keeps the app from starting, the plugin itself never gets to run — so on startup it writes two scripts to `~/.dsh/update-center/`:
+When a broken plugin keeps the app from starting, the plugin itself never gets to run — so on startup it writes scripts to `~/.dsh/update-center/`:
 
 - **`safe-mode.cmd`** backs up the profile's `package.json` and `cordis.patch.yml` into `safe-backup/`, filters `dsh.profile.bundles` down to official bundles (`@deepseek-ai/*`), then launches the app;
-- **`restore-mode.cmd`** restores the backup and restarts.
+- **`restore-mode.cmd`** restores the backup and restarts;
+- **`safe-launch.cmd`** is the automatic version: it starts the app, watches it for 30 seconds, and if the process did not survive it backs up, switches to safe mode and starts again.
 
-Both require the app to be fully closed and need no administrator rights. The plugins tab has a hint row and an **Open folder** button that leads there.
+Point the desktop shortcut at `safe-launch.cmd` and a failed start lands in safe mode on its own. All scripts need the app closed and no administrator rights; the `.ps1` files carry a UTF-8 BOM so Windows PowerShell 5.1 reads the Chinese text correctly.
+
+## GitHub token
+
+The update tab takes a GitHub token (`ghp_…` / `github_pat_…`), stored in `~/.dsh/update-center/settings.json`:
+
+- without one the GitHub API allows 60 requests/hour per IP, which a few sources exhaust;
+- with one it is 5,000 requests/hour per account.
+
+A public-repo read-only token is enough. The `GITHUB_TOKEN` / `GH_TOKEN` environment variables take precedence. Saving applies immediately, no restart.
 
 ## Background check
 

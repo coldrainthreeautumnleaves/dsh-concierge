@@ -692,7 +692,14 @@ html[data-dsh-stream="1"] [data-conversation-region] {
       ignoredVersion: '已忽略 {version}',
       unignore: '取消忽略',
       changelog: '更新内容',
-      safeModeHint: '应用起不来时：双击 safe-mode.cmd 只加载官方插件启动；恢复用 restore-mode.cmd。',
+      tokenTitle: 'GitHub Token',
+      tokenPlaceholder: 'ghp_… 或 github_pat_…',
+      tokenSave: '保存',
+      tokenClear: '清除',
+      tokenSaved: 'Token 已保存',
+      tokenHint: '不配的话 GitHub API 每小时只有 60 次（按 IP），配了是 5000 次（按账号）。只读公开仓库的 token 就够，存在本地。',
+      tokenFromEnv: '已从环境变量读取 GITHUB_TOKEN，这里的输入会被环境变量覆盖。',
+      safeModeHint: '把桌面快捷方式指向 safe-launch.cmd：启动失败会自动进安全模式；也可以手动双击 safe-mode.cmd。恢复用 restore-mode.cmd。',
       openSafeFolder: '打开目录',
       guideButton: '步骤',
       guideTitle: '安装步骤',
@@ -845,7 +852,14 @@ html[data-dsh-stream="1"] [data-conversation-region] {
       ignoredVersion: 'Ignored {version}',
       unignore: 'Unignore',
       changelog: "What's new",
-      safeModeHint: 'If the app will not start: double-click safe-mode.cmd to launch with official plugins only; restore-mode.cmd brings everything back.',
+      tokenTitle: 'GitHub token',
+      tokenPlaceholder: 'ghp_… or github_pat_…',
+      tokenSave: 'Save',
+      tokenClear: 'Clear',
+      tokenSaved: 'Token saved',
+      tokenHint: 'Without one the GitHub API allows 60 requests/hour per IP; with one it is 5,000 per account. A public-repo read-only token is enough; it is stored locally.',
+      tokenFromEnv: 'GITHUB_TOKEN is set in the environment; it overrides this field.',
+      safeModeHint: 'Point the desktop shortcut at safe-launch.cmd: a failed start falls back to safe mode automatically. safe-mode.cmd does it by hand; restore-mode.cmd brings everything back.',
       openSafeFolder: 'Open folder',
       guideButton: 'Steps',
       guideTitle: 'Install steps',
@@ -1150,6 +1164,8 @@ html[data-dsh-stream="1"] [data-conversation-region] {
       const [guideRepo, setGuideRepo] = React.useState(null)
       const [guideData, setGuideData] = React.useState(null)
       const [guideLoading, setGuideLoading] = React.useState(false)
+      const [tokenInput, setTokenInput] = React.useState('')
+      const [tokenState, setTokenState] = React.useState(null)
       const [npmSpec, setNpmSpec] = React.useState('')
       const [installingNpm, setInstallingNpm] = React.useState(false)
       const [confirmUninstall, setConfirmUninstall] = React.useState(null)
@@ -1529,6 +1545,56 @@ html[data-dsh-stream="1"] [data-conversation-region] {
         }
       }, [])
 
+      const loadTokenState = React.useCallback(async () => {
+        try {
+          const response = await fetch(`${API}/settings`)
+          const body = await response.json().catch(() => null)
+          if (body && body.ok) setTokenState(body)
+        } catch {
+          /* ignore */
+        }
+      }, [])
+
+      React.useEffect(() => {
+        void loadTokenState()
+      }, [loadTokenState])
+
+      const saveToken = React.useCallback(async () => {
+        setNotice(null)
+        try {
+          const response = await fetch(`${API}/settings`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ githubToken: tokenInput.trim() }),
+          })
+          const body = await response.json().catch(() => null)
+          if (!response.ok || !body || body.ok === false) {
+            setNotice({ kind: 'err', text: body && body.error ? body.error : `HTTP ${response.status}` })
+          } else {
+            setTokenState(body)
+            setTokenInput('')
+            setNotice({ kind: 'ok', text: t('tokenSaved') })
+          }
+        } catch (error) {
+          setNotice({ kind: 'err', text: error && error.message ? error.message : String(error) })
+        }
+      }, [tokenInput, t])
+
+      const clearToken = React.useCallback(async () => {
+        setNotice(null)
+        try {
+          const response = await fetch(`${API}/settings`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ githubToken: '' }),
+          })
+          const body = await response.json().catch(() => null)
+          if (body && body.ok) setTokenState(body)
+        } catch {
+          /* ignore */
+        }
+      }, [])
+
       const installNpm = React.useCallback(async () => {
         const spec = npmSpec.trim()
         if (!spec || installingNpm) return
@@ -1900,6 +1966,35 @@ html[data-dsh-stream="1"] [data-conversation-region] {
               h('div', { className: 'uc-perf' },
                 settingRow(t('auto'), t('autoHint'), switchControl(autoUpdate, toggleAutoUpdate)),
               ),
+            )
+          : null,
+
+        tab === 'update'
+          ? h('section', { className: 'uc-card' },
+              h('div', { className: 'uc-card-head' },
+                h('div', { className: 'uc-card-title' }, t('tokenTitle')),
+              ),
+              h('div', { className: 'uc-install' },
+                h('input', {
+                  type: 'password',
+                  value: tokenInput,
+                  placeholder: tokenState && tokenState.hasToken ? (tokenState.masked || '****') : t('tokenPlaceholder'),
+                  onChange: (event) => setTokenInput(event.target.value),
+                  onKeyDown: (event) => {
+                    if (event.key === 'Enter') saveToken()
+                  },
+                }),
+                h('button', {
+                  type: 'button',
+                  className: 'uc-btn uc-btn-accent',
+                  disabled: tokenInput.trim() === '',
+                  onClick: saveToken,
+                }, t('tokenSave')),
+                tokenState && tokenState.hasToken && !tokenState.fromEnv
+                  ? h('button', { type: 'button', className: 'uc-btn uc-btn-ghost', onClick: clearToken }, t('tokenClear'))
+                  : null,
+              ),
+              h('p', { className: 'uc-perf-hint' }, tokenState && tokenState.fromEnv ? t('tokenFromEnv') : t('tokenHint')),
             )
           : null,
 

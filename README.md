@@ -48,6 +48,15 @@ dsh plugin --profile <profile> add github:coldrainthreeautumnleaves/dsh-concierg
 
 安装后重启 DSH（Host 部分需要重启，客户端部分刷新页面即可）。
 
+## 安全模式
+
+如果某个插件损坏、应用起不来，插件自己也没机会运行——所以启动时它会把两个脚本写到 `~/.dsh/update-center/`：
+
+- 双击 `safe-mode.cmd`：备份配置 → 只加载官方插件启动应用；
+- 双击 `restore-mode.cmd`：恢复配置并重启。
+
+两个脚本都要求应用已退出，不需要管理员权限。
+
 ## 要求
 
 - DSH 0.2.1 及以上（`engines.dsh`）

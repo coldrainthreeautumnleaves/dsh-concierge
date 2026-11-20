@@ -692,6 +692,8 @@ html[data-dsh-stream="1"] [data-conversation-region] {
       ignoredVersion: '已忽略 {version}',
       unignore: '取消忽略',
       changelog: '更新内容',
+      safeModeHint: '应用起不来时：双击 safe-mode.cmd 只加载官方插件启动；恢复用 restore-mode.cmd。',
+      openSafeFolder: '打开目录',
       guideButton: '步骤',
       guideTitle: '安装步骤',
       guideLoading: '读取中…',
@@ -843,6 +845,8 @@ html[data-dsh-stream="1"] [data-conversation-region] {
       ignoredVersion: 'Ignored {version}',
       unignore: 'Unignore',
       changelog: "What's new",
+      safeModeHint: 'If the app will not start: double-click safe-mode.cmd to launch with official plugins only; restore-mode.cmd brings everything back.',
+      openSafeFolder: 'Open folder',
       guideButton: 'Steps',
       guideTitle: 'Install steps',
       guideLoading: 'Loading…',
@@ -996,6 +1000,8 @@ html[data-dsh-stream="1"] [data-conversation-region] {
 .uc-btn-danger:hover { background: rgba(217, 83, 79, .12) !important; }
 .uc-row-link { color: var(--dsw-alias-brand-primary); text-decoration: none; font-size: 11px; margin-left: 4px; }
 .uc-row-link:hover { text-decoration: underline; }
+.uc-safe { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; border: 1px dashed var(--dsw-alias-border-l2); border-radius: 10px; font-size: 11.5px; line-height: 1.5; color: var(--dsw-alias-label-secondary); }
+.uc-safe-text { min-width: 0; }
 .uc-changelog { margin-top: 6px; padding: 8px 10px; border-radius: 8px; background: var(--dsw-alias-bg-layer-1); border: 1px solid var(--dsw-alias-border-l1); font-size: 11.5px; line-height: 1.6; color: var(--dsw-alias-label-secondary); white-space: pre-wrap; max-height: 160px; overflow: auto; }
 .uc-install { display: flex; gap: 8px; padding: 12px 18px 2px; }
 .uc-install input { flex: 1; box-sizing: border-box; border: 1px solid var(--dsw-alias-border-l2); border-radius: 9px; background: var(--dsw-alias-bg-layer-1); color: var(--dsw-alias-label-primary); font-size: 13px; padding: 8px 12px; outline: none; }
@@ -1894,6 +1900,17 @@ html[data-dsh-stream="1"] [data-conversation-region] {
               h('div', { className: 'uc-perf' },
                 settingRow(t('auto'), t('autoHint'), switchControl(autoUpdate, toggleAutoUpdate)),
               ),
+            )
+          : null,
+
+        tab === 'plugins'
+          ? h('div', { className: 'uc-safe' },
+              h('span', { className: 'uc-safe-text' }, t('safeModeHint')),
+              h('button', {
+                type: 'button',
+                className: 'uc-btn uc-btn-ghost',
+                onClick: () => openFolder('safe'),
+              }, t('openSafeFolder')),
             )
           : null,
 

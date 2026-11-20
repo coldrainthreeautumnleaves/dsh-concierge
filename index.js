@@ -33,6 +33,81 @@ const GITHUB_RELEASES = 'https://github.com/deepseek-ai/deepseek-harness/release
 // Names whose last update asked for a restart; checked once on the next Host start.
 const PENDING_FILE = path.join(homedir(), '.dsh', 'update-center', 'pending.json')
 
+// Safe-mode helpers: when a broken third-party bundle keeps the app from
+// starting, nothing inside the app can fix it, so the plugin writes a pair of
+// double-click scripts that disable third-party bundles before launch.
+const SAFE_DIR = path.join(homedir(), '.dsh', 'update-center')
+
+const SAFE_MODE_PS1 = String.raw`$ErrorActionPreference = 'Stop'
+$profileDir = Join-Path $env:USERPROFILE '.dsh\profiles\desktop'
+$exe = Join-Path $env:LOCALAPPDATA 'Programs\DeepSeek Harness\DeepSeek Harness.exe'
+$pkg = Join-Path $profileDir 'package.json'
+$patch = Join-Path $profileDir 'cordis.patch.yml'
+$backupDir = Join-Path $env:USERPROFILE '.dsh\update-center\safe-backup'
+
+$running = Get-Process -Name 'DeepSeek Harness' -ErrorAction SilentlyContinue
+if ($running) {
+  Write-Host '应用正在运行，请先完全退出 DeepSeek Harness，再运行本脚本。' -ForegroundColor Yellow
+  Read-Host '按回车退出'
+  exit 1
+}
+
+New-Item -ItemType Directory -Force -Path $backupDir | Out-Null
+Copy-Item $pkg (Join-Path $backupDir 'package.json') -Force
+if (Test-Path $patch) { Copy-Item $patch (Join-Path $backupDir 'cordis.patch.yml') -Force }
+
+$json = Get-Content $pkg -Raw -Encoding UTF8 | ConvertFrom-Json
+$json.dsh.profile.bundles = @($json.dsh.profile.bundles | Where-Object { $_ -like '@deepseek-ai/*' })
+$json | ConvertTo-Json -Depth 100 | Set-Content $pkg -Encoding UTF8
+
+Write-Host '已进入安全模式：只加载官方插件，第三方插件已临时停用。' -ForegroundColor Green
+Write-Host '恢复：双击 restore-mode.cmd'
+Start-Process -FilePath $exe
+Read-Host '按回车关闭窗口'
+`
+
+const RESTORE_PS1 = String.raw`$ErrorActionPreference = 'Stop'
+$profileDir = Join-Path $env:USERPROFILE '.dsh\profiles\desktop'
+$exe = Join-Path $env:LOCALAPPDATA 'Programs\DeepSeek Harness\DeepSeek Harness.exe'
+$backupDir = Join-Path $env:USERPROFILE '.dsh\update-center\safe-backup'
+
+$running = Get-Process -Name 'DeepSeek Harness' -ErrorAction SilentlyContinue
+if ($running) {
+  Write-Host '应用正在运行，请先完全退出 DeepSeek Harness，再运行本脚本。' -ForegroundColor Yellow
+  Read-Host '按回车退出'
+  exit 1
+}
+
+if (-not (Test-Path (Join-Path $backupDir 'package.json'))) {
+  Write-Host '没有找到安全模式备份，无法恢复。' -ForegroundColor Yellow
+  Read-Host '按回车退出'
+  exit 1
+}
+
+Copy-Item (Join-Path $backupDir 'package.json') (Join-Path $profileDir 'package.json') -Force
+if (Test-Path (Join-Path $backupDir 'cordis.patch.yml')) {
+  Copy-Item (Join-Path $backupDir 'cordis.patch.yml') (Join-Path $profileDir 'cordis.patch.yml') -Force
+}
+
+Write-Host '已恢复原来的插件配置。' -ForegroundColor Green
+Start-Process -FilePath $exe
+Read-Host '按回车关闭窗口'
+`
+
+const CMD_WRAPPER = (script) => `@echo off\r\npowershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0${script}"\r\n`
+
+async function writeSafeModeScripts() {
+  try {
+    await mkdir(SAFE_DIR, { recursive: true })
+    await writeFile(path.join(SAFE_DIR, 'safe-mode.ps1'), SAFE_MODE_PS1, 'utf8')
+    await writeFile(path.join(SAFE_DIR, 'restore-mode.ps1'), RESTORE_PS1, 'utf8')
+    await writeFile(path.join(SAFE_DIR, 'safe-mode.cmd'), CMD_WRAPPER('safe-mode.ps1'), 'utf8')
+    await writeFile(path.join(SAFE_DIR, 'restore-mode.cmd'), CMD_WRAPPER('restore-mode.ps1'), 'utf8')
+  } catch {
+    /* best effort */
+  }
+}
+
 export function apply(ctx) {
   const state = {
     cache: null,
@@ -149,6 +224,13 @@ export function apply(ctx) {
     }, 2500)
     return () => clearTimeout(timer)
   }, 'dsh-concierge: startup self-check')
+
+  // Keep the double-click recovery scripts on disk so they are there even when
+  // the app cannot start any more.
+  ctx.effect(() => {
+    void writeSafeModeScripts()
+    return () => {}
+  }, 'dsh-concierge: safe-mode scripts')
 }
 
 async function handleRestart(ctx, request, response) {
@@ -557,10 +639,13 @@ async function handleOpen(ctx, request, response) {
   }
   try {
     const body = await readNodeJson(request)
-    const target = body && body.target === 'config' ? 'config' : 'plugins'
+    const target = body && body.target === 'config' ? 'config' : body && body.target === 'safe' ? 'safe' : 'plugins'
     const dir = profileDir()
-    const file = target === 'config' ? path.join(dir, 'cordis.patch.yml') : path.join(dir, 'node_modules')
-    const openPath = existsSync(file) ? file : dir
+    const openPath = target === 'safe'
+      ? SAFE_DIR
+      : existsSync(target === 'config' ? path.join(dir, 'cordis.patch.yml') : path.join(dir, 'node_modules'))
+        ? (target === 'config' ? path.join(dir, 'cordis.patch.yml') : path.join(dir, 'node_modules'))
+        : dir
     const result = openInExplorer(openPath)
     sendNodeJson(response, result, result.ok ? 200 : 400)
   } catch (error) {

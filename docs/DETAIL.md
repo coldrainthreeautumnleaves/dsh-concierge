@@ -68,6 +68,15 @@ Local installs (`link:` / `file:`) have no registry and no release feed, so the 
 - **What's new**: GitHub-installed plugins with release notes get a **What's new** toggle that expands the release body.
 - **Diagnosis**: common plugin-manager codes (`invalid-spec`, `incompatible-version`, `pendingBuilds`, `not-removable`, `bundle-in-use`, …) are translated into a plain-language hint and next step.
 
+## Safe mode
+
+When a broken plugin keeps the app from starting, the plugin itself never gets to run — so on startup it writes two scripts to `~/.dsh/update-center/`:
+
+- **`safe-mode.cmd`** backs up the profile's `package.json` and `cordis.patch.yml` into `safe-backup/`, filters `dsh.profile.bundles` down to official bundles (`@deepseek-ai/*`), then launches the app;
+- **`restore-mode.cmd`** restores the backup and restarts.
+
+Both require the app to be fully closed and need no administrator rights. The plugins tab has a hint row and an **Open folder** button that leads there.
+
 ## Background check
 
 The client plugin stays loaded and checks for updates every 10 minutes; when plugins can be updated it shows a top banner ("N plugin update(s) available"), at most once an hour, dismissible with **Got it**.

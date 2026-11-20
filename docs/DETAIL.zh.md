@@ -68,6 +68,15 @@ Git 插件走「GitHub releases（没有 release 时退回 tags）→ 下载 →
 - **更新内容**：GitHub 安装的插件如果有 release 说明，行上会多一个「更新内容」按钮，展开就是这段说明。
 - **错误诊断**：安装/卸载失败时，常见的插件管理器错误码（`invalid-spec`、`incompatible-version`、`pendingBuilds`、`not-removable`、`bundle-in-use` 等）会直接翻成中文提示和下一步动作。
 
+## 安全模式
+
+如果某个插件损坏、应用起不来，插件本身也没机会运行——所以本插件在启动时会把两个脚本写到 `~/.dsh/update-center/`：
+
+- **`safe-mode.cmd`**：双击后先把 profile 的 `package.json` 和 `cordis.patch.yml` 备份到 `safe-backup/`，再把 `dsh.profile.bundles` 过滤成只留官方插件（`@deepseek-ai/*`），然后启动应用；
+- **`restore-mode.cmd`**：应用退出后双击，恢复备份并重启。
+
+两个脚本都要求应用已完全退出，不需要管理员权限。插件页底部有一条提示和「打开目录」按钮，直接定位到这个目录。
+
 ## 后台检查
 
 客户端插件常驻，每 10 分钟检查一次更新；发现可更新插件时在顶部弹一条「发现 N 个插件更新」，一小时内最多提示一次，点「知道了」收起。

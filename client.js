@@ -196,6 +196,10 @@ html[data-dsh-stream="1"] [data-conversation-region] {
           const row = rows[index]
           if (!row || row.dataset.dshCv === '1') continue
           const rect = row.getBoundingClientRect()
+          // Only off-screen rows benefit; touching a row that is on screen (the
+          // one currently streaming, for example) makes it repaint for nothing.
+          const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 0
+          if (rect.bottom > 0 && rect.top < viewportHeight) continue
           const height = Math.round(rect.height)
           if (height > 0) {
             row.style.containIntrinsicSize = `auto ${height}px`
@@ -243,6 +247,12 @@ html[data-dsh-stream="1"] [data-conversation-region] {
       let last = performance.now()
       let lowFor = 0
       let goodFor = 0
+      // Flipping the lite mode rewrites animations, shadows and backdrop blur,
+      // which reads as a blink: never change it more than once every 15 seconds.
+      let lastModeAt = 0
+      let streamingSince = 0
+      let lastRows = -1
+      let lastScanAt = 0
       const tick = (now) => {
         frames += 1
         const elapsed = now - last
@@ -277,6 +287,10 @@ html[data-dsh-stream="1"] [data-conversation-region] {
           } else {
             low = false
           }
+          if (low !== perf.low) {
+            if (now - lastModeAt < 15000) low = perf.low
+            else lastModeAt = now
+          }
           perfUpdate({ fps: average, samples, low })
           applyPerfMode()
         }
@@ -293,15 +307,23 @@ html[data-dsh-stream="1"] [data-conversation-region] {
           rows = 0
           streaming = false
         }
-        const cutoff = Date.now() - 10000
+        const nowMs = Date.now()
+        // Keep the streaming flag for a few seconds after the last detection so
+        // a pause between tokens does not toggle the chat backdrop on and off.
+        if (streaming) streamingSince = nowMs
+        const stickyStreaming = streaming || (streamingSince > 0 && nowMs - streamingSince <= 5000)
+        const cutoff = nowMs - 10000
         while (longTaskLog.length > 0 && longTaskLog[0].at < cutoff) longTaskLog.shift()
         const blocking = Math.round(longTaskLog.reduce((sum, entry) => sum + entry.d, 0))
         const history = perf.history.length >= 40 ? perf.history.slice(-39) : perf.history.slice()
         history.push({ count: longTaskLog.length, ms: blocking })
+        // Hysteresis on the long-chat mode too: enter above 60 rows, leave below
+        // 50, so a conversation hovering at the threshold does not flicker.
+        const nextLong = perf.longPref ? (perf.longActive ? rows > 50 : rows > 60) : false
         perfUpdate({
           rows,
-          streaming,
-          longActive: perf.longPref && rows > 60,
+          streaming: stickyStreaming,
+          longActive: nextLong,
           longTasks: longTaskLog.length,
           blocking,
           history,
@@ -309,7 +331,11 @@ html[data-dsh-stream="1"] [data-conversation-region] {
         })
         applyPerfStreaming()
         applyPerfMode()
-        scanOffscreen()
+        if (rows !== lastRows || nowMs - lastScanAt > 15000) {
+          lastRows = rows
+          lastScanAt = nowMs
+          scanOffscreen()
+        }
       }, 2000)
     }
 
@@ -381,7 +407,13 @@ html[data-dsh-stream="1"] [data-conversation-region] {
       React.useEffect(() => {
         const state = ref.current
         if (state.text !== text) {
-          if (text.length < state.shown) state.shown = 0
+          // Keep the reveal monotonic: clamp when the text shrinks, and only
+          // restart when the block itself was replaced. Resetting to zero on
+          // every shrink makes the message blink while it streams.
+          const previous = typeof state.text === 'string' ? state.text : ''
+          const sameBlock = previous.startsWith(text) || text.startsWith(previous)
+          if (!sameBlock) state.shown = 0
+          else if (text.length < state.shown) state.shown = text.length
           state.text = text
         }
         if (!active) {

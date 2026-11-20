@@ -730,6 +730,9 @@ html[data-dsh-stream="1"] [data-conversation-region] {
       tokenClear: '清除',
       tokenSaved: 'Token 已保存',
       tokenHint: '不配的话 GitHub API 每小时只有 60 次（按 IP），配了是 5000 次（按账号）。只读公开仓库的 token 就够，存在本地。',
+      tokenDocWhy: '为什么要配：GitHub 对匿名请求按 IP 限流，每小时 60 次；带 token 是每小时 5000 次（按账号）。几条来源就能把匿名额度用完。',
+      tokenDocHow: '怎么申请：GitHub → Settings → Developer settings → Personal access tokens。细粒度选 Public repositories (read-only)、权限一个不勾；经典 token 的 Scopes 也不勾。生成后只显示一次，当场复制。',
+      tokenDocWhere: '插件从哪里读：环境变量 GITHUB_TOKEN → GH_TOKEN → 本机 ~/.dsh/update-center/settings.json，环境变量优先。保存后立即生效。',
       tokenFromEnv: '已从环境变量读取 GITHUB_TOKEN，这里的输入会被环境变量覆盖。',
       safeModeHint: '把桌面快捷方式指向 safe-launch.cmd：启动失败会自动进安全模式；也可以手动双击 safe-mode.cmd。恢复用 restore-mode.cmd。',
       openSafeFolder: '打开目录',
@@ -890,6 +893,9 @@ html[data-dsh-stream="1"] [data-conversation-region] {
       tokenClear: 'Clear',
       tokenSaved: 'Token saved',
       tokenHint: 'Without one the GitHub API allows 60 requests/hour per IP; with one it is 5,000 per account. A public-repo read-only token is enough; it is stored locally.',
+      tokenDocWhy: 'Why: GitHub rate-limits anonymous requests to 60/hour per IP; with a token it is 5,000/hour per account. A few sources exhaust the anonymous budget.',
+      tokenDocHow: 'How to get one: GitHub → Settings → Developer settings → Personal access tokens. Fine-grained: Public repositories (read-only), no permissions; classic: no scopes. It is shown only once, copy it then.',
+      tokenDocWhere: 'Where it is read from: GITHUB_TOKEN → GH_TOKEN → ~/.dsh/update-center/settings.json; the environment wins. Saving applies immediately.',
       tokenFromEnv: 'GITHUB_TOKEN is set in the environment; it overrides this field.',
       safeModeHint: 'Point the desktop shortcut at safe-launch.cmd: a failed start falls back to safe mode automatically. safe-mode.cmd does it by hand; restore-mode.cmd brings everything back.',
       openSafeFolder: 'Open folder',
@@ -1046,6 +1052,8 @@ html[data-dsh-stream="1"] [data-conversation-region] {
 .uc-btn-danger:hover { background: rgba(217, 83, 79, .12) !important; }
 .uc-row-link { color: var(--dsw-alias-brand-primary); text-decoration: none; font-size: 11px; margin-left: 4px; }
 .uc-row-link:hover { text-decoration: underline; }
+.uc-token-doc { display: flex; flex-direction: column; gap: 5px; padding: 2px 18px 14px; font-size: 11px; line-height: 1.6; color: var(--dsw-alias-label-secondary); }
+.uc-token-doc p { margin: 0; }
 .uc-token-block { display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; border: 1px solid var(--dsw-alias-border-l1); border-radius: 12px; background: var(--dsw-alias-bg-layer-1); }
 .uc-token-head { display: flex; flex-direction: column; gap: 2px; }
 .uc-token-title { font-size: 13px; font-weight: 600; color: var(--dsw-alias-label-primary); }
@@ -2138,6 +2146,39 @@ html[data-dsh-stream="1"] [data-conversation-region] {
         data && tab === 'plugins'
           ? h('section', { className: 'uc-card' },
               h('div', { className: 'uc-card-head' },
+                h('div', { className: 'uc-card-title' }, t('tokenTitle')),
+              ),
+              h('div', { className: 'uc-install' },
+                h('input', {
+                  type: 'password',
+                  value: tokenInput,
+                  placeholder: tokenState && tokenState.hasToken ? (tokenState.masked || '****') : t('tokenPlaceholder'),
+                  onChange: (event) => setTokenInput(event.target.value),
+                  onKeyDown: (event) => {
+                    if (event.key === 'Enter') saveToken()
+                  },
+                }),
+                h('button', {
+                  type: 'button',
+                  className: 'uc-btn uc-btn-accent',
+                  disabled: tokenInput.trim() === '',
+                  onClick: saveToken,
+                }, t('tokenSave')),
+                tokenState && tokenState.hasToken && !tokenState.fromEnv
+                  ? h('button', { type: 'button', className: 'uc-btn uc-btn-ghost', onClick: clearToken }, t('tokenClear'))
+                  : null,
+              ),
+              h('div', { className: 'uc-token-doc' },
+                h('p', null, tokenState && tokenState.fromEnv ? t('tokenFromEnv') : t('tokenDocWhy')),
+                h('p', null, t('tokenDocHow')),
+                h('p', null, t('tokenDocWhere')),
+              ),
+            )
+          : null,
+
+        data && tab === 'plugins'
+          ? h('section', { className: 'uc-card' },
+              h('div', { className: 'uc-card-head' },
                 h('div', { className: 'uc-card-title' }, t('plugins')),
                 h('div', { className: 'uc-card-actions' },
                   h('button', { type: 'button', className: 'uc-btn uc-btn-ghost', onClick: () => openFolder('plugins') }, t('openPlugins')),
@@ -2461,105 +2502,6 @@ html[data-dsh-stream="1"] [data-conversation-region] {
                   onClick: () => onAskUninstall(row),
                 }, t('uninstall')),
         ),
-      )
-    }
-
-    // The models page is where API keys live, so the GitHub token sits there too.
-    function ModelsTokenFooter(props) {
-      const t = typeof props.t === 'function' ? props.t : (key) => key
-      const [value, setValue] = React.useState('')
-      const [state, setState] = React.useState(null)
-      const [busy, setBusy] = React.useState(false)
-      const [msg, setMsg] = React.useState(null)
-
-      React.useEffect(() => {
-        let alive = true
-        fetch(`${API}/settings`)
-          .then((response) => response.json())
-          .then((body) => {
-            if (alive && body && body.ok) setState(body)
-          })
-          .catch(() => {})
-        return () => {
-          alive = false
-        }
-      }, [])
-
-      const save = async () => {
-        const token = value.trim()
-        if (!token || busy) return
-        setBusy(true)
-        setMsg(null)
-        try {
-          const response = await fetch(`${API}/settings`, {
-            method: 'POST',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ githubToken: token }),
-          })
-          const body = await response.json().catch(() => null)
-          if (!response.ok || !body || body.ok === false) {
-            setMsg(body && body.error ? body.error : `HTTP ${response.status}`)
-          } else {
-            setState(body)
-            setValue('')
-            setMsg(t('tokenSaved'))
-          }
-        } catch (error) {
-          setMsg(error && error.message ? error.message : String(error))
-        } finally {
-          setBusy(false)
-        }
-      }
-
-      const clear = async () => {
-        if (busy) return
-        setBusy(true)
-        setMsg(null)
-        try {
-          const response = await fetch(`${API}/settings`, {
-            method: 'POST',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ githubToken: '' }),
-          })
-          const body = await response.json().catch(() => null)
-          if (body && body.ok) {
-            setState(body)
-            setMsg(null)
-          }
-        } catch {
-          /* ignore */
-        } finally {
-          setBusy(false)
-        }
-      }
-
-      return h('div', { className: 'uc-token-block' },
-        h('style', null, CSS),
-        h('div', { className: 'uc-token-head' },
-          h('div', { className: 'uc-token-title' }, t('tokenTitle')),
-          h('div', { className: 'uc-token-sub' }, state && state.fromEnv ? t('tokenFromEnv') : t('tokenHint')),
-        ),
-        h('div', { className: 'uc-install uc-token-row' },
-          h('input', {
-            type: 'password',
-            value,
-            placeholder: state && state.hasToken ? (state.masked || '****') : t('tokenPlaceholder'),
-            onChange: (event) => setValue(event.target.value),
-            onKeyDown: (event) => {
-              if (event.key === 'Enter') save()
-            },
-          }),
-          h('button', {
-            type: 'button',
-            className: 'uc-btn uc-btn-accent',
-            disabled: busy || value.trim() === '',
-            onClick: save,
-          }, busy ? t('installing') : t('tokenSave')),
-          state && state.hasToken && !state.fromEnv
-            ? h('button', { type: 'button', className: 'uc-btn uc-btn-ghost', disabled: busy, onClick: clear }, t('tokenClear'))
-            : null,
-        ),
-        msg ? h('div', { className: 'uc-token-msg' }, msg) : null,
       )
     }
 
@@ -2941,15 +2883,6 @@ html[data-dsh-stream="1"] [data-conversation-region] {
             }
           }
         }
-
-        // The models page is where API keys live, so the GitHub token sits there.
-        slots.inject('settings.models.footer', () => slots.register({
-          name: 'settings.models.footer',
-          id: 'dsh-concierge-token',
-          order: 10,
-          locale: NS,
-          inject: () => ({ t }),
-        }, ModelsTokenFooter))
 
         slots.inject('settings.section', () => slots.register({
           name: 'settings.section',

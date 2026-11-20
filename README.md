@@ -48,6 +48,8 @@ dsh plugin --profile <profile> add github:coldrainthreeautumnleaves/dsh-concierg
 
 安装后重启 DSH（Host 部分需要重启，客户端部分刷新页面即可）。
 
+> 密钥怎么申请、安全模式怎么用，见 [docs/GUIDE.zh.md](docs/GUIDE.zh.md)。
+
 ## 安全模式
 
 如果某个插件损坏、应用起不来，插件自己也没机会运行——所以启动时它会把脚本写到 `~/.dsh/update-center/`：

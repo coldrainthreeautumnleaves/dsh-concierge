@@ -486,6 +486,94 @@ html[data-dsh-stream="1"] [data-conversation-region] {
       }
     }
 
+    /* ------------------------------------------------------- ignore / diag -- */
+
+    const IGNORE_KEY = 'dsh-concierge:ignore'
+    const ignoreMap = {}
+    const ignoreListeners = new Set()
+    const ignoreUpdate = () => {
+      for (const listener of [...ignoreListeners]) listener()
+    }
+
+    function readIgnore() {
+      try {
+        const raw = localStorage.getItem(IGNORE_KEY)
+        if (!raw) return
+        const parsed = JSON.parse(raw)
+        if (parsed && typeof parsed === 'object') {
+          for (const [key, value] of Object.entries(parsed)) {
+            if (typeof value === 'string') ignoreMap[key] = value
+          }
+        }
+      } catch {
+        /* keep empty */
+      }
+    }
+
+    function saveIgnore() {
+      try {
+        localStorage.setItem(IGNORE_KEY, JSON.stringify(ignoreMap))
+      } catch {
+        /* storage unavailable */
+      }
+    }
+
+    function setIgnore(name, version) {
+      if (version) ignoreMap[name] = version
+      else delete ignoreMap[name]
+      saveIgnore()
+      ignoreUpdate()
+    }
+
+    // Common plugin-manager error codes, translated into what to do about them.
+    function diagnose(code) {
+      if (!code) return null
+      const map = {
+        'invalid-spec': '地址格式不对：Git 用 owner/repo，npm 用 包名 或 包名@版本',
+        'already-installed': '这个插件已经装过了',
+        'incompatible-version': '与当前 DSH 版本不兼容，换一个兼容版本',
+        pendingBuilds: '需要批准构建脚本：去插件页点「允许」再重试',
+        'not-removable': '这个插件不能卸载（随 DSH 提供或受保护）',
+        'bundle-in-use': '插件正在使用中，重启应用后再试',
+        'not-bundle': '这个包不是 DSH 插件（缺少 dsh.bundle 声明）',
+        'stale-approval': '授权已过期，再点一次即可',
+        'unsupported-platform': '不支持当前平台',
+        'management-required': '这个插件由外部管理，不能在这里改',
+      }
+      return map[code] || null
+    }
+
+    /* ------------------------------------------------------ background check -- */
+
+    let backgroundStarted = false
+
+    function startBackgroundCheck(t) {
+      if (backgroundStarted || typeof setInterval !== 'function') return
+      backgroundStarted = true
+      let lastNotice = 0
+      const tick = async () => {
+        try {
+          const response = await fetch(`${API}/status`, { signal: AbortSignal.timeout(30000) })
+          const body = await response.json().catch(() => null)
+          if (!body || !body.summary) return
+          const updatable = Number(body.summary.updatable) || 0
+          if (updatable <= 0) return
+          if (Date.now() - lastNotice < 60 * 60 * 1000) return
+          lastNotice = Date.now()
+          bannerStore.set({
+            kind: 'update',
+            title: t('foundUpdates', { n: updatable }),
+            detail: t('foundUpdatesDetail'),
+            action: null,
+          })
+        } catch {
+          /* offline or busy: try again next round */
+        }
+      }
+      setTimeout(tick, 20000)
+      setInterval(tick, 10 * 60 * 1000)
+    }
+
     const zh = {
       title: '维护中心',
       subtitle: '更新应用与插件，顺便盯着聊天性能',
@@ -591,6 +679,19 @@ html[data-dsh-stream="1"] [data-conversation-region] {
       restartBannerDetail: '{name} 已更新到 {version}，重启应用后生效',
       refreshBannerTitle: '更新完成',
       refreshBannerDetail: '{name} 已更新到 {version}，刷新界面后生效',
+      foundUpdates: '发现 {n} 个插件更新',
+      foundUpdatesDetail: '打开 设置 → 维护中心 查看',
+      uninstall: '卸载',
+      confirmUninstall: '确认卸载？',
+      uninstalled: '{name} 已卸载',
+      installNpm: '从 npm 安装',
+      installNpmPlaceholder: '包名或 包名@版本，例如 dsh-pet',
+      installingNpm: '安装中',
+      installedNpm: '已安装 {spec}，重启后生效',
+      ignoreVersion: '忽略此版本',
+      ignoredVersion: '已忽略 {version}',
+      unignore: '取消忽略',
+      changelog: '更新内容',
       guideButton: '步骤',
       guideTitle: '安装步骤',
       guideLoading: '读取中…',
@@ -729,6 +830,19 @@ html[data-dsh-stream="1"] [data-conversation-region] {
       restartBannerDetail: '{name} updated to {version}; restart to apply',
       refreshBannerTitle: 'Update finished',
       refreshBannerDetail: '{name} updated to {version}; reload the UI to apply',
+      foundUpdates: '{n} plugin update(s) available',
+      foundUpdatesDetail: 'Open Settings → Maintenance center to review',
+      uninstall: 'Uninstall',
+      confirmUninstall: 'Confirm uninstall?',
+      uninstalled: '{name} uninstalled',
+      installNpm: 'Install from npm',
+      installNpmPlaceholder: 'Package name or name@version, e.g. dsh-pet',
+      installingNpm: 'Installing',
+      installedNpm: 'Installed {spec}; takes effect after a restart',
+      ignoreVersion: 'Ignore this version',
+      ignoredVersion: 'Ignored {version}',
+      unignore: 'Unignore',
+      changelog: "What's new",
       guideButton: 'Steps',
       guideTitle: 'Install steps',
       guideLoading: 'Loading…',
@@ -878,6 +992,11 @@ html[data-dsh-stream="1"] [data-conversation-region] {
 .uc-guide-steps { margin: 0; padding-left: 18px; font-size: 12px; line-height: 1.7; color: var(--dsw-alias-label-secondary); }
 .uc-guide-actions { display: flex; gap: 8px; margin-top: 10px; }
 .uc-tag-hot { color: var(--dsw-alias-brand-primary); }
+.uc-btn-danger { color: #d9534f !important; border-color: rgba(217, 83, 79, .45) !important; }
+.uc-btn-danger:hover { background: rgba(217, 83, 79, .12) !important; }
+.uc-row-link { color: var(--dsw-alias-brand-primary); text-decoration: none; font-size: 11px; margin-left: 4px; }
+.uc-row-link:hover { text-decoration: underline; }
+.uc-changelog { margin-top: 6px; padding: 8px 10px; border-radius: 8px; background: var(--dsw-alias-bg-layer-1); border: 1px solid var(--dsw-alias-border-l1); font-size: 11.5px; line-height: 1.6; color: var(--dsw-alias-label-secondary); white-space: pre-wrap; max-height: 160px; overflow: auto; }
 .uc-install { display: flex; gap: 8px; padding: 12px 18px 2px; }
 .uc-install input { flex: 1; box-sizing: border-box; border: 1px solid var(--dsw-alias-border-l2); border-radius: 9px; background: var(--dsw-alias-bg-layer-1); color: var(--dsw-alias-label-primary); font-size: 13px; padding: 8px 12px; outline: none; }
 .uc-install input:focus { border-color: var(--dsw-alias-brand-primary); }
@@ -1025,6 +1144,17 @@ html[data-dsh-stream="1"] [data-conversation-region] {
       const [guideRepo, setGuideRepo] = React.useState(null)
       const [guideData, setGuideData] = React.useState(null)
       const [guideLoading, setGuideLoading] = React.useState(false)
+      const [npmSpec, setNpmSpec] = React.useState('')
+      const [installingNpm, setInstallingNpm] = React.useState(false)
+      const [confirmUninstall, setConfirmUninstall] = React.useState(null)
+      const [openLog, setOpenLog] = React.useState(null)
+      const [ignoreTick, setIgnoreTick] = React.useState(0)
+
+      React.useEffect(() => {
+        const listener = () => setIgnoreTick((value) => value + 1)
+        ignoreListeners.add(listener)
+        return () => ignoreListeners.delete(listener)
+      }, [])
       const [autoUpdate, setAutoUpdate] = React.useState(() => {
         try {
           return typeof localStorage === 'undefined' || localStorage.getItem('dsh-concierge:auto') !== '0'
@@ -1393,6 +1523,59 @@ html[data-dsh-stream="1"] [data-conversation-region] {
         }
       }, [])
 
+      const installNpm = React.useCallback(async () => {
+        const spec = npmSpec.trim()
+        if (!spec || installingNpm) return
+        setInstallingNpm(true)
+        setNotice(null)
+        try {
+          const response = await fetch(`${API}/install-npm`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ spec }),
+          })
+          const body = await response.json().catch(() => null)
+          if (!response.ok || !body || body.ok === false) {
+            const hint = diagnose(body && body.error)
+            setNotice({ kind: 'err', text: hint || (body && body.error) || `HTTP ${response.status}` })
+          } else {
+            setNotice({ kind: 'ok', text: t('installedNpm', { spec: body.spec || spec }) })
+            setNpmSpec('')
+            await load(true)
+          }
+        } catch (error) {
+          setNotice({ kind: 'err', text: error && error.message ? error.message : String(error) })
+        } finally {
+          setInstallingNpm(false)
+        }
+      }, [npmSpec, installingNpm, load, t])
+
+      const uninstallRow = React.useCallback(async (row) => {
+        if (busy !== null) return
+        setBusy(row.name)
+        setNotice(null)
+        try {
+          const response = await fetch(`${API}/uninstall`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ name: row.name }),
+          })
+          const body = await response.json().catch(() => null)
+          if (!response.ok || !body || body.ok === false) {
+            const hint = diagnose(body && body.error)
+            setNotice({ kind: 'err', text: hint || (body && body.error) || `HTTP ${response.status}` })
+          } else {
+            setNotice({ kind: 'ok', text: t('uninstalled', { name: row.name }) })
+            await load(true)
+          }
+        } catch (error) {
+          setNotice({ kind: 'err', text: error && error.message ? error.message : String(error) })
+        } finally {
+          setBusy(null)
+          setConfirmUninstall(null)
+        }
+      }, [busy, load, t])
+
       const reloadUi = () => {
         try {
           window.location.reload()
@@ -1714,6 +1897,31 @@ html[data-dsh-stream="1"] [data-conversation-region] {
             )
           : null,
 
+        tab === 'plugins'
+          ? h('section', { className: 'uc-card' },
+              h('div', { className: 'uc-card-head' },
+                h('div', { className: 'uc-card-title' }, t('installNpm')),
+              ),
+              h('div', { className: 'uc-install' },
+                h('input', {
+                  type: 'text',
+                  value: npmSpec,
+                  placeholder: t('installNpmPlaceholder'),
+                  onChange: (event) => setNpmSpec(event.target.value),
+                  onKeyDown: (event) => {
+                    if (event.key === 'Enter') installNpm()
+                  },
+                }),
+                h('button', {
+                  type: 'button',
+                  className: 'uc-btn uc-btn-accent',
+                  disabled: installingNpm || npmSpec.trim() === '',
+                  onClick: installNpm,
+                }, installingNpm ? t('installingNpm') : t('installNpm')),
+              ),
+            )
+          : null,
+
         data && tab === 'plugins'
           ? h('section', { className: 'uc-card' },
               h('div', { className: 'uc-card-head' },
@@ -1858,6 +2066,14 @@ html[data-dsh-stream="1"] [data-conversation-region] {
                             onUpdate: updateOne,
                             onRollback: openRollback,
                             onToggle: toggleRow,
+                            onAskUninstall: (item) => setConfirmUninstall(item.name),
+                            confirmUninstall,
+                            onUninstall: uninstallRow,
+                            ignored: ignoreMap[row.name] === row.latest,
+                            onIgnore: () => setIgnore(row.name, row.latest),
+                            onUnignore: () => setIgnore(row.name, null),
+                            openLog,
+                            onToggleLog: (name) => setOpenLog(openLog === name ? null : name),
                           }),
                           rollbackName === row.name
                             ? h('div', { key: `${row.name}-versions`, className: 'uc-versions' },
@@ -2016,7 +2232,11 @@ html[data-dsh-stream="1"] [data-conversation-region] {
     }
 
     function renderRow(row, ctx) {
-      const { t, active, busy, onUpdate, onRollback, onToggle } = ctx
+      const {
+        t, active, busy, onUpdate, onRollback, onToggle,
+        onAskUninstall, confirmUninstall, onUninstall,
+        ignored, onIgnore, onUnignore, openLog, onToggleLog,
+      } = ctx
       const updating = busy === row.name
       const kindLabel = row.kind === 'registry'
         ? t('kindRegistry')
@@ -2038,11 +2258,23 @@ html[data-dsh-stream="1"] [data-conversation-region] {
             h('span', null, localizedText(row.title, active) || row.name),
             h('span', { className: 'uc-tag' }, kindLabel),
             row.enabled === false ? h('span', { className: 'uc-tag' }, 'disabled') : null,
+            row.homepage
+              ? h('a', {
+                  className: 'uc-row-link',
+                  href: row.homepage,
+                  target: '_blank',
+                  rel: 'noreferrer',
+                  title: row.homepage,
+                }, '↗')
+              : null,
           ),
           h('div', { className: 'uc-row-pkg' }, row.name),
           row.error ? h('div', { className: 'uc-row-err' }, row.error) : null,
           row.notes && row.notes.length > 0
             ? h('div', { className: 'uc-row-note' }, row.notes.join(' · '))
+            : null,
+          row.changelog && openLog === row.name
+            ? h('div', { className: 'uc-changelog' }, row.changelog)
             : null,
         ),
         h('div', { className: 'uc-vers' },
@@ -2052,14 +2284,28 @@ html[data-dsh-stream="1"] [data-conversation-region] {
             : null,
         ),
         h('div', { className: 'uc-row-act' },
-          row.updateAvailable
+          row.updateAvailable && !ignored
             ? h('button', {
                 type: 'button',
                 className: 'uc-btn uc-btn-accent',
                 disabled: busy !== null,
                 onClick: () => onUpdate(row),
               }, updating ? t('updating') : t('update'))
-            : h('span', { className: 'uc-muted' }, row.kind === 'local' ? t('local') : t('upToDate')),
+            : row.updateAvailable && ignored
+              ? h('span', { className: 'uc-muted' }, t('ignoredVersion', { version: row.latest }))
+              : h('span', { className: 'uc-muted' }, row.kind === 'local' ? t('local') : t('upToDate')),
+          row.updateAvailable
+            ? ignored
+              ? h('button', { type: 'button', className: 'uc-btn uc-btn-ghost', onClick: onUnignore }, t('unignore'))
+              : h('button', { type: 'button', className: 'uc-btn uc-btn-ghost', onClick: onIgnore }, t('ignoreVersion'))
+            : null,
+          row.changelog && row.updateAvailable
+            ? h('button', {
+                type: 'button',
+                className: 'uc-btn uc-btn-ghost',
+                onClick: () => onToggleLog(row.name),
+              }, t('changelog'))
+            : null,
           row.kind === 'registry' || row.kind === 'git'
             ? h('button', {
                 type: 'button',
@@ -2076,6 +2322,21 @@ html[data-dsh-stream="1"] [data-conversation-region] {
                 disabled: busy !== null,
                 onClick: () => onToggle(row),
               }, row.enabled === false ? t('enable') : t('disable')),
+          row.name === 'dsh-concierge'
+            ? null
+            : confirmUninstall === row.name
+              ? h('button', {
+                  type: 'button',
+                  className: 'uc-btn uc-btn-ghost uc-btn-danger',
+                  disabled: busy !== null,
+                  onClick: () => onUninstall(row),
+                }, t('confirmUninstall'))
+              : h('button', {
+                  type: 'button',
+                  className: 'uc-btn uc-btn-ghost',
+                  disabled: busy !== null,
+                  onClick: () => onAskUninstall(row),
+                }, t('uninstall')),
         ),
       )
     }
@@ -2391,6 +2652,7 @@ html[data-dsh-stream="1"] [data-conversation-region] {
         const loc = typeof ctx.get === 'function' ? ctx.get('locale') : undefined
 
         readPerfPrefs()
+        readIgnore()
         installPerfCss()
         startLongTasks()
         startPerfMonitor()
@@ -2440,6 +2702,8 @@ html[data-dsh-stream="1"] [data-conversation-region] {
         } catch {
           /* keep the local fallback */
         }
+
+        startBackgroundCheck(t)
 
         if (loc && typeof loc.register === 'function') {
           for (const [id, dict] of [['zh', zh], ['zh-CN', zh], ['en', en]]) {

@@ -124,6 +124,24 @@ export function apply(ctx) {
     'dsh-concierge: guide route',
   )
 
+  ctx.effect(
+    () => ctx.webServer.register({
+      kind: 'exact',
+      path: `${ROUTE}/uninstall`,
+      handler: (request, response) => handleUninstall(ctx, state, request, response),
+    }),
+    'dsh-concierge: uninstall route',
+  )
+
+  ctx.effect(
+    () => ctx.webServer.register({
+      kind: 'exact',
+      path: `${ROUTE}/install-npm`,
+      handler: (request, response) => handleInstallNpm(ctx, state, request, response),
+    }),
+    'dsh-concierge: install npm route',
+  )
+
   // A plugin updated into a broken state should not keep breaking every start.
   ctx.effect(() => {
     const timer = setTimeout(() => {
@@ -242,6 +260,77 @@ function normalizeSourceRepo(input) {
   const bare = /^([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)$/.exec(text)
   if (bare) return `${bare[1]}/${bare[2]}`
   return null
+}
+
+function normalizeNpmSpec(input) {
+  const text = String(input || '').trim()
+  if (!text) return null
+  const match = /^(@[A-Za-z0-9_.-]+\/)?[A-Za-z0-9_.-]+(?:@[A-Za-z0-9_.^~<>=|*xX-]+)?$/.exec(text)
+  return match ? text : null
+}
+
+async function handleInstallNpm(ctx, state, request, response) {
+  if (request.method !== 'POST') {
+    response.statusCode = 405
+    response.setHeader('allow', 'POST')
+    response.end()
+    return
+  }
+  try {
+    const body = await readNodeJson(request)
+    const spec = normalizeNpmSpec(body && body.spec)
+    if (!spec) {
+      sendNodeJson(response, { ok: false, error: '不是可识别的包名' }, 400)
+      return
+    }
+    const pm = ctx.get('pluginManager')
+    if (!pm || typeof pm.installBundle !== 'function') {
+      sendNodeJson(response, { ok: false, error: 'pluginManager 服务不可用' }, 400)
+      return
+    }
+    const result = await pm.installBundle(spec, {})
+    state.cache = null
+    const application = result && result.application
+    const failed = application === 'failed' || application === 'cancelled'
+    const error = failed && result && result.error
+      ? (result.error.diagnostic || result.error.code || '安装失败')
+      : undefined
+    sendNodeJson(response, { ok: !failed, spec, error, result }, 200)
+  } catch (error) {
+    sendNodeJson(response, { ok: false, error: messageOf(error) }, 500)
+  }
+}
+
+async function handleUninstall(ctx, state, request, response) {
+  if (request.method !== 'POST') {
+    response.statusCode = 405
+    response.setHeader('allow', 'POST')
+    response.end()
+    return
+  }
+  try {
+    const body = await readNodeJson(request)
+    const name = body && typeof body.name === 'string' ? body.name : ''
+    if (!name) {
+      sendNodeJson(response, { ok: false, error: '缺少插件名' }, 400)
+      return
+    }
+    const pm = ctx.get('pluginManager')
+    if (!pm || typeof pm.removeBundle !== 'function') {
+      sendNodeJson(response, { ok: false, error: 'pluginManager 服务不可用' }, 400)
+      return
+    }
+    const result = await pm.removeBundle(name)
+    state.cache = null
+    const application = result && result.application
+    const failed = application === 'failed' || application === 'cancelled'
+    const error = failed && result && result.error
+      ? (result.error.diagnostic || result.error.code || '卸载失败')
+      : undefined
+    sendNodeJson(response, { ok: !failed, error, result }, 200)
+  } catch (error) {
+    sendNodeJson(response, { ok: false, error: messageOf(error) }, 500)
+  }
 }
 
 async function handleGuide(request, response) {
@@ -1083,6 +1172,8 @@ async function checkPlugins(pm, bundles) {
       enabled: bundle.enabled !== false,
       updateAvailable: false,
       releaseUrl: null,
+      homepage: bundle.meta && typeof bundle.meta.homepage === 'string' ? bundle.meta.homepage : null,
+      changelog: null,
       error: null,
       notes: [],
       target: null,
@@ -1344,6 +1435,7 @@ async function checkGitHub(bundle, row) {
   }
   row.latest = latest.version
   row.releaseUrl = latest.url
+  row.changelog = latest.body ? String(latest.body).slice(0, 1200) : null
   row.updateAvailable = compareVersions(latest.version, bundle.version) > 0
   if (row.updateAvailable) {
     // The spec must pin a commit of the installed copy's repository directory,
@@ -1371,6 +1463,7 @@ async function githubLatest(repo) {
   const headers = githubHeaders()
   let tag = null
   let url = null
+  let body = null
 
   let response = await fetchWithTimeout(`${GITHUB_API}/repos/${repo}/releases/latest`, { headers })
   if (response.status === 404) {
@@ -1385,6 +1478,7 @@ async function githubLatest(repo) {
     if (!release || release.draft || !release.tag_name) return null
     tag = release.tag_name
     url = typeof release.html_url === 'string' ? release.html_url : null
+    body = typeof release.body === 'string' ? release.body : null
   } else {
     throw new Error(`GitHub releases: HTTP ${response.status}`)
   }
@@ -1406,6 +1500,7 @@ async function githubLatest(repo) {
     tag,
     sha,
     url: url || `https://github.com/${repo}/releases/tag/${encodeURIComponent(tag)}`,
+    body,
   }
 }
 

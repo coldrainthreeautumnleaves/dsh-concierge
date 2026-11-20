@@ -60,6 +60,18 @@ Local installs (`link:` / `file:`) have no registry and no release feed, so the 
 - `link:` installs are already live, so they only report that;
 - a `.tgz` source has its inner `package.json` version read and its size+mtime remembered; a replaced tarball reports "source tarball updated" and can be reinstalled in one click (remove + install from the original spec).
 
+## Install and uninstall
+
+- **Install from npm**: a card on the plugins tab takes a package name (`dsh-pet`) or name plus version (`dsh-pet@0.4.9`).
+- **Uninstall**: every row ends with **Uninstall**; the first click becomes **Confirm uninstall?** and only the second one removes the plugin. The maintenance center itself has no uninstall button.
+- **Ignore this version**: skip an update without disabling the plugin; the row then shows "Ignored x.y.z" with an **Unignore** button. The list is stored in the browser.
+- **What's new**: GitHub-installed plugins with release notes get a **What's new** toggle that expands the release body.
+- **Diagnosis**: common plugin-manager codes (`invalid-spec`, `incompatible-version`, `pendingBuilds`, `not-removable`, `bundle-in-use`, …) are translated into a plain-language hint and next step.
+
+## Background check
+
+The client plugin stays loaded and checks for updates every 10 minutes; when plugins can be updated it shows a top banner ("N plugin update(s) available"), at most once an hour, dismissible with **Got it**.
+
 ## Enable, disable and roll back
 
 Every plugin row also carries **Enable / Disable**, which goes through the plugin manager's `setPluginEnabled` and applies immediately (a few plugins need a restart). Registry plugins can roll back to any published version (up to 100); GitHub plugins roll back to any tag in the repository; local directory or tarball installs have no version list to roll back to.

@@ -42,12 +42,15 @@ const SETTINGS_FILE = path.join(SAFE_DIR, 'settings.json')
 // A GitHub token raises the anonymous 60 requests/hour to 5,000. It can come
 // from the environment or from the settings file the page writes.
 let storedToken = null
+// Whether safe-launch.cmd should fall back to safe mode when the app crashes.
+let safeModeAuto = true
 
 async function readSettings() {
   try {
     const text = await readFile(SETTINGS_FILE, 'utf8')
     const parsed = JSON.parse(text)
     if (parsed && typeof parsed.githubToken === 'string') storedToken = parsed.githubToken
+    if (parsed && typeof parsed.safeModeAuto === 'boolean') safeModeAuto = parsed.safeModeAuto
   } catch {
     /* no settings yet */
   }
@@ -56,7 +59,11 @@ async function readSettings() {
 async function writeSettings() {
   try {
     await mkdir(SAFE_DIR, { recursive: true })
-    await writeFile(SETTINGS_FILE, JSON.stringify({ githubToken: storedToken || '' }, null, 2), 'utf8')
+    await writeFile(
+      SETTINGS_FILE,
+      JSON.stringify({ githubToken: storedToken || '', safeModeAuto }, null, 2),
+      'utf8',
+    )
   } catch {
     /* best effort */
   }
@@ -157,6 +164,16 @@ Write-Host '已用安全模式重启（只加载官方插件）。修好后双�
 Read-Host '按回车关闭窗口'
 `
 
+const PLAIN_LAUNCH_PS1 = String.raw`$ErrorActionPreference = 'Stop'
+$exe = Join-Path $env:LOCALAPPDATA 'Programs\DeepSeek Harness\DeepSeek Harness.exe'
+
+$running = Get-Process -Name 'DeepSeek Harness' -ErrorAction SilentlyContinue
+if ($running) { Write-Host '应用已经在运行。' -ForegroundColor Yellow; Read-Host '按回车退出'; exit 0 }
+
+Start-Process -FilePath $exe
+Write-Host '已启动（自动安全模式已关闭）。' -ForegroundColor Green
+`
+
 const CMD_WRAPPER = (script) => `@echo off\r\npowershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0${script}"\r\n`
 
 async function writeSafeModeScripts() {
@@ -168,7 +185,10 @@ async function writeSafeModeScripts() {
     await writeFile(path.join(SAFE_DIR, 'restore-mode.ps1'), bom + RESTORE_PS1, 'utf8')
     await writeFile(path.join(SAFE_DIR, 'safe-mode.cmd'), CMD_WRAPPER('safe-mode.ps1'), 'utf8')
     await writeFile(path.join(SAFE_DIR, 'restore-mode.cmd'), CMD_WRAPPER('restore-mode.ps1'), 'utf8')
-    await writeFile(path.join(SAFE_DIR, 'safe-launch.ps1'), bom + SAFE_LAUNCH_PS1, 'utf8')
+    // The switch decides whether safe-launch.cmd watches for a crash and falls
+    // back to safe mode, or just starts the app.
+    const launchScript = safeModeAuto ? SAFE_LAUNCH_PS1 : PLAIN_LAUNCH_PS1
+    await writeFile(path.join(SAFE_DIR, 'safe-launch.ps1'), bom + launchScript, 'utf8')
     await writeFile(path.join(SAFE_DIR, 'safe-launch.cmd'), CMD_WRAPPER('safe-launch.ps1'), 'utf8')
   } catch {
     /* best effort */
@@ -430,6 +450,7 @@ async function handleSettings(request, response) {
         hasToken: Boolean(env || storedToken),
         fromEnv: Boolean(env),
         masked: maskToken(env || storedToken),
+        safeModeAuto,
       }, 200)
       return
     }
@@ -440,15 +461,21 @@ async function handleSettings(request, response) {
       return
     }
     const body = await readNodeJson(request)
-    const token = typeof body.githubToken === 'string' ? body.githubToken.trim() : ''
-    storedToken = token || null
+    if (typeof body.githubToken === 'string') {
+      const token = body.githubToken.trim()
+      storedToken = token || null
+    }
+    const autoChanged = typeof body.safeModeAuto === 'boolean' && body.safeModeAuto !== safeModeAuto
+    if (typeof body.safeModeAuto === 'boolean') safeModeAuto = body.safeModeAuto
     await writeSettings()
+    if (autoChanged) await writeSafeModeScripts()
     const env = process.env.GITHUB_TOKEN || process.env.GH_TOKEN || null
     sendNodeJson(response, {
       ok: true,
-      hasToken: Boolean(token || env),
+      hasToken: Boolean(storedToken || env),
       fromEnv: Boolean(env),
       masked: maskToken(env || storedToken),
+      safeModeAuto,
     }, 200)
   } catch (error) {
     sendNodeJson(response, { ok: false, error: messageOf(error) }, 500)

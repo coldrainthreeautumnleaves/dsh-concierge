@@ -76,7 +76,11 @@ Git 插件走「GitHub releases（没有 release 时退回 tags）→ 下载 →
 - **`restore-mode.cmd`**：应用退出后双击，恢复备份并重启；
 - **`safe-launch.cmd`**：**自动版**——启动应用后观察 30 秒，如果进程没活下来就判定启动失败，自动备份、切到安全模式再重启一次；启动正常则什么都不做。
 
-把桌面快捷方式指向 `safe-launch.cmd`，以后应用起不来会自动落到安全模式，不用手动判断。所有脚本都要求应用已完全退出，不需要管理员权限；`.ps1` 带 UTF-8 BOM，Windows PowerShell 5.1 读中文不会乱码。插件页底部有一条提示和「打开目录」按钮，直接定位到这个目录。
+把桌面快捷方式指向 `safe-launch.cmd`，以后应用起不来会自动落到安全模式，不用手动判断。
+
+「添加」页的「目录与配置」里有一个 **自动安全模式** 开关（存在 `~/.dsh/update-center/settings.json` 的 `safeModeAuto`，默认开）：开着时 `safe-launch.cmd` 会观察 30 秒并在失败时自动切安全模式；关掉后它只负责启动应用，不再自动切。开关一变，脚本会立刻重写，不需要重启。
+
+所有脚本都要求应用已完全退出，不需要管理员权限；`.ps1` 带 UTF-8 BOM，Windows PowerShell 5.1 读中文不会乱码。
 
 ## GitHub Token
 

@@ -76,7 +76,11 @@ When a broken plugin keeps the app from starting, the plugin itself never gets t
 - **`restore-mode.cmd`** restores the backup and restarts;
 - **`safe-launch.cmd`** is the automatic version: it starts the app, watches it for 30 seconds, and if the process did not survive it backs up, switches to safe mode and starts again.
 
-Point the desktop shortcut at `safe-launch.cmd` and a failed start lands in safe mode on its own. All scripts need the app closed and no administrator rights; the `.ps1` files carry a UTF-8 BOM so Windows PowerShell 5.1 reads the Chinese text correctly.
+Point the desktop shortcut at `safe-launch.cmd` and a failed start lands in safe mode on its own.
+
+The **Automatic safe mode** switch in the Add tab's folders card (stored as `safeModeAuto` in `~/.dsh/update-center/settings.json`, on by default) controls that behaviour: on, `safe-launch.cmd` watches the first 30 seconds and falls back; off, it only starts the app. Flipping it rewrites the scripts immediately.
+
+All scripts need the app closed and no administrator rights; the `.ps1` files carry a UTF-8 BOM so Windows PowerShell 5.1 reads the Chinese text correctly.
 
 ## GitHub token
 

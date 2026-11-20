@@ -1,0 +1,7 @@
+{
+  "meta": {
+    "title": "Update center",
+    "description": "Check DeepSeek Harness and installed plugin versions from the npm registry, configured plugin market indexes and GitHub, then update plugins in one click.",
+    "detail": "docs/DETAIL.md"
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "meta": {
+    "title": "更新中心",
+    "description": "检查 DSH 桌面版和已装插件的版本更新：npm 源、已配置的插件市场索引和 GitHub，可一键更新插件。",
+    "detail": "docs/DETAIL.zh.md"
+  }
+}

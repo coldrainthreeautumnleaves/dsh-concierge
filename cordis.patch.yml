@@ -1,0 +1,4 @@
+# dsh-concierge: settings page that checks app and plugin updates.
+- insert:
+    - id: dsh-concierge
+      name: 'dsh-concierge'

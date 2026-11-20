@@ -1,0 +1,10 @@
+# 提交到 awesome-dsh-plugin 的条目（复制到那边的 data/plugins/coldrainthreeautumnleaves__dsh-concierge.yml）
+# 文件名：<GitHub 账号>__<仓库名>.yml，例如 someone__dsh-concierge.yml
+url: https://github.com/coldrainthreeautumnleaves/dsh-concierge
+name: coldrainthreeautumnleaves/dsh-concierge
+category: dev
+description:
+  en: 'Update center for DSH: checks app and plugin versions, updates and rolls back plugins, watches GitHub sources, and keeps long chats smooth.'
+  zh: 'DSH 维护中心：检测应用与插件版本、更新与回退插件、监控 GitHub 来源，顺带优化长对话的流畅度。'
+# 可选：GitHub 托管的方图图标（png/jpg/webp，96px 显示）
+# icon: https://raw.githubusercontent.com/coldrainthreeautumnleaves/dsh-concierge/main/icon.svg

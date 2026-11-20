@@ -1912,30 +1912,6 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
             )
           : null,
 
-        tab === 'update' ? h('div', { className: 'uc-toolbar' },
-          h('button', {
-            type: 'button',
-            className: 'uc-btn',
-            disabled: loading || busy !== null,
-            onClick: () => load(true),
-          }, loading ? t('checking') : t('check')),
-          updatable > 0
-            ? h('button', {
-                type: 'button',
-                className: 'uc-btn uc-btn-accent',
-                disabled: busy !== null,
-                onClick: updateAll,
-              }, busy === '__all__' ? t('updating') : `${t('updateAll')} ${updatable}`)
-            : null,
-          h('button', { type: 'button', className: 'uc-btn', onClick: reloadUi }, t('reloadUi')),
-          h('button', {
-            type: 'button',
-            className: 'uc-btn',
-            disabled: restarting,
-            onClick: restartNow,
-          }, restarting ? t('restartingApp') : t('restartApp')),
-        ) : null,
-
         notice
           ? h('div', { className: notice.kind === 'ok' ? 'uc-notice uc-notice-ok' : 'uc-notice uc-notice-err' },
               h('span', null, notice.text),
@@ -2073,6 +2049,30 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
           : null,
 
 
+
+        tab === 'update' ? h('div', { className: 'uc-toolbar' },
+          h('button', {
+            type: 'button',
+            className: 'uc-btn',
+            disabled: loading || busy !== null,
+            onClick: () => load(true),
+          }, loading ? t('checking') : t('check')),
+          updatable > 0
+            ? h('button', {
+                type: 'button',
+                className: 'uc-btn uc-btn-accent',
+                disabled: busy !== null,
+                onClick: updateAll,
+              }, busy === '__all__' ? t('updating') : `${t('updateAll')} ${updatable}`)
+            : null,
+          h('button', { type: 'button', className: 'uc-btn', onClick: reloadUi }, t('reloadUi')),
+          h('button', {
+            type: 'button',
+            className: 'uc-btn',
+            disabled: restarting,
+            onClick: restartNow,
+          }, restarting ? t('restartingApp') : t('restartApp')),
+        ) : null,
 
         data && tab === 'add'
           ? h('section', { className: 'uc-card' },

@@ -1,6 +1,6 @@
 # Maintenance center
 
-Settings → Maintenance center is split into five tabs: **Update** (app version, updates and the auto-update switch), **Plugins** (installed list, search, update / rollback / enable / uninstall), **Add** (GitHub sources, install from npm, the GitHub token and the folder shortcuts — every input and the open-plugins / open-config / open-safe-mode buttons live here), **Performance** (FPS, long tasks and the degrade switches) and **Typewriter** (gradual reveal, stream throttle and speed).
+Settings → Maintenance center is split into five tabs: **Update** (app version, updates and the auto-update switch), **Plugins** (installed list, search, update / rollback / enable / uninstall), **Tools** (the safety switch at the top, then GitHub sources, install from npm, the GitHub token and the folder shortcuts — every input and the open-plugins / open-config / open-safe-mode buttons live here), **Performance** (FPS, long tasks and the degrade switches) and **Typewriter** (gradual reveal, stream throttle and speed).
 
 ## What it checks
 
@@ -78,7 +78,7 @@ When a broken plugin keeps the app from starting, the plugin itself never gets t
 
 Point the desktop shortcut at `safe-launch.cmd` and a failed start lands in safe mode on its own.
 
-The **Automatic safe mode** switch in the Add tab's folders card (stored as `safeModeAuto` in `~/.dsh/update-center/settings.json`, on by default) controls that behaviour: on, `safe-launch.cmd` watches the first 30 seconds and falls back; off, it only starts the app. Flipping it rewrites the scripts immediately.
+The **Automatic safe mode** switch in the Tools tab's Safety card (stored as `safeModeAuto` in `~/.dsh/update-center/settings.json`, on by default) controls that behaviour: on, `safe-launch.cmd` watches the first 30 seconds and falls back; off, it only starts the app. Flipping it rewrites the scripts immediately.
 
 All scripts need the app closed and no administrator rights; the `.ps1` files carry a UTF-8 BOM so Windows PowerShell 5.1 reads the Chinese text correctly.
 

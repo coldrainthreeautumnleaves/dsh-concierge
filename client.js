@@ -695,6 +695,7 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
       perfRefreshAuto: '自动识别',
       pendingDisabled: '上次启动时有 {count} 个插件加载失败被禁用：{names}',
       enableAll: '全部启用',
+      safetyTitle: '安全',
       foldersTitle: '目录与配置',
       safeModeAuto: '自动安全模式',
       safeModeAutoHint: '启动失败时自动切到安全模式（由 safe-launch.cmd 执行）；关掉后它只负责启动应用',
@@ -761,7 +762,7 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
       typerEnabledHint: '流式输出的文字逐字显示，思考、工具调用、图片保持原样',
       tabUpdate: '更新',
       tabPlugins: '插件',
-      tabAdd: '添加',
+      tabAdd: '工具',
       tabPerf: '性能',
       tabTyper: '打字机',
       searchPlugins: '查找插件：名称或标题',
@@ -867,6 +868,7 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
       perfRefreshAuto: 'Auto detect',
       pendingDisabled: '{count} plugin(s) failed to load after the last start and were disabled: {names}',
       enableAll: 'Enable all',
+      safetyTitle: 'Safety',
       foldersTitle: 'Folders',
       safeModeAuto: 'Automatic safe mode',
       safeModeAutoHint: 'Fall back to safe mode when a start fails (done by safe-launch.cmd); off means it only starts the app',
@@ -933,7 +935,7 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
       typerEnabledHint: 'Streaming text is revealed gradually; reasoning, tool rows and images stay native',
       tabUpdate: 'Update',
       tabPlugins: 'Plugins',
-      tabAdd: 'Add',
+      tabAdd: 'Tools',
       tabPerf: 'Performance',
       tabTyper: 'Typewriter',
       searchPlugins: 'Find a plugin by name or title',
@@ -2093,6 +2095,20 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
           }, restarting ? t('restartingApp') : t('restartApp')),
         ) : null,
 
+        tab === 'add'
+          ? h('section', { className: 'uc-card' },
+              h('div', { className: 'uc-card-head' },
+                h('div', { className: 'uc-card-title' }, t('safetyTitle')),
+              ),
+              h('div', { className: 'uc-perf' },
+                settingRow(t('safeModeAuto'), t('safeModeAutoHint'), switchControl(
+                  Boolean(tokenState && tokenState.safeModeAuto),
+                  toggleSafeModeAuto,
+                )),
+              ),
+            )
+          : null,
+
         data && tab === 'add'
           ? h('section', { className: 'uc-card' },
               h('div', { className: 'uc-card-head' },
@@ -2260,12 +2276,6 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
           ? h('section', { className: 'uc-card' },
               h('div', { className: 'uc-card-head' },
                 h('div', { className: 'uc-card-title' }, t('foldersTitle')),
-              ),
-              h('div', { className: 'uc-perf' },
-                settingRow(t('safeModeAuto'), t('safeModeAutoHint'), switchControl(
-                  Boolean(tokenState && tokenState.safeModeAuto),
-                  toggleSafeModeAuto,
-                )),
               ),
               h('div', { className: 'uc-folder-actions' },
                 h('button', { type: 'button', className: 'uc-btn uc-btn-ghost', onClick: () => openFolder('plugins') }, t('openPlugins')),

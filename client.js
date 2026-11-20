@@ -1046,6 +1046,12 @@ html[data-dsh-stream="1"] [data-conversation-region] {
 .uc-btn-danger:hover { background: rgba(217, 83, 79, .12) !important; }
 .uc-row-link { color: var(--dsw-alias-brand-primary); text-decoration: none; font-size: 11px; margin-left: 4px; }
 .uc-row-link:hover { text-decoration: underline; }
+.uc-token-block { display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; border: 1px solid var(--dsw-alias-border-l1); border-radius: 12px; background: var(--dsw-alias-bg-layer-1); }
+.uc-token-head { display: flex; flex-direction: column; gap: 2px; }
+.uc-token-title { font-size: 13px; font-weight: 600; color: var(--dsw-alias-label-primary); }
+.uc-token-sub { font-size: 11px; line-height: 1.5; color: var(--dsw-alias-label-secondary); }
+.uc-token-row { padding: 0; }
+.uc-token-msg { font-size: 11px; color: var(--dsw-alias-brand-primary); }
 .uc-safe { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; border: 1px dashed var(--dsw-alias-border-l2); border-radius: 10px; font-size: 11.5px; line-height: 1.5; color: var(--dsw-alias-label-secondary); }
 .uc-safe-text { min-width: 0; }
 .uc-changelog { margin-top: 6px; padding: 8px 10px; border-radius: 8px; background: var(--dsw-alias-bg-layer-1); border: 1px solid var(--dsw-alias-border-l1); font-size: 11.5px; line-height: 1.6; color: var(--dsw-alias-label-secondary); white-space: pre-wrap; max-height: 160px; overflow: auto; }
@@ -2001,34 +2007,7 @@ html[data-dsh-stream="1"] [data-conversation-region] {
             )
           : null,
 
-        tab === 'update'
-          ? h('section', { className: 'uc-card' },
-              h('div', { className: 'uc-card-head' },
-                h('div', { className: 'uc-card-title' }, t('tokenTitle')),
-              ),
-              h('div', { className: 'uc-install' },
-                h('input', {
-                  type: 'password',
-                  value: tokenInput,
-                  placeholder: tokenState && tokenState.hasToken ? (tokenState.masked || '****') : t('tokenPlaceholder'),
-                  onChange: (event) => setTokenInput(event.target.value),
-                  onKeyDown: (event) => {
-                    if (event.key === 'Enter') saveToken()
-                  },
-                }),
-                h('button', {
-                  type: 'button',
-                  className: 'uc-btn uc-btn-accent',
-                  disabled: tokenInput.trim() === '',
-                  onClick: saveToken,
-                }, t('tokenSave')),
-                tokenState && tokenState.hasToken && !tokenState.fromEnv
-                  ? h('button', { type: 'button', className: 'uc-btn uc-btn-ghost', onClick: clearToken }, t('tokenClear'))
-                  : null,
-              ),
-              h('p', { className: 'uc-perf-hint' }, tokenState && tokenState.fromEnv ? t('tokenFromEnv') : t('tokenHint')),
-            )
-          : null,
+
 
         tab === 'plugins'
           ? h('div', { className: 'uc-safe' },
@@ -2485,6 +2464,105 @@ html[data-dsh-stream="1"] [data-conversation-region] {
       )
     }
 
+    // The models page is where API keys live, so the GitHub token sits there too.
+    function ModelsTokenFooter(props) {
+      const t = typeof props.t === 'function' ? props.t : (key) => key
+      const [value, setValue] = React.useState('')
+      const [state, setState] = React.useState(null)
+      const [busy, setBusy] = React.useState(false)
+      const [msg, setMsg] = React.useState(null)
+
+      React.useEffect(() => {
+        let alive = true
+        fetch(`${API}/settings`)
+          .then((response) => response.json())
+          .then((body) => {
+            if (alive && body && body.ok) setState(body)
+          })
+          .catch(() => {})
+        return () => {
+          alive = false
+        }
+      }, [])
+
+      const save = async () => {
+        const token = value.trim()
+        if (!token || busy) return
+        setBusy(true)
+        setMsg(null)
+        try {
+          const response = await fetch(`${API}/settings`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ githubToken: token }),
+          })
+          const body = await response.json().catch(() => null)
+          if (!response.ok || !body || body.ok === false) {
+            setMsg(body && body.error ? body.error : `HTTP ${response.status}`)
+          } else {
+            setState(body)
+            setValue('')
+            setMsg(t('tokenSaved'))
+          }
+        } catch (error) {
+          setMsg(error && error.message ? error.message : String(error))
+        } finally {
+          setBusy(false)
+        }
+      }
+
+      const clear = async () => {
+        if (busy) return
+        setBusy(true)
+        setMsg(null)
+        try {
+          const response = await fetch(`${API}/settings`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ githubToken: '' }),
+          })
+          const body = await response.json().catch(() => null)
+          if (body && body.ok) {
+            setState(body)
+            setMsg(null)
+          }
+        } catch {
+          /* ignore */
+        } finally {
+          setBusy(false)
+        }
+      }
+
+      return h('div', { className: 'uc-token-block' },
+        h('style', null, CSS),
+        h('div', { className: 'uc-token-head' },
+          h('div', { className: 'uc-token-title' }, t('tokenTitle')),
+          h('div', { className: 'uc-token-sub' }, state && state.fromEnv ? t('tokenFromEnv') : t('tokenHint')),
+        ),
+        h('div', { className: 'uc-install uc-token-row' },
+          h('input', {
+            type: 'password',
+            value,
+            placeholder: state && state.hasToken ? (state.masked || '****') : t('tokenPlaceholder'),
+            onChange: (event) => setValue(event.target.value),
+            onKeyDown: (event) => {
+              if (event.key === 'Enter') save()
+            },
+          }),
+          h('button', {
+            type: 'button',
+            className: 'uc-btn uc-btn-accent',
+            disabled: busy || value.trim() === '',
+            onClick: save,
+          }, busy ? t('installing') : t('tokenSave')),
+          state && state.hasToken && !state.fromEnv
+            ? h('button', { type: 'button', className: 'uc-btn uc-btn-ghost', disabled: busy, onClick: clear }, t('tokenClear'))
+            : null,
+        ),
+        msg ? h('div', { className: 'uc-token-msg' }, msg) : null,
+      )
+    }
+
     function UpdateBanner(props) {
       const t = typeof props.t === 'function' ? props.t : (key) => key
       const [state, setState] = React.useState(() => bannerStore.get())
@@ -2863,6 +2941,15 @@ html[data-dsh-stream="1"] [data-conversation-region] {
             }
           }
         }
+
+        // The models page is where API keys live, so the GitHub token sits there.
+        slots.inject('settings.models.footer', () => slots.register({
+          name: 'settings.models.footer',
+          id: 'dsh-concierge-token',
+          order: 10,
+          locale: NS,
+          inject: () => ({ t }),
+        }, ModelsTokenFooter))
 
         slots.inject('settings.section', () => slots.register({
           name: 'settings.section',

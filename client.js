@@ -68,7 +68,9 @@ window.__ModuleLoader__.load({
       auto: true,
       longPref: true,
       forced: false,
-      offscreen: true,
+      // Off by default: Chromium reports content-visibility repaints and scroll
+      // stutter with it, and the chat already virtualizes its rows.
+      offscreen: false,
       low: false,
       longActive: false,
     }
@@ -368,7 +370,9 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
 
     // Off by default: revealing Markdown character by character re-renders the
     // message about 20 times a second, which reads as flicker on some layouts.
-    const typer = { enabled: false, speed: 60 }
+    // The throttle stays on: it batches the app's per-token renders into one
+    // commit every 80ms, which is what actually stops the streaming flicker.
+    const typer = { enabled: false, speed: 60, throttle: true, throttleMs: 80 }
     const typerListeners = new Set()
     const TYPER_STORAGE_KEY = 'dsh-concierge:typer'
     const typerUpdate = () => {
@@ -381,6 +385,7 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
         if (!raw) return
         const parsed = JSON.parse(raw)
         if (typeof parsed.enabled === 'boolean') typer.enabled = parsed.enabled
+        if (typeof parsed.throttle === 'boolean') typer.throttle = parsed.throttle
         if (typeof parsed.speed === 'number' && Number.isFinite(parsed.speed)) {
           typer.speed = Math.max(10, Math.min(240, Math.round(parsed.speed)))
         }
@@ -391,7 +396,7 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
 
     function saveTyperPrefs() {
       try {
-        localStorage.setItem(TYPER_STORAGE_KEY, JSON.stringify({ enabled: typer.enabled, speed: typer.speed }))
+        localStorage.setItem(TYPER_STORAGE_KEY, JSON.stringify({ enabled: typer.enabled, speed: typer.speed, throttle: typer.throttle }))
       } catch {
         /* storage unavailable */
       }
@@ -479,10 +484,14 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
           nextProps = { ...props, node: { ...node, data: { ...data, blocks: nextBlocks } } }
         }
 
-        if (active) {
+        // Batch the app's per-token renders into one commit per interval: a
+        // markdown block re-parsed 30 times a second is what reads as flicker.
+        const throttling = running && typer.throttle && !lowPerf
+        if (active || throttling) {
           const now = typeof performance !== 'undefined' ? performance.now() : Date.now()
           const state = gate.current
-          if (state.props !== null && now - state.at < 50) return h(MemoInner, state.props)
+          const interval = active ? 50 : typer.throttleMs
+          if (state.props !== null && now - state.at < interval) return h(MemoInner, state.props)
           state.props = nextProps
           state.at = now
         } else {
@@ -754,6 +763,8 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
       searchPlugins: '查找插件：名称或标题',
       typerTitle: '打字机',
       typerEnabled: '逐字显示',
+      typerThrottle: '流式节流',
+      typerThrottleHint: '流式输出时每 80ms 才提交一次渲染，减少消息反复重绘造成的闪烁',
       typerSpeed: '速度',
       typerHint: '只作用于正在流式输出的那一段文字；思考、工具调用、图片保持原样。低帧率时会自动让位。',
 
@@ -920,6 +931,8 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
       searchPlugins: 'Find a plugin by name or title',
       typerTitle: 'Typewriter',
       typerEnabled: 'Reveal text gradually',
+      typerThrottle: 'Stream throttle',
+      typerThrottleHint: 'Commit at most one render per 80ms while streaming, which stops the message from repainting on every token',
       typerSpeed: 'Speed',
       typerHint: 'Only the streaming text block is paced; reasoning, tool rows and images stay native. It stands down on low frame rates.',
 
@@ -2383,6 +2396,11 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
           h('div', { className: 'uc-perf' },
             settingRow(t('typerEnabled'), t('typerEnabledHint'), switchControl(typerSnapshot.enabled, () => {
               typer.enabled = !typer.enabled
+              saveTyperPrefs()
+              typerUpdate()
+            })),
+            settingRow(t('typerThrottle'), t('typerThrottleHint'), switchControl(typerSnapshot.throttle, () => {
+              typer.throttle = !typer.throttle
               saveTyperPrefs()
               typerUpdate()
             })),

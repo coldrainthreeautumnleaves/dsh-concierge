@@ -24,7 +24,7 @@ DeepSeek Harness 的维护中心：更新应用与插件、管理已装插件、
 - **GitHub 来源**：添加任意仓库并持续检测最新 release；未装的可以装，已装的可以重装；安装时把 HEAD 固定成完整 commit。
 - **从 npm 安装**：填包名或 `包名@版本`。
 - **GitHub Token**：状态标签 + 掩码显示 + 申请链接，额度从 60 次/小时提到 5000 次。
-- **外观**：主题（跟随系统/浅色/深色）、皮肤（柔和/墨色/海洋/玻璃/自定义）、品牌色、字号、代码字体。玻璃皮肤覆盖全部表面：41 个背景 token 半透明 + 壁纸层统一模糊，浮层（弹窗/菜单/提示）额外加 `backdrop-filter`，另有颗粒滑杆（0–20%）补磨砂沙感。全部走官方主题服务：`setTheme` / `overrideTokens` / `adjustFontSizes` / `setFontFamily`，不注 CSS、不改官方 DOM。走官方主题 API（`theme.overrideTokens`），每个 token 给浅色/深色两份，换主题自动跟随，不注 CSS、不改官方 DOM，DSH 升级也不失效。默认关闭。
+- **外观**：主题（跟随系统/浅色/深色）、皮肤（柔和/墨色/海洋/玻璃）、品牌色、字号、代码字体；玻璃皮肤另有透明度、颗粒、背景（预设渐变 / 图片 / 视频）。玻璃皮肤覆盖全部表面：41 个背景 token 半透明 + 壁纸层统一模糊，浮层（弹窗/菜单/提示）额外加 `backdrop-filter`，另有颗粒滑杆（0–20%）补磨砂沙感。全部走官方主题服务：`setTheme` / `overrideTokens` / `adjustFontSizes` / `setFontFamily`，不注 CSS、不改官方 DOM。走官方主题 API（`theme.overrideTokens`），每个 token 给浅色/深色两份，换主题自动跟随，不注 CSS、不改官方 DOM，DSH 升级也不失效。默认关闭。
 - **目录与配置**：打开插件目录 / 配置 / 安全模式目录。
 - **自动安全模式**开关。
 

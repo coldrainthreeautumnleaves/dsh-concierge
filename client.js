@@ -261,6 +261,46 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       document.head.appendChild(style)
     }
 
+    // 本地路径走宿主的 /wallpaper 路由（页面是 dsh-app:// 文档，读不了 file://），
+    // http(s)/data/blob 直接用。
+    function wallpaperUrl(src) {
+      const value = String(src || '').trim()
+      if (!value) return ''
+      if (/^(?:https?:|data:|blob:)/i.test(value)) return value
+      return `/dsh-concierge/wallpaper?path=${encodeURIComponent(value)}`
+    }
+
+    function applyWallpaper() {
+      if (typeof document === 'undefined') return
+      const root = document.getElementById('dsh-concierge-glass')
+      const media = root && root.firstElementChild
+      if (!media) return
+      const video = media.querySelector('video')
+      if (video) video.remove()
+      media.style.backgroundImage = ''
+      if (!look.enabled || look.skin !== 'glass') return
+      const mode = look.wall && look.wall.mode
+      const url = wallpaperUrl(look.wall && look.wall.src)
+      if (!url) return
+      if (mode === 'image') {
+        media.style.backgroundImage = `url("${url.replace(/"/g, '%22')}")`
+        media.style.backgroundSize = 'cover'
+        media.style.backgroundPosition = 'center'
+        return
+      }
+      if (mode === 'video') {
+        const node = document.createElement('video')
+        node.src = url
+        node.autoplay = true
+        node.loop = true
+        node.muted = true
+        node.setAttribute('muted', '')
+        node.setAttribute('playsinline', '')
+        node.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover'
+        media.appendChild(node)
+      }
+    }
+
     // 壁纸用真元素，不用 body::before：有的容器会建层叠上下文，把 -1 的伪元素
     // 压到看不见的地方。
     function ensureGlassNodes() {
@@ -582,12 +622,16 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       enabled: false,
       skin: 'soft',
       brand: 'default',
-      custom: null,
       preference: 'system',
       fontStep: 0,
       codeFont: 'default',
       grain: 0.06,
+      // 0 = 最实，100 = 最透；玻璃皮肤用它整体缩放各表面的 alpha
+      transparency: 43,
+      // 背景：预设渐变 / 图片 / 视频（Wallpaper Engine 导出的 mp4/webm 走视频）
+      wall: { mode: 'preset', src: '' },
     }
+    const LOOK_WALL_MODES = ['preset', 'image', 'video']
     const LOOK_PREFERENCES = ['system', 'light', 'dark']
     const LOOK_FONT_STEPS = [-1, 0, 1]
     const LOOK_CODE_FONTS = {
@@ -621,11 +665,14 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
     // 玻璃皮肤要把**所有**画背景的 token 都变半透明，否则总有一块地方是实心的。
     // 官方一共 65 个背景类 token，这里覆盖真正承载表面的那些：底色、层级、
     // 卡片、菜单、悬浮卡、提示、输入框、侧边栏、工具条、边框。
-    function glassTokens() {
+    function glassTokens(transparency = look.transparency) {
       const pair = (light, dark) => ({ light, dark })
+      // transparency 0 → ×1.8（更实），100 → ×0.4（更透）
+      const factor = 1.8 - (Math.max(0, Math.min(100, transparency)) / 100) * 1.4
+      const scale = (alpha) => Math.max(0.04, Math.min(1, alpha * factor)).toFixed(3)
       const fill = (lightAlpha, darkAlpha) => pair(
-        `rgba(255, 255, 255, ${lightAlpha})`,
-        `rgba(20, 24, 32, ${darkAlpha})`,
+        `rgba(255, 255, 255, ${scale(lightAlpha)})`,
+        `rgba(20, 24, 32, ${scale(darkAlpha)})`,
       )
       return {
         '--dsw-alias-bg-base': fill(0.3, 0.32),
@@ -731,32 +778,13 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
     let lookCtx = null
     let lookDispose = null
 
-    // 自定义皮肤：{ '--dsw-xxx': { light, dark } }，官方 API 只认这种成对写法。
-    function normalizeCustomTokens(input) {
-      if (!input || typeof input !== 'object' || Array.isArray(input)) return { error: '需要一个 JSON 对象' }
-      const out = {}
-      for (const [name, value] of Object.entries(input)) {
-        if (typeof name !== 'string' || !name.startsWith('--dsw-')) return { error: `token 名要以 --dsw- 开头：${name}` }
-        if (!value || typeof value !== 'object' || typeof value.light !== 'string' || typeof value.dark !== 'string') {
-          return { error: `${name} 需要 { light, dark } 两个字符串` }
-        }
-        out[name] = { light: value.light, dark: value.dark }
-      }
-      if (Object.keys(out).length === 0) return { error: '至少给一个 token' }
-      return { tokens: out }
-    }
-
-    function defaultCustomTokens() {
-      return JSON.parse(JSON.stringify(LOOK_SKINS.soft.tokens))
-    }
-
     function readLookPrefs() {
       try {
         const raw = localStorage.getItem(LOOK_STORAGE_KEY)
         if (!raw) return
         const parsed = JSON.parse(raw)
         if (typeof parsed.enabled === 'boolean') look.enabled = parsed.enabled
-        if (typeof parsed.skin === 'string' && (parsed.skin in LOOK_SKINS || parsed.skin === 'custom')) look.skin = parsed.skin
+        if (typeof parsed.skin === 'string' && parsed.skin in LOOK_SKINS) look.skin = parsed.skin
         if (typeof parsed.brand === 'string' && parsed.brand in LOOK_BRANDS) look.brand = parsed.brand
         if (typeof parsed.preference === 'string' && LOOK_PREFERENCES.includes(parsed.preference)) look.preference = parsed.preference
         if (LOOK_FONT_STEPS.includes(parsed.fontStep)) look.fontStep = parsed.fontStep
@@ -764,9 +792,13 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         if (typeof parsed.grain === 'number' && Number.isFinite(parsed.grain)) {
           look.grain = Math.max(0, Math.min(0.2, parsed.grain))
         }
-        if (parsed.custom) {
-          const result = normalizeCustomTokens(parsed.custom)
-          if (result.tokens) look.custom = result.tokens
+        if (typeof parsed.transparency === 'number' && Number.isFinite(parsed.transparency)) {
+          look.transparency = Math.max(0, Math.min(100, Math.round(parsed.transparency)))
+        }
+        if (parsed.wall && typeof parsed.wall === 'object') {
+          const mode = typeof parsed.wall.mode === 'string' && LOOK_WALL_MODES.includes(parsed.wall.mode) ? parsed.wall.mode : 'preset'
+          const src = typeof parsed.wall.src === 'string' ? parsed.wall.src : ''
+          look.wall = { mode, src }
         }
       } catch {
         /* keep defaults */
@@ -787,6 +819,19 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       }, 220)
     }
 
+    // 透明度和颗粒不同：它改的是 token，必须重新 overrideTokens，所以拖的时候
+    // 用短防抖，松手就停。
+    let lookApplyTimer = null
+
+    function scheduleLookApply() {
+      if (lookApplyTimer !== null) clearTimeout(lookApplyTimer)
+      lookApplyTimer = setTimeout(() => {
+        lookApplyTimer = null
+        applyLook()
+        lookUpdate()
+      }, 140)
+    }
+
     function applyGrain(value) {
       const next = Math.max(0, Math.min(0.2, value))
       look.grain = next
@@ -802,7 +847,8 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
           enabled: look.enabled,
           skin: look.skin,
           brand: look.brand,
-          custom: look.custom,
+          transparency: look.transparency,
+          wall: look.wall,
           preference: look.preference,
           fontStep: look.fontStep,
           codeFont: look.codeFont,
@@ -883,9 +929,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       applyThemePreference()
       applyFontStep()
       applyCodeFont()
-      const skin = look.skin === 'custom'
-        ? { tokens: look.custom || defaultCustomTokens() }
-        : LOOK_SKINS[look.skin]
+      const skin = look.skin === 'glass' ? { tokens: glassTokens() } : LOOK_SKINS[look.skin]
       if (!skin) return
       const tokens = { ...skin.tokens }
       const brand = LOOK_BRANDS[look.brand]
@@ -906,6 +950,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         delete root.dataset.dshGlassScheme
         root.style.removeProperty('--dsh-glass-grain')
       }
+      applyWallpaper()
     }
 
     function syncGlassScheme() {
@@ -1257,17 +1302,20 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       lookSkinOcean: '海洋',
       lookSkinGlass: '玻璃',
       lookGrain: '颗粒',
-      lookSkinCustom: '自定义',
-      lookApply: '应用',
-      lookReset: '重置为柔和',
-      lookCopy: '复制 JSON',
+      lookTransparency: '透明度',
+      lookWall: '背景',
+      lookWallPreset: '预设渐变',
+      lookWallImage: '图片',
+      lookWallVideo: '视频',
+      lookWallPlaceholder: '图片或视频的完整路径 / URL（支持 Wallpaper Engine 导出的 mp4、webm）',
+      lookWallApply: '应用背景',
       lookBrand: '品牌色',
       lookBrandDefault: '默认',
       lookBrandIndigo: '靛蓝',
       lookBrandViolet: '紫',
       lookBrandGreen: '绿',
       lookBrandAmber: '橙',
-      lookHint: '默认关闭；自定义皮肤写成 { "token": { light, dark } }。和换肤插件会叠加，冲突时先关这个。',
+      lookHint: '默认关闭。透明度和颗粒只在玻璃皮肤下出现；本地背景走插件自己的路由，不读 file://。',
       foldersTitle: '目录与配置',
       safeModeAuto: '自动安全模式',
       safeModeAutoHint: '启动失败时自动进安全模式',
@@ -1490,17 +1538,20 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       lookSkinOcean: 'Ocean',
       lookSkinGlass: 'Glass',
       lookGrain: 'Grain',
-      lookSkinCustom: 'Custom',
-      lookApply: 'Apply',
-      lookReset: 'Reset to Soft',
-      lookCopy: 'Copy JSON',
+      lookTransparency: 'Transparency',
+      lookWall: 'Background',
+      lookWallPreset: 'Preset gradient',
+      lookWallImage: 'Image',
+      lookWallVideo: 'Video',
+      lookWallPlaceholder: 'Full path or URL of an image/video (mp4, webm exported from Wallpaper Engine work)',
+      lookWallApply: 'Apply background',
       lookBrand: 'Brand color',
       lookBrandDefault: 'Default',
       lookBrandIndigo: 'Indigo',
       lookBrandViolet: 'Violet',
       lookBrandGreen: 'Green',
       lookBrandAmber: 'Amber',
-      lookHint: 'Off by default; custom skins use { "token": { light, dark } }. Stacks with skin plugins — turn it off if they clash.',
+      lookHint: 'Off by default. Transparency and grain only apply to the Glass skin; local backgrounds are streamed through the plugin route.',
       foldersTitle: 'Folders',
       safeModeAuto: 'Automatic safe mode',
       safeModeAutoHint: 'Safe mode if a start fails',
@@ -1988,38 +2039,18 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       const [perfSnapshot, setPerfSnapshot] = React.useState({ ...perf })
       const [typerSnapshot, setTyperSnapshot] = React.useState({ ...typer })
       const [lookSnapshot, setLookSnapshot] = React.useState({ ...look })
-      const [customDraft, setCustomDraft] = React.useState(() => JSON.stringify(look.custom || defaultCustomTokens(), null, 2))
-      const [lookNotice, setLookNotice] = React.useState(null)
+      const [wallDraft, setWallDraft] = React.useState(() => (look.wall && look.wall.src) || '')
 
-      const applyCustomDraft = () => {
-        let parsed = null
-        try {
-          parsed = JSON.parse(customDraft)
-        } catch (error) {
-          setLookNotice(`JSON 解析失败：${error && error.message ? error.message : '未知错误'}`)
-          return
+      const applyWallDraft = () => {
+        const src = wallDraft.trim()
+        look.wall = {
+          mode: look.wall.mode === 'preset' ? 'image' : look.wall.mode,
+          src,
         }
-        const result = normalizeCustomTokens(parsed)
-        if (result.error) {
-          setLookNotice(result.error)
-          return
-        }
-        look.custom = result.tokens
-        look.skin = 'custom'
         look.enabled = true
         saveLookPrefs()
         applyLook()
         lookUpdate()
-        setLookNotice(`已应用 ${Object.keys(result.tokens).length} 个 token`)
-      }
-
-      const copyCustomDraft = async () => {
-        try {
-          await navigator.clipboard.writeText(customDraft)
-          setLookNotice('已复制到剪贴板')
-        } catch {
-          setLookNotice('复制失败，手动选中文本吧')
-        }
       }
 
       React.useEffect(() => {
@@ -2952,7 +2983,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
                     h('option', { value: 'ink' }, t('lookSkinInk')),
                     h('option', { value: 'ocean' }, t('lookSkinOcean')),
                     h('option', { value: 'glass' }, t('lookSkinGlass')),
-                    h('option', { value: 'custom' }, t('lookSkinCustom')),
                   )),
                 lookSnapshot.skin === 'glass'
                   ? settingRow(t('lookGrain'), null,
@@ -3027,24 +3057,61 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
                     h('option', { value: 'jetbrains' }, 'JetBrains Mono'),
                     h('option', { value: 'fira' }, 'Fira Code'),
                   )),
-                lookSnapshot.skin === 'custom'
-                  ? h('div', { className: 'uc-look-editor' },
-                      h('textarea', {
-                        className: 'uc-look-text',
-                        value: customDraft,
-                        spellCheck: false,
-                        onChange: (event) => setCustomDraft(event.target.value),
+                lookSnapshot.skin === 'glass'
+                  ? settingRow(t('lookTransparency'), null,
+                      h('div', { className: 'uc-typer' },
+                        h('input', {
+                          type: 'range',
+                          min: 0,
+                          max: 100,
+                          step: 1,
+                          value: lookSnapshot.transparency,
+                          disabled: !lookSnapshot.enabled,
+                          onChange: (event) => {
+                            const value = Number(event.target.value)
+                            if (!Number.isFinite(value)) return
+                            look.transparency = Math.max(0, Math.min(100, Math.round(value)))
+                            scheduleLookApply()
+                          },
+                        }),
+                        h('span', { className: 'uc-typer-value' }, `${lookSnapshot.transparency}%`),
+                      ))
+                  : null,
+                lookSnapshot.skin === 'glass'
+                  ? settingRow(t('lookWall'), null,
+                      h('select', {
+                        className: 'uc-select',
+                        value: lookSnapshot.wall.mode,
+                        disabled: !lookSnapshot.enabled,
+                        onChange: (event) => {
+                          look.wall = { ...look.wall, mode: event.target.value }
+                          saveLookPrefs()
+                          applyLook()
+                          lookUpdate()
+                        },
+                      },
+                        h('option', { value: 'preset' }, t('lookWallPreset')),
+                        h('option', { value: 'image' }, t('lookWallImage')),
+                        h('option', { value: 'video' }, t('lookWallVideo')),
+                      ))
+                  : null,
+                lookSnapshot.skin === 'glass' && lookSnapshot.wall.mode !== 'preset'
+                  ? h('div', { className: 'uc-install' },
+                      h('input', {
+                        type: 'text',
+                        value: wallDraft,
+                        placeholder: t('lookWallPlaceholder'),
+                        onChange: (event) => setWallDraft(event.target.value),
+                        onKeyDown: (event) => {
+                          if (event.key === 'Enter') applyWallDraft()
+                        },
                       }),
-                      h('div', { className: 'uc-look-actions' },
-                        h('button', { type: 'button', className: 'uc-btn uc-btn-accent', onClick: applyCustomDraft }, t('lookApply')),
-                        h('button', {
-                          type: 'button',
-                          className: 'uc-btn',
-                          onClick: () => setCustomDraft(JSON.stringify(defaultCustomTokens(), null, 2)),
-                        }, t('lookReset')),
-                        h('button', { type: 'button', className: 'uc-btn', onClick: copyCustomDraft }, t('lookCopy')),
-                      ),
-                      lookNotice ? h('p', { className: 'uc-look-error' }, lookNotice) : null,
+                      h('button', {
+                        type: 'button',
+                        className: 'uc-btn uc-btn-accent',
+                        disabled: wallDraft.trim() === '',
+                        onClick: applyWallDraft,
+                      }, t('lookWallApply')),
                     )
                   : null,
                 h('p', { className: 'uc-perf-hint' }, t('lookHint')),

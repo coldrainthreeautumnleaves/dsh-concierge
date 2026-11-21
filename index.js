@@ -15,7 +15,7 @@
  * failure and restart reporting stay owned by the plugin manager.
  */
 import { spawn } from 'node:child_process'
-import { existsSync } from 'node:fs'
+import { createReadStream, existsSync } from 'node:fs'
 import { mkdir, readFile, rm, stat as statOf, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import path from 'node:path'
@@ -379,6 +379,17 @@ export function apply(ctx) {
       handler: (request, response) => handleAbout(request, response),
     }),
     'dsh-concierge: about route',
+  )
+
+  // 自定义背景：页面是 dsh-app:// 文档，读不了本地 file://，所以由宿主把选中的
+  // 图片/视频流出来。只放行图片和视频扩展名。
+  ctx.effect(
+    () => ctx.webServer.register({
+      kind: 'exact',
+      path: `${ROUTE}/wallpaper`,
+      handler: (request, response) => handleWallpaper(request, response),
+    }),
+    'dsh-concierge: wallpaper route',
   )
 
   ctx.effect(
@@ -776,6 +787,58 @@ async function handleInstallNpm(ctx, state, request, response) {
     sendNodeJson(response, { ok: !failed, spec: target, error, result }, 200)
   } catch (error) {
     sendNodeJson(response, { ok: false, error: messageOf(error) }, 500)
+  }
+}
+
+const WALLPAPER_TYPES = {
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.png': 'image/png',
+  '.webp': 'image/webp',
+  '.avif': 'image/avif',
+  '.gif': 'image/gif',
+  '.mp4': 'video/mp4',
+  '.webm': 'video/webm',
+  '.mov': 'video/quicktime',
+}
+
+async function handleWallpaper(request, response) {
+  try {
+    const url = new URL(request.url || '/', 'http://localhost')
+    const raw = url.searchParams.get('path') || ''
+    if (!raw) {
+      response.statusCode = 400
+      response.end('missing path')
+      return
+    }
+    const absolute = path.resolve(raw)
+    const type = WALLPAPER_TYPES[path.extname(absolute).toLowerCase()]
+    if (!type) {
+      response.statusCode = 415
+      response.end('unsupported type')
+      return
+    }
+    const info = await statOf(absolute).catch(() => null)
+    if (!info || !info.isFile()) {
+      response.statusCode = 404
+      response.end('not found')
+      return
+    }
+    response.setHeader('content-type', type)
+    response.setHeader('content-length', String(info.size))
+    response.setHeader('cache-control', 'no-cache')
+    const stream = createReadStream(absolute)
+    stream.on('error', () => {
+      try {
+        response.destroy()
+      } catch {
+        /* already gone */
+      }
+    })
+    stream.pipe(response)
+  } catch (error) {
+    response.statusCode = 500
+    response.end(messageOf(error))
   }
 }
 

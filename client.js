@@ -446,29 +446,82 @@ html[data-dsh-noanim="1"] [data-animating] {
 
     /* ------------------------------------------------------------ appearance -- */
 
-    // 只覆盖设计变量（圆角 / 字号 / 品牌色），不碰官方 DOM 和布局：换主题、
-    // 升级版本、和皮肤类插件都不冲突。默认关闭。
+    // 走官方主题服务（ctx.get('theme').overrideTokens），不是往页面里注 CSS：
+    // 官方要求每个 token 给 { light, dark } 一对，深浅色切换自动跟随，
+    // DSH 升级也不会失效。
     const LOOK_STORAGE_KEY = 'dsh-concierge:look'
-    const look = { enabled: false, radius: 'standard', fontScale: 1, brand: 'default' }
+    const look = { enabled: false, skin: 'soft', brand: 'default' }
     const lookListeners = new Set()
     const lookUpdate = () => {
       for (const listener of [...lookListeners]) listener()
     }
 
-    const LOOK_RADII = {
-      compact: { xs: '3px', sm: '6px', md: '8px', lg: '10px', xl: '12px', panel: '10px' },
-      standard: null,
-      round: { xs: '6px', sm: '10px', md: '14px', lg: '18px', xl: '22px', panel: '18px' },
-    }
     const LOOK_BRANDS = {
       default: null,
-      indigo: '#4f6ef7',
-      violet: '#8b5cf6',
-      green: '#16a34a',
-      amber: '#f59e0b',
+      indigo: { light: '#4f6ef7', dark: '#8ba4ff' },
+      violet: { light: '#8b5cf6', dark: '#b79bff' },
+      green: { light: '#16a34a', dark: '#4ade80' },
+      amber: { light: '#d97706', dark: '#fbbf24' },
     }
-    const LOOK_FONT_SCALES = [0.94, 1, 1.06]
-    let lookFontOriginals = null
+
+    const BRAND_TOKEN_NAMES = [
+      '--dsw-alias-brand-primary',
+      '--dsw-alias-brand-text',
+      '--dsw-alias-button-primary-fill',
+      '--dsw-alias-state-business-primary',
+    ]
+
+    // 每套皮肤是一组官方 token 覆盖，浅色/深色各一份。
+    const LOOK_SKINS = {
+      soft: {
+        tokens: {
+          '--dsw-specific-sidebar-fill': { light: '#f4f6fb', dark: '#161a21' },
+          '--dsw-alias-bg-base': { light: '#fbfcfe', dark: '#0e1116' },
+          '--dsw-alias-bg-layer-1': { light: '#ffffff', dark: '#171b22' },
+          '--dsw-alias-bg-layer-2': { light: '#f1f3f8', dark: '#20252e' },
+          '--dsw-alias-border-l1': { light: '#e6e9f0', dark: '#2a3039' },
+          '--dsw-alias-border-l2': { light: '#d9dee8', dark: '#343b46' },
+          '--dsw-alias-label-primary': { light: '#1a1d23', dark: '#e8ebf1' },
+          '--dsw-alias-label-secondary': { light: '#6b7280', dark: '#9aa3b2' },
+          '--dsw-radius-md': { light: '12px', dark: '12px' },
+          '--dsw-radius-lg': { light: '16px', dark: '16px' },
+          '--dsw-radius-panel': { light: '16px', dark: '16px' },
+        },
+      },
+      ink: {
+        tokens: {
+          '--dsw-specific-sidebar-fill': { light: '#eef0f4', dark: '#0f1216' },
+          '--dsw-alias-bg-base': { light: '#f7f8fa', dark: '#0b0d10' },
+          '--dsw-alias-bg-layer-1': { light: '#ffffff', dark: '#14171c' },
+          '--dsw-alias-bg-layer-2': { light: '#eceef2', dark: '#1b1f26' },
+          '--dsw-alias-border-l1': { light: '#dfe3e9', dark: '#262b33' },
+          '--dsw-alias-border-l2': { light: '#cfd5de', dark: '#333a44' },
+          '--dsw-alias-label-primary': { light: '#111418', dark: '#eef1f5' },
+          '--dsw-alias-label-secondary': { light: '#5f6772', dark: '#98a1ad' },
+          '--dsw-radius-md': { light: '10px', dark: '10px' },
+          '--dsw-radius-lg': { light: '14px', dark: '14px' },
+          '--dsw-radius-panel': { light: '14px', dark: '14px' },
+        },
+      },
+      ocean: {
+        tokens: {
+          '--dsw-specific-sidebar-fill': { light: '#eaf3fb', dark: '#0d1822' },
+          '--dsw-alias-bg-base': { light: '#f7fbff', dark: '#0a1218' },
+          '--dsw-alias-bg-layer-1': { light: '#ffffff', dark: '#101c26' },
+          '--dsw-alias-bg-layer-2': { light: '#e9f2fa', dark: '#15242f' },
+          '--dsw-alias-border-l1': { light: '#dceaf5', dark: '#1e3140' },
+          '--dsw-alias-border-l2': { light: '#c9dcea', dark: '#294256' },
+          '--dsw-alias-label-primary': { light: '#12222e', dark: '#e6f1f8' },
+          '--dsw-alias-label-secondary': { light: '#5b7286', dark: '#93aebf' },
+          '--dsw-radius-md': { light: '12px', dark: '12px' },
+          '--dsw-radius-lg': { light: '16px', dark: '16px' },
+          '--dsw-radius-panel': { light: '16px', dark: '16px' },
+        },
+      },
+    }
+
+    let lookCtx = null
+    let lookDispose = null
 
     function readLookPrefs() {
       try {
@@ -476,9 +529,8 @@ html[data-dsh-noanim="1"] [data-animating] {
         if (!raw) return
         const parsed = JSON.parse(raw)
         if (typeof parsed.enabled === 'boolean') look.enabled = parsed.enabled
-        if (typeof parsed.radius === 'string' && parsed.radius in LOOK_RADII) look.radius = parsed.radius
+        if (typeof parsed.skin === 'string' && parsed.skin in LOOK_SKINS) look.skin = parsed.skin
         if (typeof parsed.brand === 'string' && parsed.brand in LOOK_BRANDS) look.brand = parsed.brand
-        if (LOOK_FONT_SCALES.includes(parsed.fontScale)) look.fontScale = parsed.fontScale
       } catch {
         /* keep defaults */
       }
@@ -488,8 +540,7 @@ html[data-dsh-noanim="1"] [data-animating] {
       try {
         localStorage.setItem(LOOK_STORAGE_KEY, JSON.stringify({
           enabled: look.enabled,
-          radius: look.radius,
-          fontScale: look.fontScale,
+          skin: look.skin,
           brand: look.brand,
         }))
       } catch {
@@ -497,90 +548,27 @@ html[data-dsh-noanim="1"] [data-animating] {
       }
     }
 
-    // 官方字号是「复合 token」，形如 --dsw-font-xs-13: 13px/20px var(--dsw-font-family)，
-    // 组件用的是 font: var(--dsw-font-xs-13)。所以缩放要改复合值本身（把里面的 px 按倍率
-    // 重写），改 -font-size 子 token 是没用的。原始值缓存下来，反复切换不叠加。
-    const FONT_TOKEN_RE = /^--dsw-font-.*-\d+$/
-    const FONT_TOKEN_RE_FALLBACK = /^--dsw-font-.*-\d+$/
-
-    function readFontTokens() {
-      if (lookFontOriginals) return lookFontOriginals
-      const map = new Map()
-      const add = (name, value) => {
-        if (!FONT_TOKEN_RE.test(name)) return
-        if (typeof value !== 'string' || !/\d/.test(value)) return
-        map.set(name, value.trim())
-      }
-      try {
-        const computed = getComputedStyle(document.documentElement)
-        for (let index = 0; index < computed.length; index += 1) {
-          const name = computed[index]
-          if (typeof name !== 'string') continue
-          add(name, computed.getPropertyValue(name))
-        }
-      } catch {
-        /* ignore */
-      }
-      if (map.size === 0) {
-        // Chromium 不一定枚举自定义属性，退回扫样式表。
-        try {
-          for (const sheet of document.styleSheets) {
-            let rules = []
-            try {
-              rules = sheet.cssRules
-            } catch {
-              continue
-            }
-            for (const rule of rules) {
-              const style = rule && rule.style
-              if (!style) continue
-              for (let index = 0; index < style.length; index += 1) {
-                const name = style[index]
-                if (!FONT_TOKEN_RE_FALLBACK.test(name)) continue
-                add(name, style.getPropertyValue(name))
-              }
-            }
-          }
-        } catch {
-          /* ignore */
-        }
-      }
-      lookFontOriginals = map
-      return map
-    }
-
-    function scaleFontValue(value, factor) {
-      return value.replace(/(\d*\.?\d+)px/g, (_match, number) => {
-        const scaled = Number.parseFloat(number) * factor
-        return `${Math.round(scaled * 100) / 100}px`
-      })
-    }
-
-    // 主色在不同组件里走的 token 不一样：按钮走 button-primary-fill（引用 brand-primary），
-    // 会话/日程/编排走 state-business-primary，所以一起覆盖才看得出变化。
-    const LOOK_BRAND_TOKENS = [
-      '--dsw-alias-brand-primary',
-      '--dsw-alias-brand-text',
-      '--dsw-alias-button-primary-fill',
-      '--dsw-alias-state-business-primary',
-    ]
-
     function applyLook() {
-      if (typeof document === 'undefined') return
-      const root = document.documentElement
-      const fonts = readFontTokens()
-      for (const key of ['xs', 'sm', 'md', 'lg', 'xl', 'panel']) root.style.removeProperty(`--dsw-radius-${key}`)
-      for (const name of LOOK_BRAND_TOKENS) root.style.removeProperty(name)
-      for (const name of fonts.keys()) root.style.removeProperty(name)
-      delete root.dataset.dshLook
-      if (!look.enabled) return
-      root.dataset.dshLook = '1'
-      const radius = LOOK_RADII[look.radius]
-      if (radius) for (const [key, value] of Object.entries(radius)) root.style.setProperty(`--dsw-radius-${key}`, value)
+      if (lookDispose) {
+        try {
+          lookDispose()
+        } catch {
+          /* already gone */
+        }
+        lookDispose = null
+      }
+      if (!look.enabled || !lookCtx) return
+      const theme = typeof lookCtx.get === 'function' ? lookCtx.get('theme') : null
+      if (!theme || typeof theme.overrideTokens !== 'function') return
+      const skin = LOOK_SKINS[look.skin]
+      if (!skin) return
+      const tokens = { ...skin.tokens }
       const brand = LOOK_BRANDS[look.brand]
-      if (brand) for (const name of LOOK_BRAND_TOKENS) root.style.setProperty(name, brand)
-      if (look.fontScale !== 1) {
-        for (const [name, value] of fonts) root.style.setProperty(name, scaleFontValue(value, look.fontScale))
+      if (brand) for (const name of BRAND_TOKEN_NAMES) tokens[name] = brand
+      try {
+        lookDispose = theme.overrideTokens('dsh-concierge', tokens)
+      } catch {
+        lookDispose = null
       }
     }
 
@@ -895,17 +883,13 @@ html[data-dsh-noanim="1"] [data-animating] {
       pendingDisabled: '上次启动时有 {count} 个插件加载失败被禁用：{names}',
       enableAll: '全部启用',
       safetyTitle: '安全',
-      lookTitle: '外观微调',
-      lookEnabled: '外观微调',
-      lookEnabledHint: '只覆盖设计变量，不改官方布局',
-      lookRadius: '圆角',
-      lookRadiusCompact: '紧凑',
-      lookRadiusStandard: '标准',
-      lookRadiusRound: '圆润',
-      lookFont: '字号',
-      lookFontSmall: '小',
-      lookFontStandard: '标准',
-      lookFontLarge: '大',
+      lookTitle: '外观',
+      lookEnabled: '外观',
+      lookEnabledHint: '走官方主题 token，换肤不失效',
+      lookSkin: '皮肤',
+      lookSkinSoft: '柔和',
+      lookSkinInk: '墨色',
+      lookSkinOcean: '海洋',
       lookBrand: '品牌色',
       lookBrandDefault: '默认',
       lookBrandIndigo: '靛蓝',
@@ -1117,16 +1101,12 @@ html[data-dsh-noanim="1"] [data-animating] {
       enableAll: 'Enable all',
       safetyTitle: 'Safety',
       lookTitle: 'Appearance',
-      lookEnabled: 'Appearance tweaks',
-      lookEnabledHint: 'Overrides design tokens only, never the official layout',
-      lookRadius: 'Radius',
-      lookRadiusCompact: 'Compact',
-      lookRadiusStandard: 'Standard',
-      lookRadiusRound: 'Round',
-      lookFont: 'Text size',
-      lookFontSmall: 'Small',
-      lookFontStandard: 'Standard',
-      lookFontLarge: 'Large',
+      lookEnabled: 'Appearance',
+      lookEnabledHint: 'Native theme tokens, survives updates',
+      lookSkin: 'Skin',
+      lookSkinSoft: 'Soft',
+      lookSkinInk: 'Ink',
+      lookSkinOcean: 'Ocean',
       lookBrand: 'Brand color',
       lookBrandDefault: 'Default',
       lookBrandIndigo: 'Indigo',
@@ -2508,39 +2488,21 @@ html[data-dsh-noanim="1"] [data-animating] {
                   applyLook()
                   lookUpdate()
                 })),
-                settingRow(t('lookRadius'), null,
+                settingRow(t('lookSkin'), null,
                   h('select', {
                     className: 'uc-select',
-                    value: lookSnapshot.radius,
+                    value: lookSnapshot.skin,
                     disabled: !lookSnapshot.enabled,
                     onChange: (event) => {
-                      look.radius = event.target.value
+                      look.skin = event.target.value
                       saveLookPrefs()
                       applyLook()
                       lookUpdate()
                     },
                   },
-                    h('option', { value: 'compact' }, t('lookRadiusCompact')),
-                    h('option', { value: 'standard' }, t('lookRadiusStandard')),
-                    h('option', { value: 'round' }, t('lookRadiusRound')),
-                  )),
-                settingRow(t('lookFont'), null,
-                  h('select', {
-                    className: 'uc-select',
-                    value: String(lookSnapshot.fontScale),
-                    disabled: !lookSnapshot.enabled,
-                    onChange: (event) => {
-                      const value = Number(event.target.value)
-                      if (!LOOK_FONT_SCALES.includes(value)) return
-                      look.fontScale = value
-                      saveLookPrefs()
-                      applyLook()
-                      lookUpdate()
-                    },
-                  },
-                    h('option', { value: '0.94' }, t('lookFontSmall')),
-                    h('option', { value: '1' }, t('lookFontStandard')),
-                    h('option', { value: '1.06' }, t('lookFontLarge')),
+                    h('option', { value: 'soft' }, t('lookSkinSoft')),
+                    h('option', { value: 'ink' }, t('lookSkinInk')),
+                    h('option', { value: 'ocean' }, t('lookSkinOcean')),
                   )),
                 settingRow(t('lookBrand'), null,
                   h('select', {
@@ -3506,7 +3468,7 @@ html[data-dsh-noanim="1"] [data-animating] {
     }
 
     return {
-      inject: ['slots'],
+      inject: ['slots', 'theme'],
       apply(ctx) {
         const slots = ctx.slots || (typeof ctx.get === 'function' ? ctx.get('slots') : null)
         // Access `locale` through get(): a service not named in `inject` throws on property access.
@@ -3516,6 +3478,7 @@ html[data-dsh-noanim="1"] [data-animating] {
         readIgnore()
         readLookPrefs()
         installPerfCss()
+        lookCtx = ctx
         applyLook()
         applyNoAnim()
         applyOffscreen()

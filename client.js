@@ -483,6 +483,45 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       else delete root.dataset.dshStream
     }
 
+    // 诊断：把「流式开始/结束」前后的长帧记下来，发给宿主落盘。用来回答
+    // 「结束那一刻掉到 60」到底是模糊挂回去的一次大重绘，还是应用自己在收尾。
+    const probeLongFrames = []
+    const probeEvents = []
+    let probeReportTimer = 0
+
+    function probeLongFrame(elapsed) {
+      if (!(elapsed >= 40)) return
+      probeLongFrames.push({ at: Date.now(), ms: Math.round(elapsed) })
+      if (probeLongFrames.length > 40) probeLongFrames.shift()
+    }
+
+    function probeEvent(kind) {
+      probeEvents.push({ at: Date.now(), kind })
+      if (probeEvents.length > 20) probeEvents.shift()
+      if (probeReportTimer) clearTimeout(probeReportTimer)
+      // 2.5 秒后再发：这样事件之后那几帧也收进来了。
+      probeReportTimer = setTimeout(() => {
+        probeReportTimer = 0
+        if (typeof fetch !== 'function') return
+        const payload = {
+          at: new Date().toISOString(),
+          events: probeEvents.slice(),
+          longFrames: probeLongFrames.slice(),
+          fps: perf.samples.slice(-8),
+          streaming: perf.streaming,
+          glassAuto: perf.glassAuto,
+          lightGlass: look.lightGlass,
+          skin: look.skin,
+          enabled: look.enabled,
+        }
+        fetch(`${API}/perf-report`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(payload),
+        }).catch(() => {})
+      }, 2500)
+    }
+
     function applyPerfMode() {
       if (typeof document === 'undefined') return
       const root = document.documentElement
@@ -580,8 +619,11 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       // which reads as a blink: never change it more than once every 15 seconds.
       let lastModeAt = 0
       let streamingSince = 0
+      let prevFrameAt = 0
       const tick = (now) => {
         frames += 1
+        if (prevFrameAt) probeLongFrame(now - prevFrameAt)
+        prevFrameAt = now
         const elapsed = now - last
         if (elapsed >= 1000) {
           const fps = Math.round((frames * 1000) / elapsed)
@@ -668,6 +710,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         // a pause between tokens does not toggle the chat backdrop on and off.
         if (streaming) streamingSince = nowMs
         const stickyStreaming = streaming || (streamingSince > 0 && nowMs - streamingSince <= 5000)
+        if (stickyStreaming !== perf.streaming) probeEvent(stickyStreaming ? 'stream-start' : 'stream-end')
         const cutoff = nowMs - 10000
         while (longTaskLog.length > 0 && longTaskLog[0].at < cutoff) longTaskLog.shift()
         const blocking = Math.round(longTaskLog.reduce((sum, entry) => sum + entry.d, 0))

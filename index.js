@@ -410,6 +410,15 @@ export function apply(ctx) {
     'dsh-concierge: window corners route',
   )
 
+  ctx.effect(
+    () => ctx.webServer.register({
+      kind: 'exact',
+      path: `${ROUTE}/perf-report`,
+      handler: (request, response) => handlePerfReport(request, response),
+    }),
+    'dsh-concierge: perf report route',
+  )
+
   // A plugin updated into a broken state should not keep breaking every start.
   ctx.effect(() => {
     const timer = setTimeout(() => {
@@ -758,6 +767,28 @@ async function handleWindowCorners(request, response) {
       output: result.output || '',
       error: result.error || '',
     }, result.ok ? 200 : 500)
+  } catch (error) {
+    sendNodeJson(response, { ok: false, error: messageOf(error) }, 500)
+  }
+}
+
+// 诊断落盘：客户端把「流式开始/结束」前后的长帧和 fps 样本发上来，写成一个 JSON，
+// 方便事后判断掉帧是模糊挂回去的那次重绘，还是应用自己在收尾。
+const PERF_REPORT_FILE = path.join(homedir(), '.dsh', 'update-center', 'perf-report.json')
+
+async function handlePerfReport(request, response) {
+  if (request.method !== 'POST') {
+    response.statusCode = 405
+    response.setHeader('allow', 'POST')
+    response.end()
+    return
+  }
+  try {
+    const body = await readNodeJson(request)
+    await mkdir(path.dirname(PERF_REPORT_FILE), { recursive: true })
+    const report = { receivedAt: new Date().toISOString(), ...body }
+    await writeFile(PERF_REPORT_FILE, JSON.stringify(report, null, 2), 'utf8')
+    sendNodeJson(response, { ok: true, file: PERF_REPORT_FILE }, 200)
   } catch (error) {
     sendNodeJson(response, { ok: false, error: messageOf(error) }, 500)
   }

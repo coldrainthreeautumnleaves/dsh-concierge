@@ -582,7 +582,7 @@ async function handleStartupBoost(request, response) {
     // a -Command string got mangled by Node's Windows argument quoting.
     await writeFile(
       STARTUP_BOOST_LAUNCHER,
-      `\uFEFF$ErrorActionPreference = 'Stop'\r\nStart-Process powershell -Verb RunAs -ArgumentList @('-NoProfile','-ExecutionPolicy','Bypass','-File','${STARTUP_BOOST_SCRIPT.replace(/'/g, "''")}')\r\n`,
+      `\uFEFF$ErrorActionPreference = 'Stop'\r\nStart-Process powershell -Verb RunAs -WindowStyle Hidden -ArgumentList @('-NoProfile','-ExecutionPolicy','Bypass','-File','${STARTUP_BOOST_SCRIPT.replace(/'/g, "''")}')\r\n`,
       'utf8',
     )
     // detached: true puts the child in a new process group and the elevation

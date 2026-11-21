@@ -362,6 +362,7 @@ export function apply(ctx) {
   ctx.effect(() => {
     void writeSafeModeScripts()
     void readSettings()
+    void repairOwnLink()
     return () => {}
   }, 'dsh-concierge: safe-mode scripts')
 }
@@ -612,6 +613,23 @@ async function handleStartupBoost(request, response) {
     sendNodeJson(response, { ok: true, launched: true }, 200)
   } catch (error) {
     sendNodeJson(response, { ok: false, error: messageOf(error) }, 500)
+  }
+}
+
+// pnpm occasionally rewrites this plugin's link spec with mojibake (the path
+// becomes E:/????/...). The junction keeps working until the next install
+// rebuilds it from the broken spec, so repair the spec while we are running.
+async function repairOwnLink() {
+  try {
+    const pkgFile = path.join(homedir(), '.dsh', 'profiles', 'desktop', 'package.json')
+    const pkg = JSON.parse(await readFile(pkgFile, 'utf8'))
+    const spec = pkg && pkg.dependencies ? pkg.dependencies['dsh-concierge'] : null
+    if (typeof spec !== 'string' || !spec.startsWith('link:')) return
+    if (existsSync(spec.slice(5))) return
+    pkg.dependencies['dsh-concierge'] = `link:${PLUGIN_DIR.replace(/\\/g, '/')}`
+    await writeFile(pkgFile, `${JSON.stringify(pkg, null, 2)}\n`, 'utf8')
+  } catch {
+    /* best effort */
   }
 }
 

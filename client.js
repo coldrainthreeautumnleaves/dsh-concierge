@@ -73,6 +73,8 @@ window.__ModuleLoader__.load({
       // Off by default: Chromium reports content-visibility repaints and scroll
       // stutter with it, and the chat already virtualizes its rows.
       offscreen: false,
+      // Skip offscreen rows only while the sidebar animates its width.
+      resizeShield: true,
       low: false,
       longActive: false,
     }
@@ -99,6 +101,14 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
   animation-delay: 0s !important;
   transition-duration: 0s !important;
 }
+/* While the sidebar animates, the chat column's width changes every frame and
+   every row re-wraps its text. Skipping offscreen rows keeps that window at
+   frame rate; contain-intrinsic-size: auto reuses the last real height so the
+   scroll position does not jump. */
+html[data-dsh-resizing="1"] [data-slot="conversation.chat.flow"] > * {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 120px;
+}
 `
 
     function installPerfCss() {
@@ -119,6 +129,7 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
         if (typeof parsed.long === 'boolean') perf.longPref = parsed.long
         if (typeof parsed.forced === 'boolean') perf.forced = parsed.forced
         if (typeof parsed.offscreen === 'boolean') perf.offscreen = parsed.offscreen
+        if (typeof parsed.resizeShield === 'boolean') perf.resizeShield = parsed.resizeShield
         if (typeof parsed.refresh === 'number' && Number.isFinite(parsed.refresh)) perf.refreshOverride = parsed.refresh
       } catch {
         /* keep defaults */
@@ -132,6 +143,7 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
           long: perf.longPref,
           forced: perf.forced,
           offscreen: perf.offscreen,
+        resizeShield: perf.resizeShield,
           refresh: perf.refreshOverride,
         }))
       } catch {
@@ -154,6 +166,41 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
       else delete root.dataset.dshPerf
       const next = mode || 'normal'
       if (perf.mode !== next) perfUpdate({ mode: next })
+    }
+
+    // Sidebar collapse animates the chat column width; during that window only
+    // the rows on screen need laying out.
+    let resizeShieldInstalled = false
+    let resizeShieldTimer = 0
+
+    function installResizeShield() {
+      if (resizeShieldInstalled || typeof ResizeObserver !== 'function') return
+      resizeShieldInstalled = true
+      let lastWidth = 0
+      const attach = () => {
+        const region = document.querySelector('[data-conversation-region]')
+        if (!region) return false
+        lastWidth = region.getBoundingClientRect().width
+        const observer = new ResizeObserver((entries) => {
+          if (!perf.resizeShield) return
+          const entry = entries[0]
+          const width = entry && entry.contentRect ? entry.contentRect.width : 0
+          if (!width || Math.abs(width - lastWidth) < 6) return
+          lastWidth = width
+          document.documentElement.dataset.dshResizing = '1'
+          clearTimeout(resizeShieldTimer)
+          resizeShieldTimer = setTimeout(() => {
+            delete document.documentElement.dataset.dshResizing
+          }, 420)
+        })
+        observer.observe(region)
+        return true
+      }
+      if (!attach()) {
+        const retry = setInterval(() => {
+          if (attach()) clearInterval(retry)
+        }, 2000)
+      }
     }
 
     // Offscreen row skipping: only long chats, only real measured heights, and
@@ -701,6 +748,8 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
       perfAuto: '自动降级',
       perfLong: '长对话精简',
       perfForced: '强制精简',
+      perfResize: '侧边栏收起优化',
+      perfResizeHint: '收起/展开侧边栏时只重排可见的消息行，避免整段对话跟着掉帧',
       perfOffscreen: '屏幕外行跳过',
       perfHint: '帧率按 5 秒平均；长任务统计最近 10 秒。屏幕外行跳过只作用于聊天流，出问题可关掉。',
       perfPeak: '峰值 {ms}ms',
@@ -896,6 +945,8 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
       perfAuto: 'Auto degrade',
       perfLong: 'Long-chat lite',
       perfForced: 'Force lite',
+      perfResize: 'Sidebar resize shield',
+      perfResizeHint: 'While the sidebar animates, only the visible message rows are laid out',
       perfOffscreen: 'Skip offscreen rows',
       perfHint: 'FPS is a 5-second average; long tasks cover the last 10 seconds. Offscreen skipping only touches the chat flow; turn it off if anything misbehaves.',
       perfPeak: 'peak {ms}ms',
@@ -2623,6 +2674,11 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
               applyPerfMode()
               perfUpdate({})
             })),
+            settingRow(t('perfResize'), t('perfResizeHint'), switchControl(perfSnapshot.resizeShield, () => {
+              perf.resizeShield = !perf.resizeShield
+              savePerfPrefs()
+              perfUpdate({})
+            })),
             settingRow(t('perfOffscreen'), t('perfOffscreenHint'), switchControl(perfSnapshot.offscreen, () => {
               perf.offscreen = !perf.offscreen
               savePerfPrefs()
@@ -3191,6 +3247,7 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
         installPerfCss()
         startLongTasks()
         startPerfMonitor()
+        installResizeShield()
 
         readTyperPrefs()
         const typerRestores = []

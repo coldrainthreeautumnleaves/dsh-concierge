@@ -125,6 +125,17 @@ html[data-dsh-resizing="1"] [data-slot="conversation.chat.flow"] > * {
 [data-animating] [data-dsh-sidebar] {
   contain: layout paint;
 }
+/* dsh-better-sidebar compatibility: its explorer and task lists are not
+   virtualized either, so skip offscreen rows there too. The selectors are its
+   own stable attributes, so this is a no-op when the plugin is not installed. */
+[data-dsh-better-sidebar] [class*="_explorerRow"] {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 28px;
+}
+[data-dsh-better-sidebar] [role="treeitem"] {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 26px;
+}
 /* Opt-in: zero out the 0.3s width animation. The collapse then costs exactly
    one reflow instead of ~36, at the price of the sliding motion. */
 html[data-dsh-noanim="1"] [data-animating] {

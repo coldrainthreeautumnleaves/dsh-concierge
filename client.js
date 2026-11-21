@@ -290,6 +290,14 @@ html[data-dsh-glass="1"][data-dsh-glass-auto="1"] [data-conversation-region="cha
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
+/* 流式输出期间自动摘掉会话区那块大模糊。实测（2560×1600 / Iris Xe / 120Hz）：
+   这块开着流式 90fps，摘掉 117fps——每来一段文字它都跟着重算，约 2.8ms/帧。
+   data-dsh-stream 由性能监控维护（停止输出 5 秒后自动恢复），所以只有输出那几秒
+   是「半透明、不糊」的，不影响平时的玻璃观感。 */
+html[data-dsh-glass="1"][data-dsh-stream="1"] [data-conversation-region="chat"]::before {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
 /* 输入框那一圈不再自己模糊：它里面还压着输入卡自己的 backdrop-filter（走
    --dsw-menu-backdrop-filter），两层叠在「每帧都在动的聊天记录」上——这是全
    界面唯一 blur 背后一直在变的地方。留卡片那一层就够看。 */

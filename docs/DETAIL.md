@@ -1,6 +1,8 @@
 # Maintenance center
 
-Settings → Maintenance center is split into five tabs: **Update** (app version, updates and the auto-update switch), **Plugins** (installed list, search, update / rollback / enable / uninstall), **Tools** (the safety switch at the top, then GitHub sources, install from npm, the GitHub token and the folder shortcuts — every input and the open-plugins / open-config / open-safe-mode buttons live here), **Performance** (FPS, long tasks and the degrade switches) and **Typewriter** (gradual reveal, stream throttle and speed).
+Settings → Maintenance center is split into five tabs: **Update** (app version, updates and the auto-update switch), **Plugins** (installed list, search, update / rollback / enable / uninstall), **Tools** (the safety switch at the top, then GitHub sources, install from npm, the GitHub token and the folder shortcuts — every input and the open-plugins / open-config / open-safe-mode buttons live here), **Performance** (FPS, long tasks and the degrade switches), **Typewriter** (gradual reveal, stream throttle and speed) and **About** (intro, version and a collapsible changelog).
+
+Versioning: every release bumps the last digit (`0.1.1` → `0.1.2` → …). The changelog lives in `CHANGELOG.md` at the repo root; the About page reads it and `package.json` from the Host, so no code changes are needed for a release note.
 
 ## What it checks
 

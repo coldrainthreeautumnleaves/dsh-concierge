@@ -19,10 +19,12 @@ import { existsSync } from 'node:fs'
 import { mkdir, readFile, rm, stat as statOf, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 export const inject = ['webServer']
 
 const ROUTE = '/dsh-concierge'
+const PLUGIN_DIR = path.dirname(fileURLToPath(import.meta.url))
 const CACHE_TTL_MS = 5 * 60 * 1000
 const FETCH_TIMEOUT_MS = 12_000
 const CONCURRENCY = 32
@@ -313,6 +315,15 @@ export function apply(ctx) {
     'dsh-concierge: settings route',
   )
 
+  ctx.effect(
+    () => ctx.webServer.register({
+      kind: 'exact',
+      path: `${ROUTE}/about`,
+      handler: (request, response) => handleAbout(request, response),
+    }),
+    'dsh-concierge: about route',
+  )
+
   // A plugin updated into a broken state should not keep breaking every start.
   ctx.effect(() => {
     const timer = setTimeout(() => {
@@ -476,6 +487,60 @@ async function handleSettings(request, response) {
       fromEnv: Boolean(env),
       masked: maskToken(env || storedToken),
       safeModeAuto,
+    }, 200)
+  } catch (error) {
+    sendNodeJson(response, { ok: false, error: messageOf(error) }, 500)
+  }
+}
+
+// The About page shows the plugin's own package.json and CHANGELOG.md, so the
+// version and the notes live in exactly one place on disk.
+async function readChangelog() {
+  try {
+    const text = await readFile(path.join(PLUGIN_DIR, 'CHANGELOG.md'), 'utf8')
+    const entries = []
+    let current = null
+    for (const line of text.split(/\r?\n/)) {
+      const heading = /^##\s+(.+?)\s*$/.exec(line)
+      if (heading) {
+        current = { version: heading[1].trim(), items: [] }
+        entries.push(current)
+        continue
+      }
+      const item = /^[-*]\s+(.+?)\s*$/.exec(line)
+      if (item && current) current.items.push(item[1].trim())
+    }
+    return entries
+  } catch {
+    return []
+  }
+}
+
+async function handleAbout(request, response) {
+  if (request.method !== 'GET') {
+    response.statusCode = 405
+    response.setHeader('allow', 'GET')
+    response.end()
+    return
+  }
+  try {
+    let pkg = {}
+    try {
+      pkg = JSON.parse(await readFile(path.join(PLUGIN_DIR, 'package.json'), 'utf8'))
+    } catch {
+      pkg = {}
+    }
+    const repository = pkg.repository && typeof pkg.repository === 'object'
+      ? pkg.repository.url
+      : pkg.repository
+    sendNodeJson(response, {
+      ok: true,
+      name: pkg.name || 'dsh-concierge',
+      version: pkg.version || '0.0.0',
+      description: pkg.description || '',
+      license: pkg.license || '',
+      repository: repository || '',
+      changelog: await readChangelog(),
     }, 200)
   } catch (error) {
     sendNodeJson(response, { ok: false, error: messageOf(error) }, 500)

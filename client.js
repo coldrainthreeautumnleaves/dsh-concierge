@@ -766,6 +766,14 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
       tabAdd: '工具',
       tabPerf: '性能',
       tabTyper: '打字机',
+      tabAbout: '关于',
+      aboutTitle: '关于',
+      aboutIntro: '维护中心（dsh-concierge）是 DeepSeek Harness 的插件：检查应用与插件更新、管理已装插件、盯聊天性能。',
+      aboutRepo: 'GitHub 仓库',
+      changelogTitle: '更新日志',
+      changelogHint: '点版本号展开或收起',
+      changelogCount: '{n} 条',
+      changelogEmpty: '还没有更新日志',
       searchPlugins: '查找插件：名称或标题',
       typerTitle: '打字机',
       typerEnabled: '逐字显示',
@@ -940,6 +948,14 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
       tabAdd: 'Tools',
       tabPerf: 'Performance',
       tabTyper: 'Typewriter',
+      tabAbout: 'About',
+      aboutTitle: 'About',
+      aboutIntro: 'Maintenance center (dsh-concierge) is a DeepSeek Harness plugin: it checks app and plugin updates, manages installed plugins and watches chat performance.',
+      aboutRepo: 'GitHub repository',
+      changelogTitle: 'Changelog',
+      changelogHint: 'Click a version to expand or collapse',
+      changelogCount: '{n} changes',
+      changelogEmpty: 'No changelog yet',
       searchPlugins: 'Find a plugin by name or title',
       typerTitle: 'Typewriter',
       typerEnabled: 'Reveal text gradually',
@@ -1081,6 +1097,21 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
 .uc-btn-danger:hover { background: rgba(217, 83, 79, .12) !important; }
 .uc-row-link { color: var(--dsw-alias-brand-primary); text-decoration: none; font-size: 11px; margin-left: 4px; }
 .uc-row-link:hover { text-decoration: underline; }
+.uc-about { display: flex; flex-direction: column; gap: 8px; padding: 2px 20px 16px; }
+.uc-about p { margin: 0; font-size: 12px; line-height: 1.6; }
+.uc-about-desc { color: var(--dsw-alias-label-secondary); font-size: 11.5px; }
+.uc-about-links { display: flex; align-items: center; gap: 14px; font-size: 11.5px; }
+.uc-about-license { color: var(--dsw-alias-label-secondary); font-size: 11px; }
+.uc-log { display: flex; flex-direction: column; padding: 2px 12px 12px; }
+.uc-log-entry { border-bottom: 1px solid var(--dsw-alias-border-l1); }
+.uc-log-entry:last-child { border-bottom: none; }
+.uc-log-head { appearance: none; width: 100%; border: none; background: transparent; display: flex; align-items: center; gap: 8px; padding: 10px 8px; border-radius: 9px; cursor: pointer; color: var(--dsw-alias-label-primary); text-align: left; font: inherit; }
+.uc-log-head:hover { background: var(--dsw-alias-bg-layer-2); }
+.uc-log-chevron { color: var(--dsw-alias-label-secondary); font-size: 10px; transition: transform .15s ease; }
+.uc-log-chevron[data-open="1"] { transform: rotate(90deg); }
+.uc-log-version { font-size: 12.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.uc-log-count { margin-left: auto; font-size: 11px; color: var(--dsw-alias-label-secondary); }
+.uc-log-items { margin: 0 0 10px; padding: 0 8px 0 26px; display: flex; flex-direction: column; gap: 5px; font-size: 11.5px; line-height: 1.6; color: var(--dsw-alias-label-secondary); }
 .uc-token-doc { display: flex; flex-direction: column; gap: 5px; padding: 2px 18px 14px; font-size: 11px; line-height: 1.6; color: var(--dsw-alias-label-secondary); }
 .uc-token-doc p { margin: 0; }
 .uc-token-links { display: flex; flex-wrap: wrap; gap: 12px; }
@@ -1310,6 +1341,19 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
       const [typerSnapshot, setTyperSnapshot] = React.useState({ ...typer })
 
       React.useEffect(() => {
+        let alive = true
+        fetch(`${API}/about`, { cache: 'no-store' })
+          .then((response) => response.json())
+          .then((body) => {
+            if (alive && body && body.ok) setAboutData(body)
+          })
+          .catch(() => {})
+        return () => {
+          alive = false
+        }
+      }, [])
+
+      React.useEffect(() => {
         const listener = () => setPerfSnapshot({ ...perf })
         perfListeners.add(listener)
         return () => perfListeners.delete(listener)
@@ -1320,6 +1364,8 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
         typerListeners.add(listener)
         return () => typerListeners.delete(listener)
       }, [])
+      const [aboutData, setAboutData] = React.useState(null)
+      const [openVersions, setOpenVersions] = React.useState({})
       const [rollbackName, setRollbackName] = React.useState(null)
       const [rollbackData, setRollbackData] = React.useState(null)
       const [rollbackLoading, setRollbackLoading] = React.useState(false)
@@ -1930,6 +1976,7 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
           tabButton('add', t('tabAdd')),
           tabButton('perf', t('tabPerf')),
           tabButton('typer', t('tabTyper')),
+          tabButton('about', t('tabAbout')),
         ),
 
         data && data.pending && Array.isArray(data.pending.disabled) && data.pending.disabled.length > 0
@@ -2507,6 +2554,58 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
               ),
             ),
             h('p', { className: 'uc-perf-hint' }, t('typerHint')),
+          ),
+        ) : null,
+
+        tab === 'about' ? h('section', { className: 'uc-card' },
+          h('div', { className: 'uc-card-head' },
+            h('div', { className: 'uc-card-title' }, t('aboutTitle')),
+            h('span', { className: 'uc-chip uc-chip-ok' }, aboutData ? `v${aboutData.version}` : '…'),
+          ),
+          h('div', { className: 'uc-about' },
+            h('p', null, t('aboutIntro')),
+            aboutData && aboutData.description
+              ? h('p', { className: 'uc-about-desc' }, aboutData.description)
+              : null,
+            h('div', { className: 'uc-about-links' },
+              h('a', {
+                className: 'uc-token-link',
+                href: 'https://github.com/coldrainthreeautumnleaves/dsh-concierge',
+                target: '_blank',
+                rel: 'noreferrer',
+              }, t('aboutRepo')),
+              aboutData && aboutData.license ? h('span', { className: 'uc-about-license' }, aboutData.license) : null,
+            ),
+          ),
+        ) : null,
+
+        tab === 'about' ? h('section', { className: 'uc-card' },
+          h('div', { className: 'uc-card-head' },
+            h('div', { className: 'uc-card-title' }, t('changelogTitle')),
+            h('span', { className: 'uc-about-license' }, t('changelogHint')),
+          ),
+          h('div', { className: 'uc-log' },
+            !aboutData || !Array.isArray(aboutData.changelog) || aboutData.changelog.length === 0
+              ? h('div', { className: 'uc-empty' }, t('changelogEmpty'))
+              : aboutData.changelog.map((entry, index) => {
+                  const open = openVersions[entry.version] !== undefined ? openVersions[entry.version] : index === 0
+                  return h('div', { className: 'uc-log-entry', key: entry.version },
+                    h('button', {
+                      type: 'button',
+                      className: 'uc-log-head',
+                      onClick: () => setOpenVersions({ ...openVersions, [entry.version]: !open }),
+                    },
+                      h('span', { className: 'uc-log-chevron', 'data-open': open ? '1' : '0' }, '▸'),
+                      h('span', { className: 'uc-log-version' }, `v${entry.version}`),
+                      h('span', { className: 'uc-log-count' }, t('changelogCount', { n: entry.items.length })),
+                    ),
+                    open
+                      ? h('ul', { className: 'uc-log-items' },
+                          entry.items.map((item, itemIndex) => h('li', { key: itemIndex }, item)),
+                        )
+                      : null,
+                  )
+                }),
           ),
         ) : null,
 

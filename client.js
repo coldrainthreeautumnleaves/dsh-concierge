@@ -212,9 +212,14 @@ html[data-dsh-glass="1"] #dsh-concierge-grain {
   pointer-events: none;
   background-size: 140px 140px;
 }
-/* 顶部那条 40px（窗口按钮所在的标题栏）：原生 WCO 拿到的是带 alpha 的颜色，
-   透明通道生效时页面就能透上来。tint 用侧边栏那一档的冷白/深蓝，别让壁纸的彩色
-   直接当顶栏颜色——那样会跟侧边栏接不上。模糊留着，壁纸的明暗还会透一点。
+/* 顶部那条 40px（窗口按钮所在的标题栏）：它是外壳的原生 WCO 遮罩，插件只能改它的
+   颜色（token → windowsAppearance IPC → setTitleBarOverlay），改不了它是不是盖着页面。
+   所以这里做两件事：
+   1. token 给一个几乎透明的值——透明通道生效时页面就能透上来，和聊天区一样；
+   2. 页面自己在这一条上画磨砂（这一层），tint 对齐聊天区的 bg-base（约 0.36 白），
+      这样就算 overlay 完全透明，顶部看起来也还是「一块玻璃」，不是空的。
+   参考 dsh-web-bg-2 的结论：顶栏那条属于外壳，页面只能在下面补一层；
+   dsh-glass-skin 则干脆改 app.asar 的窗口材质（backgroundMaterial: acrylic）。
    全屏时标题栏高度归零，这条跟着藏起来。 */
 #dsh-concierge-top { display: none; }
 html[data-dsh-glass="1"] #dsh-concierge-top {
@@ -223,12 +228,12 @@ html[data-dsh-glass="1"] #dsh-concierge-top {
   inset: 0 0 auto;
   height: var(--dsh-windows-titlebar-height, 40px);
   pointer-events: none;
-  backdrop-filter: blur(14px) saturate(150%);
-  -webkit-backdrop-filter: blur(14px) saturate(150%);
-  background: rgba(240, 243, 252, 0.62);
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  background: rgba(255, 255, 255, 0.28);
 }
 html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-top {
-  background: rgba(21, 27, 43, 0.68);
+  background: rgba(21, 27, 43, 0.32);
 }
 html[data-dsh-glass="1"][data-fullscreen] #dsh-concierge-top { display: none; }
 /* 侧边栏继续用原来的实色：标题栏那条 token 现在带 alpha 是为了让顶部透上来，
@@ -827,10 +832,10 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         '--dsw-specific-input-major': fill(0.42, 0.46),
         '--dsw-specific-login-input': fill(0.42, 0.46),
         // 标题栏那条是 Windows 原生 WCO 画的，颜色来自 preload 探针读的这个 token。
-        // 给它带 alpha 的值：透明通道生效时页面顶部那条磨砂能透上来（Electron 从
-        // #38693 起支持透明 WCO）；不生效时最坏也就是今天这种接近实色的样子。
+        // 这里给一个几乎透明的值：透明通道生效时页面顶部的磨砂能透上来；不生效时
+        // 退回的是这个 token 的 RGB（浅色 #f0f3fc），也就是以前那种接近实色的样子。
         // 侧边栏另用 `[class*="_sidebarCol"]` 的规则压回实色，不跟着变透明。
-        '--dsw-specific-sidebar-fill': pair('rgba(240, 243, 252, 0.2)', 'rgba(21, 27, 43, 0.2)'),
+        '--dsw-specific-sidebar-fill': pair('rgba(240, 243, 252, 0.08)', 'rgba(21, 27, 43, 0.1)'),
         '--dsw-specific-sidebar-glass-fill': pair('#f0f3fc', '#151b2b'),
         '--dsw-specific-sidebar-glass-collapsed-fill': pair('#f0f3fc', '#151b2b'),
         '--dsw-alias-button-elevated-fill': fill(0.36, 0.4),

@@ -2,6 +2,11 @@
 
 版本规则：每次发版，最后一位 +1（0.1.1 → 0.1.2 → …）。
 
+## 0.1.54
+
+- 顶部那条再压透一档：`--dsw-specific-sidebar-fill` 从 0.2 降到 **0.08 / 0.1**，页面在它下面画磨砂（tint 对齐聊天区的 bg-base，浅 0.28 / 深 0.32）。透明通道生效时顶部就和聊天区一样透出壁纸；不生效时退回的是这个 token 的 RGB，也就是以前那种近实色
+- 参考：[dsh-web-bg-2](http://dsh.pub/en/plugins/dsh-web-bg-2/) 确认那 40px 属于外壳的原生 WCO、页面只能改颜色；[dsh-glass-skin](https://dshplugin.online/plugins/inkstain258--dsh-glass-skin) 说明窗口级透明只能改 `app.asar` 的 `BrowserWindow` 参数
+
 ## 0.1.53
 
 - **预设壁纸换成冷调、低饱和的灰蓝**：三团大而软的色块 + 冷灰底，不再是靛蓝 / 粉 / 青 / 黄四色相拼。面板是半透明的，壁纸色相会直接染到面板上——之前文字底下能看到粉、黄、青混在一起，顶部那条也跟着不均匀

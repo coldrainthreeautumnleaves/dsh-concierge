@@ -401,6 +401,15 @@ export function apply(ctx) {
     'dsh-concierge: startup boost route',
   )
 
+  ctx.effect(
+    () => ctx.webServer.register({
+      kind: 'exact',
+      path: `${ROUTE}/window-corners`,
+      handler: (request, response) => handleWindowCorners(request, response),
+    }),
+    'dsh-concierge: window corners route',
+  )
+
   // A plugin updated into a broken state should not keep breaking every start.
   ctx.effect(() => {
     const timer = setTimeout(() => {
@@ -663,6 +672,92 @@ async function handleStartupBoost(request, response) {
     child.on('error', () => {})
     child.unref()
     sendNodeJson(response, { ok: true, launched: true }, 200)
+  } catch (error) {
+    sendNodeJson(response, { ok: false, error: messageOf(error) }, 500)
+  }
+}
+
+// 窗口外框圆角：BrowserWindow 的构造参数（roundedCorners）插件改不了，但 DWM 的
+// 圆角偏好可以在运行时改。DWMWA_WINDOW_CORNER_PREFERENCE = 33，
+// DWMWCP_DONOTROUND = 1，DWMWCP_ROUND = 2。和 dsh-win11-material 的做法一致：
+// 插件跑在 Host 进程里，能调 Win32/DWM，只是动不了窗口构造参数。
+const WINDOW_CORNER_SCRIPT = (square) => [
+  "$ErrorActionPreference = 'Stop'",
+  'Add-Type -TypeDefinition @"',
+  'using System;',
+  'using System.Runtime.InteropServices;',
+  'public class DshDwmCorner {',
+  '  [DllImport("dwmapi.dll")]',
+  '  public static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int value, int size);',
+  '}',
+  '"@',
+  "$p = Get-Process -Name 'DeepSeek Harness' -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 } | Select-Object -First 1",
+  "if ($null -eq $p) { Write-Output 'no-window'; exit 0 }",
+  `$v = ${square ? 1 : 2}`,
+  '$hr = [DshDwmCorner]::DwmSetWindowAttribute($p.MainWindowHandle, 33, [ref]$v, 4)',
+  "Write-Output ('hr=' + $hr)",
+].join('\n')
+
+function runPowerShellCommand(script) {
+  return new Promise((resolve) => {
+    let child
+    try {
+      child = spawn('powershell.exe', [
+        '-NoProfile',
+        '-NonInteractive',
+        '-WindowStyle',
+        'Hidden',
+        '-Command',
+        script,
+      ], { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true })
+    } catch (error) {
+      resolve({ ok: false, error: messageOf(error) })
+      return
+    }
+    let out = ''
+    let err = ''
+    const timer = setTimeout(() => {
+      try {
+        child.kill()
+      } catch {
+        /* already gone */
+      }
+      resolve({ ok: false, error: 'timeout' })
+    }, 8000)
+    child.stdout.on('data', (chunk) => { out += chunk })
+    child.stderr.on('data', (chunk) => { err += chunk })
+    child.on('error', (error) => {
+      clearTimeout(timer)
+      resolve({ ok: false, error: messageOf(error) })
+    })
+    child.on('close', (code) => {
+      clearTimeout(timer)
+      resolve({
+        ok: code === 0 && out.includes('hr=0'),
+        output: out.trim(),
+        error: code === 0 ? undefined : (err.trim() || `exit ${code}`),
+      })
+    })
+  })
+}
+
+async function handleWindowCorners(request, response) {
+  if (request.method !== 'POST') {
+    response.statusCode = 405
+    response.setHeader('allow', 'POST')
+    response.end()
+    return
+  }
+  try {
+    const body = await readNodeJson(request)
+    const square = body && body.square === true
+    const result = await runPowerShellCommand(WINDOW_CORNER_SCRIPT(square))
+    sendNodeJson(response, {
+      ok: result.ok,
+      square,
+      output: result.output || '',
+      error: result.error || '',
+    }, result.ok ? 200 : 500)
   } catch (error) {
     sendNodeJson(response, { ok: false, error: messageOf(error) }, 500)
   }

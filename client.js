@@ -770,6 +770,8 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       transparency: 43,
       // 轻玻璃：会话区整块不模糊，只留浮层。流式输出时不再整块重糊。
       lightGlass: false,
+      // 窗口外框直角：走宿主侧的 DWM 调用，和构造参数无关。
+      squareWindow: true,
       // 背景：预设渐变 / 图片 / 视频（Wallpaper Engine 导出的 mp4/webm 走视频）
       wall: { mode: 'preset', src: '' },
     }
@@ -944,6 +946,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
           look.transparency = Math.max(0, Math.min(100, Math.round(parsed.transparency)))
         }
         if (typeof parsed.lightGlass === 'boolean') look.lightGlass = parsed.lightGlass
+        if (typeof parsed.squareWindow === 'boolean') look.squareWindow = parsed.squareWindow
         if (parsed.wall && typeof parsed.wall === 'object') {
           const mode = typeof parsed.wall.mode === 'string' && LOOK_WALL_MODES.includes(parsed.wall.mode) ? parsed.wall.mode : 'preset'
           const src = typeof parsed.wall.src === 'string' ? parsed.wall.src : ''
@@ -1015,6 +1018,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
           codeFont: look.codeFont,
           grain: look.grain,
           lightGlass: look.lightGlass,
+          squareWindow: look.squareWindow,
         }))
       } catch {
         /* storage unavailable */
@@ -1076,6 +1080,27 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       }
     }
 
+    // 窗口外框圆角由系统 DWM 画：客户端改不了，交给宿主侧调 DwmSetWindowAttribute。
+    // 只在值变化时发一次；失败就清掉记录，下次 applyLook 再试。
+    let appliedSquareWindow = null
+
+    function applyWindowCorners(force = false) {
+      if (typeof fetch !== 'function') return
+      if (!look.enabled || look.skin !== 'glass') return
+      if (!force && appliedSquareWindow === look.squareWindow) return
+      appliedSquareWindow = look.squareWindow
+      fetch(`${API}/window-corners`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ square: look.squareWindow }),
+      })
+        .then((response) => response.json())
+        .then((body) => {
+          if (!body || body.ok !== true) appliedSquareWindow = null
+        })
+        .catch(() => { appliedSquareWindow = null })
+    }
+
     function applyLook() {
       if (lookDispose) {
         try {
@@ -1133,6 +1158,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         // 视频壁纸每帧都在变，会话区那块模糊会被逐帧重算，CSS 里按这个属性关掉。
         root.dataset.dshGlassWall = (look.wall && look.wall.mode) || 'preset'
         applyGrainImage()
+        applyWindowCorners()
         applyGlassAuto()
         syncGlassScheme()
       } else {
@@ -1497,6 +1523,8 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       lookTransparency: '透明度',
       lookLightGlass: '轻玻璃',
       lookLightGlassHint: '会话区不再整块模糊，菜单和弹窗仍是毛玻璃；流式输出更顺',
+      lookSquareWindow: '窗口直角',
+      lookSquareWindowHint: '去掉窗口外框的系统圆角（DWM 画的），只影响这个窗口',
       lookWall: '背景',
       lookWallPreset: '预设渐变',
       lookWallImage: '图片',
@@ -1740,6 +1768,8 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       lookTransparency: 'Transparency',
       lookLightGlass: 'Light glass',
       lookLightGlassHint: 'No blur on the chat region; menus and dialogs stay frosted',
+      lookSquareWindow: 'Square window',
+      lookSquareWindowHint: 'Drops the Windows 11 corner rounding on this window frame',
       lookWall: 'Background',
       lookWallPreset: 'Preset gradient',
       lookWallImage: 'Image',
@@ -3284,6 +3314,14 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
                       look.lightGlass = !look.lightGlass
                       saveLookPrefs()
                       applyLook()
+                      lookUpdate()
+                    }))
+                  : null,
+                lookSnapshot.skin === 'glass'
+                  ? settingRow(t('lookSquareWindow'), t('lookSquareWindowHint'), switchControl(lookSnapshot.squareWindow, () => {
+                      look.squareWindow = !look.squareWindow
+                      saveLookPrefs()
+                      applyWindowCorners(true)
                       lookUpdate()
                     }))
                   : null,

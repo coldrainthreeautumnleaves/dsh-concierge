@@ -2383,6 +2383,14 @@ html[data-dsh-noanim="1"] [data-animating] {
             )
           : null,
 
+        tab === 'update'
+          ? h('section', { className: 'uc-card' },
+              h('div', { className: 'uc-perf' },
+                settingRow(t('auto'), t('autoHint'), switchControl(autoUpdate, toggleAutoUpdate)),
+              ),
+            )
+          : null,
+
         data && tab === 'update'
           ? h('div', { className: 'uc-stats' },
               h('div', { className: 'uc-stat' },
@@ -2396,14 +2404,6 @@ html[data-dsh-noanim="1"] [data-animating] {
               h('div', { className: 'uc-stat' },
                 h('div', { className: 'uc-stat-value', style: { fontSize: '15px', paddingTop: '4px' } }, relativeTime(data.checkedAt, t)),
                 h('div', { className: 'uc-stat-label' }, t('statChecked')),
-              ),
-            )
-          : null,
-
-        tab === 'update'
-          ? h('section', { className: 'uc-card' },
-              h('div', { className: 'uc-perf' },
-                settingRow(t('auto'), t('autoHint'), switchControl(autoUpdate, toggleAutoUpdate)),
               ),
             )
           : null,
@@ -2444,6 +2444,75 @@ html[data-dsh-noanim="1"] [data-animating] {
                   Boolean(tokenState && tokenState.safeModeAuto),
                   toggleSafeModeAuto,
                 )),
+              ),
+            )
+          : null,
+
+        tab === 'add'
+          ? h('section', { className: 'uc-card' },
+              h('div', { className: 'uc-card-head' },
+                h('div', { className: 'uc-card-title' }, t('lookTitle')),
+              ),
+              h('div', { className: 'uc-perf' },
+                settingRow(t('lookEnabled'), t('lookEnabledHint'), switchControl(lookSnapshot.enabled, () => {
+                  look.enabled = !look.enabled
+                  saveLookPrefs()
+                  applyLook()
+                  lookUpdate()
+                })),
+                settingRow(t('lookRadius'), null,
+                  h('select', {
+                    className: 'uc-select',
+                    value: lookSnapshot.radius,
+                    disabled: !lookSnapshot.enabled,
+                    onChange: (event) => {
+                      look.radius = event.target.value
+                      saveLookPrefs()
+                      applyLook()
+                      lookUpdate()
+                    },
+                  },
+                    h('option', { value: 'compact' }, t('lookRadiusCompact')),
+                    h('option', { value: 'standard' }, t('lookRadiusStandard')),
+                    h('option', { value: 'round' }, t('lookRadiusRound')),
+                  )),
+                settingRow(t('lookFont'), null,
+                  h('select', {
+                    className: 'uc-select',
+                    value: String(lookSnapshot.fontScale),
+                    disabled: !lookSnapshot.enabled,
+                    onChange: (event) => {
+                      const value = Number(event.target.value)
+                      if (!LOOK_FONT_SCALES.includes(value)) return
+                      look.fontScale = value
+                      saveLookPrefs()
+                      applyLook()
+                      lookUpdate()
+                    },
+                  },
+                    h('option', { value: '0.94' }, t('lookFontSmall')),
+                    h('option', { value: '1' }, t('lookFontStandard')),
+                    h('option', { value: '1.06' }, t('lookFontLarge')),
+                  )),
+                settingRow(t('lookBrand'), null,
+                  h('select', {
+                    className: 'uc-select',
+                    value: lookSnapshot.brand,
+                    disabled: !lookSnapshot.enabled,
+                    onChange: (event) => {
+                      look.brand = event.target.value
+                      saveLookPrefs()
+                      applyLook()
+                      lookUpdate()
+                    },
+                  },
+                    h('option', { value: 'default' }, t('lookBrandDefault')),
+                    h('option', { value: 'indigo' }, t('lookBrandIndigo')),
+                    h('option', { value: 'violet' }, t('lookBrandViolet')),
+                    h('option', { value: 'green' }, t('lookBrandGreen')),
+                    h('option', { value: 'amber' }, t('lookBrandAmber')),
+                  )),
+                h('p', { className: 'uc-perf-hint' }, t('lookHint')),
               ),
             )
           : null,
@@ -2638,75 +2707,6 @@ html[data-dsh-noanim="1"] [data-animating] {
                 h('button', { type: 'button', className: 'uc-btn uc-btn-ghost', onClick: () => openFolder('safe') }, t('openSafeFolder')),
               ),
               h('p', { className: 'uc-folder-hint' }, t('safeModeHint')),
-            )
-          : null,
-
-        tab === 'add'
-          ? h('section', { className: 'uc-card' },
-              h('div', { className: 'uc-card-head' },
-                h('div', { className: 'uc-card-title' }, t('lookTitle')),
-              ),
-              h('div', { className: 'uc-perf' },
-                settingRow(t('lookEnabled'), t('lookEnabledHint'), switchControl(lookSnapshot.enabled, () => {
-                  look.enabled = !look.enabled
-                  saveLookPrefs()
-                  applyLook()
-                  lookUpdate()
-                })),
-                settingRow(t('lookRadius'), null,
-                  h('select', {
-                    className: 'uc-select',
-                    value: lookSnapshot.radius,
-                    disabled: !lookSnapshot.enabled,
-                    onChange: (event) => {
-                      look.radius = event.target.value
-                      saveLookPrefs()
-                      applyLook()
-                      lookUpdate()
-                    },
-                  },
-                    h('option', { value: 'compact' }, t('lookRadiusCompact')),
-                    h('option', { value: 'standard' }, t('lookRadiusStandard')),
-                    h('option', { value: 'round' }, t('lookRadiusRound')),
-                  )),
-                settingRow(t('lookFont'), null,
-                  h('select', {
-                    className: 'uc-select',
-                    value: String(lookSnapshot.fontScale),
-                    disabled: !lookSnapshot.enabled,
-                    onChange: (event) => {
-                      const value = Number(event.target.value)
-                      if (!LOOK_FONT_SCALES.includes(value)) return
-                      look.fontScale = value
-                      saveLookPrefs()
-                      applyLook()
-                      lookUpdate()
-                    },
-                  },
-                    h('option', { value: '0.94' }, t('lookFontSmall')),
-                    h('option', { value: '1' }, t('lookFontStandard')),
-                    h('option', { value: '1.06' }, t('lookFontLarge')),
-                  )),
-                settingRow(t('lookBrand'), null,
-                  h('select', {
-                    className: 'uc-select',
-                    value: lookSnapshot.brand,
-                    disabled: !lookSnapshot.enabled,
-                    onChange: (event) => {
-                      look.brand = event.target.value
-                      saveLookPrefs()
-                      applyLook()
-                      lookUpdate()
-                    },
-                  },
-                    h('option', { value: 'default' }, t('lookBrandDefault')),
-                    h('option', { value: 'indigo' }, t('lookBrandIndigo')),
-                    h('option', { value: 'violet' }, t('lookBrandViolet')),
-                    h('option', { value: 'green' }, t('lookBrandGreen')),
-                    h('option', { value: 'amber' }, t('lookBrandAmber')),
-                  )),
-                h('p', { className: 'uc-perf-hint' }, t('lookHint')),
-              ),
             )
           : null,
 

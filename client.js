@@ -181,20 +181,20 @@ html[data-dsh-glass="1"] #dsh-concierge-glass {
 #dsh-concierge-glass > div:first-child {
   position: absolute;
   inset: 0;
-  /* 一套冷调、低饱和的底色：三团大而软的灰蓝，不再是四色相拼。面板是半透明的，
-     壁纸的色相会直接染到面板上——四色相会让人看到粉/黄/青混在文字底下。 */
+  /* 冷调三团色：蓝 / 淡紫 / 青。底色压到中灰蓝，色块中心是实色——玻璃要「看得出
+     在透」，背后必须有明暗和色相，否则半透明面板叠上去只是一片接近白的淡色。 */
   background:
-    radial-gradient(920px 640px at 14% 10%, rgba(186, 200, 224, 0.55), rgba(186, 200, 224, 0) 62%),
-    radial-gradient(860px 620px at 86% 8%, rgba(200, 202, 224, 0.45), rgba(200, 202, 224, 0) 64%),
-    radial-gradient(1000px 720px at 72% 98%, rgba(184, 206, 214, 0.45), rgba(184, 206, 214, 0) 66%),
-    linear-gradient(155deg, #f2f5fa 0%, #edf1f7 45%, #f4f7fb 78%, #f9fbfd 100%);
+    radial-gradient(900px 700px at 8% 0%, rgba(111, 154, 216, 1) 0%, rgba(111, 154, 216, 0) 60%),
+    radial-gradient(820px 640px at 96% 4%, rgba(154, 143, 208, 0.92) 0%, rgba(154, 143, 208, 0) 62%),
+    radial-gradient(940px 720px at 80% 104%, rgba(95, 176, 184, 0.95) 0%, rgba(95, 176, 184, 0) 62%),
+    linear-gradient(165deg, #dbe4f3 0%, #d5dfef 50%, #d9e9ea 100%);
 }
 html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-glass > div:first-child {
   background:
-    radial-gradient(920px 640px at 14% 10%, rgba(60, 74, 106, 0.55), rgba(60, 74, 106, 0) 62%),
-    radial-gradient(860px 620px at 86% 8%, rgba(66, 66, 96, 0.45), rgba(66, 66, 96, 0) 64%),
-    radial-gradient(1000px 720px at 72% 98%, rgba(40, 72, 88, 0.5), rgba(40, 72, 88, 0) 66%),
-    linear-gradient(155deg, #12171f 0%, #131a24 45%, #101720 78%, #0b1017 100%);
+    radial-gradient(900px 700px at 8% 0%, rgba(46, 74, 118, 1) 0%, rgba(46, 74, 118, 0) 60%),
+    radial-gradient(820px 640px at 96% 4%, rgba(74, 62, 118, 0.92) 0%, rgba(74, 62, 118, 0) 62%),
+    radial-gradient(940px 720px at 80% 104%, rgba(26, 84, 92, 0.95) 0%, rgba(26, 84, 92, 0) 62%),
+    linear-gradient(165deg, #10151d 0%, #121a24 50%, #0c1417 100%);
 }
 /* Grain: a tiled fractal-noise plate that rides ON the wallpaper layer, behind
    all content. It used to be a fixed overlay at z-index 2 above the page, which
@@ -241,10 +241,10 @@ html[data-dsh-glass="1"][data-fullscreen] #dsh-concierge-top { display: none; }
    包含块换成侧边栏，弹层会错位（dsh-glass-skin 的 README 也提到这一点）。
    壁纸是柔和的冷调渐变，不糊也看不出锯齿。 */
 html[data-dsh-glass="1"] [class*="_sidebarCol"] {
-  background: rgba(245, 247, 252, 0.52) !important;
+  background: rgba(245, 247, 252, 0.42) !important;
 }
 html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] [class*="_sidebarCol"] {
-  background: rgba(18, 22, 30, 0.6) !important;
+  background: rgba(18, 22, 30, 0.52) !important;
 }
 /* Real frosted glass: every surface blurs the pixels behind it, then gets the
    rim highlight and shadow that make it read as a pane instead of a tint.

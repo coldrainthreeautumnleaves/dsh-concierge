@@ -1103,6 +1103,9 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
 .uc-row-title { font-size: 13px; font-weight: 500; color: var(--dsw-alias-label-primary); }
 .uc-row-hint { margin-top: 3px; font-size: 11.5px; line-height: 1.5; color: var(--dsw-alias-label-secondary); }
 .uc-row-control { flex: 0 0 auto; padding-top: 2px; }
+.uc-progress { position: relative; height: 2px; border-radius: 2px; overflow: hidden; background: var(--dsw-alias-bg-layer-2); margin: -6px 0 4px; }
+.uc-progress::after { content: ''; position: absolute; top: 0; bottom: 0; width: 35%; border-radius: 2px; background: var(--uc-accent); animation: uc-progress-slide 1.1s ease-in-out infinite; }
+@keyframes uc-progress-slide { 0% { left: -35%; } 100% { left: 100%; } }
 .uc-tabs { display: flex; gap: 22px; border-bottom: 1px solid var(--dsw-alias-border-l1); margin: 0 0 2px; }
 .uc-tab { appearance: none; border: none; background: transparent; padding: 9px 1px 11px; font-size: 13px; color: var(--dsw-alias-label-secondary); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; transition: color .15s ease; }
 .uc-tab:hover { color: var(--dsw-alias-label-primary); }
@@ -1384,6 +1387,9 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
 
       const [boostState, setBoostState] = React.useState(null)
       const [boostBusy, setBoostBusy] = React.useState(false)
+      // Batch updates set busy to each row name in turn, so the batch button
+      // needs its own flag to show that the whole run is in progress.
+      const [bulkBusy, setBulkBusy] = React.useState(false)
 
       const loadBoost = React.useCallback(async () => {
         try {
@@ -1567,6 +1573,7 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
         if (pending.length === 0) return
         lockRef.current = true
         setNotice(null)
+        setBulkBusy(true)
         const results = []
         let failed = 0
         try {
@@ -1595,8 +1602,9 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
         } finally {
           lockRef.current = false
           setBusy(null)
+          setBulkBusy(false)
         }
-      }, [data, applyUpdate, load, restartReady])
+      }, [data, applyUpdate, load])
 
       // Rollback only for npm-installed plugins, and only one update flow at a time.
       const openRollback = React.useCallback(async (row) => {
@@ -2058,6 +2066,8 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
           tabButton('about', t('tabAbout')),
         ),
 
+        loading ? h('div', { className: 'uc-progress', role: 'progressbar' }) : null,
+
         data && data.pending && Array.isArray(data.pending.disabled) && data.pending.disabled.length > 0
           ? h('div', { className: 'uc-notice uc-notice-err' },
               h('span', null, t('pendingDisabled', {
@@ -2092,9 +2102,7 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
             )
           : null,
 
-        !data && loading
-          ? h('div', { className: 'uc-card' }, h('div', { className: 'uc-empty' }, h(IconRefresh, { spin: true }), h('span', null, t('checking'))))
-          : null,
+
 
         app && tab === 'update'
           ? h('section', { className: 'uc-hero' },
@@ -2219,7 +2227,7 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
                 className: 'uc-btn uc-btn-accent',
                 disabled: busy !== null,
                 onClick: updateAll,
-              }, busy === '__all__' ? t('updating') : `${t('updateAll')} ${updatable}`)
+              }, bulkBusy ? t('updating') : `${t('updateAll')} ${updatable}`)
             : null,
           h('button', { type: 'button', className: 'uc-btn', onClick: reloadUi }, t('reloadUi')),
           h('button', {

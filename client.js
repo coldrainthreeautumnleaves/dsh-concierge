@@ -126,13 +126,15 @@ html[data-dsh-resizing="1"] [data-slot="conversation.chat.flow"] > * {
   contain: layout paint;
 }
 /* dsh-better-sidebar compatibility: its explorer and task lists are not
-   virtualized either, so skip offscreen rows there too. The selectors are its
-   own stable attributes, so this is a no-op when the plugin is not installed. */
-[data-dsh-better-sidebar] [class*="_explorerRow"] {
+   virtualized either, so skip offscreen rows there too. It follows the same
+   switch as the chat rows, so turning "Skip offscreen rows" off disables this
+   as well. The selectors are its own stable attributes, so nothing happens
+   when the plugin is not installed. */
+html[data-dsh-offscreen="1"] [data-dsh-better-sidebar] [class*="_explorerRow"] {
   content-visibility: auto;
   contain-intrinsic-size: auto 28px;
 }
-[data-dsh-better-sidebar] [role="treeitem"] {
+html[data-dsh-offscreen="1"] [data-dsh-better-sidebar] [role="treeitem"] {
   content-visibility: auto;
   contain-intrinsic-size: auto 26px;
 }

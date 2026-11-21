@@ -2,6 +2,10 @@
 
 版本规则：每次发版，最后一位 +1（0.1.1 → 0.1.2 → …）。
 
+## 0.1.19
+
+- dsh-better-sidebar 的兼容样式跟随「屏幕外行跳过」开关，关掉即一起停用，不改它的任何文件
+
 ## 0.1.18
 
 - 兼容 dsh-better-sidebar：给它的文件树行（`[class*="_explorerRow"]`）和任务树行（`[role="treeitem"]`）加 `content-visibility`，屏幕外的行不参与布局，大目录不再拖慢整页

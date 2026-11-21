@@ -1041,7 +1041,16 @@ async function requestAppRestart(ctx) {
     '}',
   ]
   await writeFile(script, lines.join('\n'), 'utf8')
-  const commandLine = `powershell.exe -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File "${script}"`
+  // A console program created through WMI still flashes a console window before
+  // -WindowStyle Hidden takes effect. wscript.exe is a GUI process, so starting
+  // it produces no console at all, and it then runs PowerShell with style 0.
+  const helperVbs = path.join(dir, 'restart-helper.vbs')
+  await writeFile(
+    helperVbs,
+    `Set shell = CreateObject("WScript.Shell")\r\nshell.Run "powershell -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File ""${quote(script)}""", 0, False\r\n`,
+    'utf8',
+  )
+  const commandLine = `wscript.exe "${helperVbs}"`
   const wmi = `Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{CommandLine='${quote(commandLine)}'}`
   const helper = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-Command', wmi], {
     stdio: 'ignore',

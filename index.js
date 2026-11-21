@@ -510,6 +510,7 @@ async function handleSettings(request, response) {
 // reports back through a JSON file the page polls.
 const STARTUP_BOOST_FILE = path.join(SAFE_DIR, 'startup-boost.json')
 const STARTUP_BOOST_SCRIPT = path.join(SAFE_DIR, 'startup-boost.ps1')
+const STARTUP_BOOST_LAUNCHER = path.join(SAFE_DIR, 'startup-boost-launch.ps1')
 
 function startupBoostPaths() {
   return [
@@ -574,15 +575,24 @@ async function handleStartupBoost(request, response) {
     const enabled = body.enabled === true
     await mkdir(SAFE_DIR, { recursive: true })
     await writeFile(STARTUP_BOOST_SCRIPT, `\uFEFF${buildStartupBoostScript(enabled)}`, 'utf8')
-    // Run it elevated; the script writes the result file when it finishes.
-    const quotedScript = STARTUP_BOOST_SCRIPT.replace(/'/g, "''")
-    spawn('powershell.exe', [
+    // Elevation lives in its own .ps1: passing the whole Start-Process call as
+    // a -Command string got mangled by Node's Windows argument quoting.
+    await writeFile(
+      STARTUP_BOOST_LAUNCHER,
+      `\uFEFF$ErrorActionPreference = 'Stop'\r\nStart-Process powershell -Verb RunAs -ArgumentList @('-NoProfile','-ExecutionPolicy','Bypass','-File','${STARTUP_BOOST_SCRIPT.replace(/'/g, "''")}')\r\n`,
+      'utf8',
+    )
+    // detached: true puts the child in a new process group and the elevation
+    // prompt then never shows; a plain spawn lets Windows raise UAC normally.
+    const child = spawn('powershell.exe', [
       '-NoProfile',
       '-ExecutionPolicy',
       'Bypass',
-      '-Command',
-      `Start-Process powershell -Verb RunAs -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-File','${quotedScript}'`,
-    ], { detached: true, stdio: 'ignore' }).unref()
+      '-File',
+      STARTUP_BOOST_LAUNCHER,
+    ], { stdio: 'ignore', windowsHide: true })
+    child.on('error', () => {})
+    child.unref()
     sendNodeJson(response, { ok: true, launched: true }, 200)
   } catch (error) {
     sendNodeJson(response, { ok: false, error: messageOf(error) }, 500)

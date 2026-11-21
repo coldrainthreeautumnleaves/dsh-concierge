@@ -687,6 +687,7 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
       boostOff: '已关闭，排除项已移除',
       boostUnknown: '还没设置过：打开开关会弹一次 UAC，确认后生效',
       boostWaiting: '等待 UAC 确认…',
+      boostTimeout: '没等到提权结果：UAC 可能被取消，或系统不允许弹窗。可以双击 E:\\全局\\fix_startup_speed.cmd 手动执行。',
       perfTitle: '聊天性能',
       perfFps: '帧率',
       perfRows: '消息行',
@@ -881,6 +882,7 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
       boostOff: 'Off — exclusions removed',
       boostUnknown: 'Not set yet: turning it on shows one UAC prompt',
       boostWaiting: 'Waiting for the UAC prompt…',
+      boostTimeout: 'No result from the elevation prompt: UAC was probably cancelled. You can run fix_startup_speed.cmd by hand instead.',
       perfTitle: 'Chat performance',
       perfFps: 'FPS',
       perfRows: 'Rows',
@@ -1397,10 +1399,14 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
         void loadBoost()
       }, [loadBoost])
 
+      const [boostTimeout, setBoostTimeout] = React.useState(false)
+
       const toggleBoost = React.useCallback(async () => {
         if (boostBusy) return
         const next = !(boostState && boostState.enabled)
         setBoostBusy(true)
+        setBoostTimeout(false)
+        let done = false
         try {
           await fetch(`${API}/startup-boost`, {
             method: 'POST',
@@ -1414,6 +1420,7 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
             const body = await response.json().catch(() => null)
             if (body && body.ok && body.state && body.state.enabled === next) {
               setBoostState(body.state)
+              done = true
               break
             }
           }
@@ -1421,6 +1428,7 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
           /* ignore */
         } finally {
           setBoostBusy(false)
+          if (!done) setBoostTimeout(true)
         }
       }, [boostState, boostBusy])
 
@@ -2537,11 +2545,13 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
             h('p', { className: 'uc-perf-hint' },
               boostBusy
                 ? t('boostWaiting')
-                : !boostState
-                  ? t('boostUnknown')
-                  : boostState.enabled
-                    ? t('boostOn', { time: boostState.at ? new Date(boostState.at).toLocaleString() : '' })
-                    : t('boostOff')),
+                : boostTimeout
+                  ? t('boostTimeout')
+                  : !boostState
+                    ? t('boostUnknown')
+                    : boostState.enabled
+                      ? t('boostOn', { time: boostState.at ? new Date(boostState.at).toLocaleString() : '' })
+                      : t('boostOff')),
           ),
         ) : null,
 

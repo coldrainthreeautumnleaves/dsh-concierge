@@ -546,13 +546,16 @@ foreach ($p in $paths) {
     $result.errors += $_.Exception.Message
   }
 }
-$result | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath '${STARTUP_BOOST_FILE.replace(/'/g, "''")}' -Encoding UTF8
+$json = $result | ConvertTo-Json -Depth 4
+[System.IO.File]::WriteAllText('${STARTUP_BOOST_FILE.replace(/'/g, "''")}', $json, (New-Object System.Text.UTF8Encoding($false)))
 `
 }
 
 async function readStartupBoost() {
   try {
-    const parsed = JSON.parse(await readFile(STARTUP_BOOST_FILE, 'utf8'))
+    // PowerShell's Set-Content -Encoding UTF8 writes a BOM; JSON.parse chokes on it.
+    const text = (await readFile(STARTUP_BOOST_FILE, 'utf8')).replace(/^\uFEFF/, '')
+    const parsed = JSON.parse(text)
     return parsed && typeof parsed === 'object' ? parsed : null
   } catch {
     return null

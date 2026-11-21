@@ -357,6 +357,9 @@ html[data-dsh-noanim="1"] [data-animating] {
         const blocking = Math.round(longTaskLog.reduce((sum, entry) => sum + entry.d, 0))
         const history = perf.history.length >= 40 ? perf.history.slice(-39) : perf.history.slice()
         history.push({ count: longTaskLog.length, ms: blocking })
+        // Peak over the visible window only: a sticky maximum kept showing the
+        // startup spike forever, which read as "the peak is always huge".
+        const peak = history.reduce((max, item) => Math.max(max, item.ms), 0)
         // Hysteresis on the long-chat mode too: enter above 60 rows, leave below
         // 50, so a conversation hovering at the threshold does not flicker.
         const nextLong = perf.longPref ? (perf.longActive ? rows > 50 : rows > 60) : false
@@ -367,7 +370,7 @@ html[data-dsh-noanim="1"] [data-animating] {
           longTasks: longTaskLog.length,
           blocking,
           history,
-          peak: Math.max(perf.peak, blocking),
+          peak,
         })
         applyPerfStreaming()
         applyPerfMode()
@@ -745,7 +748,7 @@ html[data-dsh-noanim="1"] [data-animating] {
       perfNoAnimHint: '去掉滑动动画，瞬间完成',
       perfOffscreen: '屏幕外行跳过',
       perfHint: '帧率 5 秒平均，长任务看最近 10 秒。',
-      perfPeak: '峰值 {ms}ms',
+      perfPeak: '近 80 秒峰值 {ms}ms',
       perfRefresh: '刷新率',
       perfRefreshHint: '默认跟随屏幕刷新率',
       perfRefreshAuto: '自动识别',
@@ -948,7 +951,7 @@ html[data-dsh-noanim="1"] [data-animating] {
       perfNoAnimHint: 'Drop the slide, collapse instantly',
       perfOffscreen: 'Skip offscreen rows',
       perfHint: 'FPS is a 5s average; long tasks cover 10s.',
-      perfPeak: 'peak {ms}ms',
+      perfPeak: '80s peak {ms}ms',
       perfRefresh: 'Refresh rate',
       perfRefreshHint: 'Follows the display refresh by default',
       perfRefreshAuto: 'Auto detect',

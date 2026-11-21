@@ -1575,8 +1575,8 @@ html[data-dsh-noanim="1"] [data-animating] {
 .uc-safe { padding: 12px 16px; border-radius: 12px; }
 
 /* --- own layout: vertical rail + content pane (not the official tab strip) --- */
-.uc-shell { display: grid; grid-template-columns: 172px minmax(0, 1fr); gap: 24px; align-items: start; }
-.uc-rail { display: flex; flex-direction: column; gap: 2px; position: sticky; top: 4px; }
+.uc-shell { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 14px; align-items: start; }
+.uc-rail { display: flex; flex-direction: column; gap: 2px; position: sticky; top: 4px; padding-right: 10px; border-right: 1px solid var(--dsw-alias-border-l1); }
 .uc-tab { width: 100%; text-align: left; padding: 9px 12px; border-radius: 9px; border-bottom: none; margin: 0; font-size: 13px; }
 .uc-tab:hover { background: var(--dsw-alias-bg-layer-2); }
 .uc-tab[data-active="true"] { background: var(--dsw-alias-bg-layer-2); color: var(--uc-accent); font-weight: 600; box-shadow: inset 2px 0 0 var(--uc-accent); }

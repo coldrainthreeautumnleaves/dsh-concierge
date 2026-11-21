@@ -176,6 +176,19 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] body::before {
 /* Overlays keep their own frost so they read as floating above the app frame.
    The attribute/class hooks mirror what dsh-skin-master keys on: the shell's
    own overlay marker plus the CSS-module prefixes the popups carry. */
+/* Grain: a tiled fractal-noise plate above everything. Low opacity only — it
+   adds the "sand" of real frosted glass without touching text legibility. */
+html[data-dsh-glass="1"] body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  opacity: var(--dsh-glass-grain, 0);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 140px 140px;
+  mix-blend-mode: overlay;
+}
 html[data-dsh-glass="1"] [role="dialog"],
 html[data-dsh-glass="1"] [role="alertdialog"],
 html[data-dsh-glass="1"] [role="menu"],
@@ -513,6 +526,7 @@ html[data-dsh-glass="1"] .uc-banner {
       preference: 'system',
       fontStep: 0,
       codeFont: 'default',
+      grain: 0.06,
     }
     const LOOK_PREFERENCES = ['system', 'light', 'dark']
     const LOOK_FONT_STEPS = [-1, 0, 1]
@@ -681,6 +695,9 @@ html[data-dsh-glass="1"] .uc-banner {
         if (typeof parsed.preference === 'string' && LOOK_PREFERENCES.includes(parsed.preference)) look.preference = parsed.preference
         if (LOOK_FONT_STEPS.includes(parsed.fontStep)) look.fontStep = parsed.fontStep
         if (typeof parsed.codeFont === 'string' && parsed.codeFont in LOOK_CODE_FONTS) look.codeFont = parsed.codeFont
+        if (typeof parsed.grain === 'number' && Number.isFinite(parsed.grain)) {
+          look.grain = Math.max(0, Math.min(0.2, parsed.grain))
+        }
         if (parsed.custom) {
           const result = normalizeCustomTokens(parsed.custom)
           if (result.tokens) look.custom = result.tokens
@@ -700,6 +717,7 @@ html[data-dsh-glass="1"] .uc-banner {
           preference: look.preference,
           fontStep: look.fontStep,
           codeFont: look.codeFont,
+          grain: look.grain,
         }))
       } catch {
         /* storage unavailable */
@@ -792,10 +810,12 @@ html[data-dsh-glass="1"] .uc-banner {
       const root = document.documentElement
       if (look.skin === 'glass') {
         root.dataset.dshGlass = '1'
+        root.style.setProperty('--dsh-glass-grain', String(look.grain))
         syncGlassScheme()
       } else {
         delete root.dataset.dshGlass
         delete root.dataset.dshGlassScheme
+        root.style.removeProperty('--dsh-glass-grain')
       }
     }
 
@@ -1147,6 +1167,7 @@ html[data-dsh-glass="1"] .uc-banner {
       lookSkinInk: '墨色',
       lookSkinOcean: '海洋',
       lookSkinGlass: '玻璃',
+      lookGrain: '颗粒',
       lookSkinCustom: '自定义',
       lookApply: '应用',
       lookReset: '重置为柔和',
@@ -1379,6 +1400,7 @@ html[data-dsh-glass="1"] .uc-banner {
       lookSkinInk: 'Ink',
       lookSkinOcean: 'Ocean',
       lookSkinGlass: 'Glass',
+      lookGrain: 'Grain',
       lookSkinCustom: 'Custom',
       lookApply: 'Apply',
       lookReset: 'Reset to Soft',
@@ -2843,6 +2865,28 @@ html[data-dsh-glass="1"] .uc-banner {
                     h('option', { value: 'glass' }, t('lookSkinGlass')),
                     h('option', { value: 'custom' }, t('lookSkinCustom')),
                   )),
+                lookSnapshot.skin === 'glass'
+                  ? settingRow(t('lookGrain'), null,
+                      h('div', { className: 'uc-typer' },
+                        h('input', {
+                          type: 'range',
+                          min: 0,
+                          max: 20,
+                          step: 1,
+                          value: Math.round((lookSnapshot.grain || 0) * 100),
+                          disabled: !lookSnapshot.enabled,
+                          onChange: (event) => {
+                            const value = Number(event.target.value)
+                            if (!Number.isFinite(value)) return
+                            look.grain = Math.max(0, Math.min(0.2, Math.round(value) / 100))
+                            saveLookPrefs()
+                            applyLook()
+                            lookUpdate()
+                          },
+                        }),
+                        h('span', { className: 'uc-typer-value' }, `${Math.round((lookSnapshot.grain || 0) * 100)}%`),
+                      ))
+                  : null,
                 settingRow(t('lookBrand'), null,
                   h('select', {
                     className: 'uc-select',

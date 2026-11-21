@@ -2,6 +2,10 @@
 
 版本规则：每次发版，最后一位 +1（0.1.1 → 0.1.2 → …）。
 
+## 0.1.41
+
+- 玻璃皮肤加「颗粒」滑杆（0–20%，默认 6%）：整层 SVG 分形噪点 + `mix-blend-mode: overlay`，补上磨砂玻璃的沙感；只在玻璃皮肤下出现
+
 ## 0.1.40
 
 - 参考 dsh-skin-master 的做法补齐浮层：除了 `[role=dialog|menu|tooltip]`，再接上官方外壳自己的 `[data-shell-overlay="true"] [data-slot] > *` 和 CSS-module 前缀 `_menu` / `_portal_`，弹窗和右键菜单不会漏

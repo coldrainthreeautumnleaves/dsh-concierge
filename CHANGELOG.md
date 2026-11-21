@@ -2,6 +2,11 @@
 
 版本规则：每次发版，最后一位 +1（0.1.1 → 0.1.2 → …）。
 
+## 0.1.30
+
+- 修复重启后窗口不出来：启动应用时不再带 `-WindowStyle Hidden`（那是给控制台用的，GUI 应用会被一起隐藏）
+- 外观微调：品牌色同时覆盖 `button-primary-fill` 和 `state-business-primary`；字号改成缩放「复合字体 token」——组件用的是 `font: var(--dsw-font-xs-13)`，改 `-font-size` 子 token 没用
+
 ## 0.1.29
 
 - 外观微调的字号缩放加 CSSOM 兜底：Chromium 不保证把 `--dsw-*` 自定义属性列进 `getComputedStyle`，扫不到时改从样式表里取

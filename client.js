@@ -497,28 +497,32 @@ html[data-dsh-noanim="1"] [data-animating] {
       }
     }
 
-    // 官方字号 token 形如 --dsw-font-xs-13-font-size，先把原始 px 读出来再按倍率写回，
-    // 这样反复切换不会叠加。
-    function readFontSizes() {
+    // 官方字号是「复合 token」，形如 --dsw-font-xs-13: 13px/20px var(--dsw-font-family)，
+    // 组件用的是 font: var(--dsw-font-xs-13)。所以缩放要改复合值本身（把里面的 px 按倍率
+    // 重写），改 -font-size 子 token 是没用的。原始值缓存下来，反复切换不叠加。
+    const FONT_TOKEN_RE = /^--dsw-font-.*-\d+$/
+    const FONT_TOKEN_RE_FALLBACK = /^--dsw-font-.*-\d+$/
+
+    function readFontTokens() {
       if (lookFontOriginals) return lookFontOriginals
       const map = new Map()
       const add = (name, value) => {
-        const px = parseFloat(value)
-        if (Number.isFinite(px) && px > 0) map.set(name, px)
+        if (!FONT_TOKEN_RE.test(name)) return
+        if (typeof value !== 'string' || !/\d/.test(value)) return
+        map.set(name, value.trim())
       }
-      // Chromium 不一定把自定义属性列进 getComputedStyle 的枚举里，所以再用
-      // CSSOM 扫一遍样式表兜底。
       try {
         const computed = getComputedStyle(document.documentElement)
         for (let index = 0; index < computed.length; index += 1) {
           const name = computed[index]
-          if (typeof name !== 'string' || !name.startsWith('--dsw-font-') || !name.endsWith('-font-size')) continue
+          if (typeof name !== 'string') continue
           add(name, computed.getPropertyValue(name))
         }
       } catch {
         /* ignore */
       }
       if (map.size === 0) {
+        // Chromium 不一定枚举自定义属性，退回扫样式表。
         try {
           for (const sheet of document.styleSheets) {
             let rules = []
@@ -532,7 +536,8 @@ html[data-dsh-noanim="1"] [data-animating] {
               if (!style) continue
               for (let index = 0; index < style.length; index += 1) {
                 const name = style[index]
-                if (name.startsWith('--dsw-font-') && name.endsWith('-font-size')) add(name, style.getPropertyValue(name))
+                if (!FONT_TOKEN_RE_FALLBACK.test(name)) continue
+                add(name, style.getPropertyValue(name))
               }
             }
           }
@@ -544,22 +549,38 @@ html[data-dsh-noanim="1"] [data-animating] {
       return map
     }
 
+    function scaleFontValue(value, factor) {
+      return value.replace(/(\d*\.?\d+)px/g, (_match, number) => {
+        const scaled = Number.parseFloat(number) * factor
+        return `${Math.round(scaled * 100) / 100}px`
+      })
+    }
+
+    // 主色在不同组件里走的 token 不一样：按钮走 button-primary-fill（引用 brand-primary），
+    // 会话/日程/编排走 state-business-primary，所以一起覆盖才看得出变化。
+    const LOOK_BRAND_TOKENS = [
+      '--dsw-alias-brand-primary',
+      '--dsw-alias-brand-text',
+      '--dsw-alias-button-primary-fill',
+      '--dsw-alias-state-business-primary',
+    ]
+
     function applyLook() {
       if (typeof document === 'undefined') return
       const root = document.documentElement
-      const sizes = readFontSizes()
+      const fonts = readFontTokens()
       for (const key of ['xs', 'sm', 'md', 'lg', 'xl', 'panel']) root.style.removeProperty(`--dsw-radius-${key}`)
-      root.style.removeProperty('--dsw-alias-brand-primary')
-      for (const name of sizes.keys()) root.style.removeProperty(name)
+      for (const name of LOOK_BRAND_TOKENS) root.style.removeProperty(name)
+      for (const name of fonts.keys()) root.style.removeProperty(name)
       delete root.dataset.dshLook
       if (!look.enabled) return
       root.dataset.dshLook = '1'
       const radius = LOOK_RADII[look.radius]
       if (radius) for (const [key, value] of Object.entries(radius)) root.style.setProperty(`--dsw-radius-${key}`, value)
       const brand = LOOK_BRANDS[look.brand]
-      if (brand) root.style.setProperty('--dsw-alias-brand-primary', brand)
+      if (brand) for (const name of LOOK_BRAND_TOKENS) root.style.setProperty(name, brand)
       if (look.fontScale !== 1) {
-        for (const [name, px] of sizes) root.style.setProperty(name, `${(px * look.fontScale).toFixed(2)}px`)
+        for (const [name, value] of fonts) root.style.setProperty(name, scaleFontValue(value, look.fontScale))
       }
     }
 

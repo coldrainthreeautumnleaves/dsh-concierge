@@ -105,7 +105,7 @@ $json | ConvertTo-Json -Depth 100 | Set-Content $pkg -Encoding UTF8
 
 Write-Host '已进入安全模式：只加载官方插件，第三方插件已临时停用。' -ForegroundColor Green
 Write-Host '恢复：双击 restore-mode.cmd'
-Start-Process -FilePath $exe -WindowStyle Hidden
+Start-Process -FilePath $exe
 if (-not $Silent) { Read-Host '按回车关闭窗口' }
 `
 
@@ -136,7 +136,7 @@ if (Test-Path (Join-Path $backupDir 'cordis.patch.yml')) {
 Write-Host '已恢复原来的插件配置。' -ForegroundColor Green
 # 手动恢复后清零自动恢复的计数，避免下次启动又触发一次。
 @{ cleanStarts = 0; restoreAttempts = 0 } | ConvertTo-Json | Set-Content -Path (Join-Path $env:USERPROFILE '.dsh\update-center\safe-state.json') -Encoding UTF8
-Start-Process -FilePath $exe -WindowStyle Hidden
+Start-Process -FilePath $exe
 if (-not $Silent) { Read-Host '按回车关闭窗口' }
 `
 
@@ -167,7 +167,7 @@ $running = Get-Process -Name 'DeepSeek Harness' -ErrorAction SilentlyContinue
 if ($running) { Write-Host '应用已经在运行。' -ForegroundColor Yellow; if (-not $Silent) { Read-Host '按回车退出' }; exit 0 }
 
 $state = ReadState
-Start-Process -FilePath $exe -WindowStyle Hidden
+Start-Process -FilePath $exe
 Write-Host '正在启动，观察 30 秒看是否崩溃...'
 Note 'started, watching'
 Start-Sleep -Seconds 30
@@ -187,7 +187,7 @@ if ($alive) {
     Copy-Item (Join-Path $backupDir 'package.json') $pkg -Force
     if (Test-Path (Join-Path $backupDir 'cordis.patch.yml')) { Copy-Item (Join-Path $backupDir 'cordis.patch.yml') $patch -Force }
     WriteState 0 ($state.restoreAttempts + 1)
-    Start-Process -FilePath $exe -WindowStyle Hidden
+    Start-Process -FilePath $exe
     Note 'restored and restarted'
   }
   if (-not $Silent) { Read-Host '按回车关闭窗口' }
@@ -208,7 +208,7 @@ $json.dsh.profile.bundles = @($json.dsh.profile.bundles | Where-Object { $_ -lik
 $json | ConvertTo-Json -Depth 100 | Set-Content $pkg -Encoding UTF8
 WriteState 0 $state.restoreAttempts
 
-Start-Process -FilePath $exe -WindowStyle Hidden
+Start-Process -FilePath $exe
 Write-Host '已用安全模式重启（只加载官方插件）。连续两次正常启动后会自动恢复；也可以双击 restore-mode.cmd 立即恢复。' -ForegroundColor Green
 if (-not $Silent) { Read-Host '按回车关闭窗口' }
 `
@@ -220,7 +220,7 @@ $exe = Join-Path $env:LOCALAPPDATA 'Programs\DeepSeek Harness\DeepSeek Harness.e
 $running = Get-Process -Name 'DeepSeek Harness' -ErrorAction SilentlyContinue
 if ($running) { Write-Host '应用已经在运行。' -ForegroundColor Yellow; if (-not $Silent) { Read-Host '按回车退出' }; exit 0 }
 
-Start-Process -FilePath $exe -WindowStyle Hidden
+Start-Process -FilePath $exe
 Write-Host '已启动（自动安全模式已关闭）。' -ForegroundColor Green
 `
 
@@ -1102,7 +1102,7 @@ async function requestAppRestart(ctx) {
     "Note 'all instances gone'",
     'Start-Sleep -Seconds 1',
     'for ($i = 0; $i -lt 3; $i++) {',
-    '  Start-Process -FilePath $exe -WindowStyle Hidden',
+    '  Start-Process -FilePath $exe',
     '  Note "launched $i"',
     '  Start-Sleep -Seconds 10',
     '  $p = Get-Process | Where-Object { $_.Path -eq $exe }',

@@ -10,23 +10,20 @@
     --dsw-alias-border-l1: #e3e6ec;
     --dsw-alias-label-primary: #14171c;
     --dsw-alias-label-secondary: #6b7280;
-    --dsw-alias-state-success-primary: #16a34a;
     --uc-accent: #4f6ef7;
   }
   body { margin: 0; padding: 28px; background: #f2f4f8; font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif; color: #14171c; }
-  .dialog { max-width: 1150px; margin: 0 auto; background: #fff; border-radius: 16px; padding: 28px 32px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
-  .uc-root { display: flex; flex-direction: column; gap: 20px; max-width: 880px; padding: 10px 0 40px; font-size: 13px; }
-  .uc-kicker { font-size: 11px; color: #6b7280; margin-bottom: 6px; }
-  .uc-title { margin: 0; font-size: 21px; font-weight: 650; }
-  .uc-sub { margin: 0; font-size: 12px; color: #6b7280; }
-  .uc-shell { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 14px; align-items: start; }
-  .uc-rail { display: flex; flex-direction: column; gap: 2px; padding-right: 10px; border-right: 1px solid #e3e6ec; }
-  .uc-tab { width: 100%; text-align: left; padding: 9px 12px; border-radius: 9px; border: none; background: transparent; font-size: 13px; color: #6b7280; cursor: pointer; font-family: inherit; }
-  .uc-tab:hover { background: #eef0f4; }
-  .uc-tab[data-active="true"] { background: #eef0f4; color: #4f6ef7; font-weight: 600; box-shadow: inset 2px 0 0 #4f6ef7; }
-  .uc-pane { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
-  .uc-card { border: 1px solid #e3e6ec; border-radius: 16px; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
-  .uc-card-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px 12px; font-weight: 600; font-size: 13.5px; }
+  .dialog { max-width: 1000px; margin: 0 auto; background: #fff; border-radius: 16px; padding: 26px 30px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+  .uc-root { display: flex; flex-direction: column; gap: 16px; max-width: 780px; padding: 8px 0 36px; font-size: 13px; }
+  .uc-kicker { font-size: 11px; color: #6b7280; margin-bottom: 5px; }
+  .uc-title { margin: 0 0 4px; font-size: 20px; font-weight: 650; letter-spacing: -.01em; }
+  .uc-sub { margin: 0; color: #6b7280; font-size: 12px; }
+  .uc-tabs { display: inline-flex; gap: 2px; padding: 3px; border: 1px solid #e3e6ec; border-radius: 999px; background: #eef0f4; width: fit-content; }
+  .uc-tab { padding: 6px 14px; border-radius: 999px; border: none; background: transparent; font-size: 12.5px; color: #6b7280; cursor: pointer; font-family: inherit; }
+  .uc-tab:hover { color: #14171c; }
+  .uc-tab[data-active="true"] { background: #fff; color: #4f6ef7; font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+  .uc-card { border: 1px solid #e3e6ec; border-radius: 14px; background: #fff; overflow: hidden; }
+  .uc-card-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px 10px; font-weight: 600; font-size: 13.5px; }
   .uc-rows { display: flex; flex-direction: column; }
   .uc-row { display: flex; align-items: center; gap: 12px; padding: 12px 18px; border-top: 1px solid #eef0f4; }
   .uc-row:hover { background: #f7f8fa; }
@@ -45,63 +42,61 @@
   <div class="dialog">
     <div class="uc-root">
       <div class="uc-head">
-        <div class="uc-kicker">应用本体</div>
-        <h1 class="uc-title">维护中心</h1>
-        <p class="uc-sub">更新应用与插件，顺便盯着聊天性能</p>
-      </div>
-      <div class="uc-shell">
-        <nav class="uc-rail">
-          <button class="uc-tab">更新</button>
-          <button class="uc-tab" data-active="true">插件</button>
-          <button class="uc-tab">工具</button>
-          <button class="uc-tab">性能</button>
-          <button class="uc-tab">打字机</button>
-          <button class="uc-tab">关于</button>
-        </nav>
-        <div class="uc-pane">
-          <section class="uc-card">
-            <div class="uc-card-head">插件</div>
-            <div class="uc-rows">
-              <div class="uc-row">
-                <div class="uc-row-main">
-                  <div class="uc-row-name"><span>插件市场 Beta 增强版</span><span class="uc-tag">npm</span></div>
-                  <div class="uc-row-pkg">dsh-market-beta-enhanced-very-long-package-name</div>
-                </div>
-                <div class="uc-row-act">
-                  <span class="uc-muted">5.10.0</span>
-                  <button class="uc-btn">回退</button>
-                  <button class="uc-btn">禁用</button>
-                  <button class="uc-btn">卸载</button>
-                </div>
-              </div>
-              <div class="uc-row">
-                <div class="uc-row-main">
-                  <div class="uc-row-name"><span>侧边卡片</span><span class="uc-tag">npm</span></div>
-                  <div class="uc-row-pkg">dsh-better-sidebar</div>
-                </div>
-                <div class="uc-row-act">
-                  <span class="uc-muted">0.32.1</span>
-                  <button class="uc-btn">回退</button>
-                  <button class="uc-btn">禁用</button>
-                  <button class="uc-btn">卸载</button>
-                </div>
-              </div>
-              <div class="uc-row">
-                <div class="uc-row-main">
-                  <div class="uc-row-name"><span>移动端网页</span><span class="uc-tag">npm</span></div>
-                  <div class="uc-row-pkg">dsh-web-mobile</div>
-                </div>
-                <div class="uc-row-act">
-                  <span class="uc-muted">3.3.6</span>
-                  <button class="uc-btn">回退</button>
-                  <button class="uc-btn">禁用</button>
-                  <button class="uc-btn">卸载</button>
-                </div>
-              </div>
-            </div>
-          </section>
+        <div>
+          <div class="uc-kicker">应用本体</div>
+          <h1 class="uc-title">维护中心</h1>
+          <p class="uc-sub">更新应用与插件，顺便盯着聊天性能</p>
         </div>
       </div>
+      <div class="uc-tabs" role="tablist">
+        <button class="uc-tab">更新</button>
+        <button class="uc-tab" data-active="true">插件</button>
+        <button class="uc-tab">工具</button>
+        <button class="uc-tab">性能</button>
+        <button class="uc-tab">打字机</button>
+        <button class="uc-tab">关于</button>
+      </div>
+      <section class="uc-card">
+        <div class="uc-card-head"><span>插件</span><span class="uc-muted">全部 13 · 可更新 0</span></div>
+        <div class="uc-rows">
+          <div class="uc-row">
+            <div class="uc-row-main">
+              <div class="uc-row-name"><span>插件市场 Beta 增强版</span><span class="uc-tag">npm</span></div>
+              <div class="uc-row-pkg">dsh-market-beta-enhanced-very-long-package-name</div>
+            </div>
+            <div class="uc-row-act">
+              <span class="uc-muted">5.10.0</span>
+              <button class="uc-btn">回退</button>
+              <button class="uc-btn">禁用</button>
+              <button class="uc-btn">卸载</button>
+            </div>
+          </div>
+          <div class="uc-row">
+            <div class="uc-row-main">
+              <div class="uc-row-name"><span>侧边卡片</span><span class="uc-tag">npm</span></div>
+              <div class="uc-row-pkg">dsh-better-sidebar</div>
+            </div>
+            <div class="uc-row-act">
+              <span class="uc-muted">0.32.1</span>
+              <button class="uc-btn">回退</button>
+              <button class="uc-btn">禁用</button>
+              <button class="uc-btn">卸载</button>
+            </div>
+          </div>
+          <div class="uc-row">
+            <div class="uc-row-main">
+              <div class="uc-row-name"><span>移动端网页</span><span class="uc-tag">npm</span></div>
+              <div class="uc-row-pkg">dsh-web-mobile</div>
+            </div>
+            <div class="uc-row-act">
+              <span class="uc-muted">3.3.6</span>
+              <button class="uc-btn">回退</button>
+              <button class="uc-btn">禁用</button>
+              <button class="uc-btn">卸载</button>
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
   </div>
 </body>

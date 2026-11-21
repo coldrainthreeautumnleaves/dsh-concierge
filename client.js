@@ -154,20 +154,29 @@ html[data-dsh-glass="1"], html[data-dsh-glass="1"] body { background: transparen
 /* The frost lives on the wallpaper itself: one blurred layer covers every
    translucent surface, instead of paying a backdrop-filter per panel (each one
    reads the pixels behind it and runs a blur kernel, so the cost scales with
-   area). Panels only keep a light blur where depth reads best: overlays. */
-html[data-dsh-glass="1"] body::before {
-  content: '';
+   area). Panels only keep a light blur where depth reads best: overlays.
+   It is a real element (not body::before) so no ancestor stacking context can
+   swallow it. */
+#dsh-concierge-glass { display: none; }
+html[data-dsh-glass="1"] #dsh-concierge-glass {
+  display: block;
   position: fixed;
-  inset: -8%;
+  inset: 0;
   z-index: -1;
   pointer-events: none;
-  filter: blur(30px) saturate(140%);
+  overflow: hidden;
+}
+#dsh-concierge-glass > div {
+  position: absolute;
+  inset: -10%;
+  filter: blur(22px) saturate(150%);
+  will-change: filter;
   background:
     radial-gradient(1100px 560px at 8% -8%, rgba(99, 102, 241, 0.26), transparent 62%),
     radial-gradient(900px 520px at 98% 4%, rgba(236, 72, 153, 0.16), transparent 58%),
     linear-gradient(160deg, #eef2ff 0%, #f7f9fc 46%, #eaf4ff 100%);
 }
-html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] body::before {
+html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-glass > div {
   background:
     radial-gradient(1100px 560px at 8% -8%, rgba(79, 110, 247, 0.3), transparent 62%),
     radial-gradient(900px 520px at 98% 4%, rgba(139, 92, 246, 0.24), transparent 58%),
@@ -187,7 +196,6 @@ html[data-dsh-glass="1"] body::after {
   opacity: var(--dsh-glass-grain, 0);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
   background-size: 140px 140px;
-  mix-blend-mode: overlay;
 }
 html[data-dsh-glass="1"] [role="dialog"],
 html[data-dsh-glass="1"] [role="alertdialog"],
@@ -211,6 +219,18 @@ html[data-dsh-glass="1"] .uc-banner {
       style.id = 'dsh-concierge-look-css'
       style.textContent = LOOK_CSS
       document.head.appendChild(style)
+    }
+
+    // 壁纸用真元素，不用 body::before：有的容器会建层叠上下文，把 -1 的伪元素
+    // 压到看不见的地方。
+    function ensureGlassNodes() {
+      if (typeof document === 'undefined' || !document.body) return
+      if (document.getElementById('dsh-concierge-glass')) return
+      const root = document.createElement('div')
+      root.id = 'dsh-concierge-glass'
+      const media = document.createElement('div')
+      root.appendChild(media)
+      document.body.appendChild(root)
     }
 
     function applyNoAnim() {
@@ -568,8 +588,8 @@ html[data-dsh-glass="1"] .uc-banner {
         `rgba(20, 24, 32, ${darkAlpha})`,
       )
       return {
-        '--dsw-alias-bg-base': fill(0.5, 0.5),
-        '--dsw-alias-bg-layer-1': fill(0.66, 0.66),
+        '--dsw-alias-bg-base': fill(0.58, 0.58),
+        '--dsw-alias-bg-layer-1': fill(0.72, 0.72),
         '--dsw-alias-bg-layer-2': fill(0.44, 0.44),
         '--dsw-alias-bg-layer-3': fill(0.34, 0.34),
         '--dsw-alias-bg-overlay': fill(0.55, 0.62),
@@ -704,6 +724,29 @@ html[data-dsh-glass="1"] .uc-banner {
         }
       } catch {
         /* keep defaults */
+      }
+    }
+
+    // 拖滑杆时每次 onChange 都走 applyLook 会重新 overrideTokens（整棵主题树
+    // 重新发布 + 全页重渲染），手感就是一顿一顿的。这里只改那个 CSS 变量，
+    // 存储和界面刷新合并到拖完之后。
+    let lookSaveTimer = null
+
+    function scheduleLookSave() {
+      if (lookSaveTimer !== null) clearTimeout(lookSaveTimer)
+      lookSaveTimer = setTimeout(() => {
+        lookSaveTimer = null
+        saveLookPrefs()
+        lookUpdate()
+      }, 220)
+    }
+
+    function applyGrain(value) {
+      const next = Math.max(0, Math.min(0.2, value))
+      look.grain = next
+      if (typeof document === 'undefined') return
+      if (look.skin === 'glass' && look.enabled) {
+        document.documentElement.style.setProperty('--dsh-glass-grain', String(next))
       }
     }
 
@@ -2878,10 +2921,8 @@ html[data-dsh-glass="1"] .uc-banner {
                           onChange: (event) => {
                             const value = Number(event.target.value)
                             if (!Number.isFinite(value)) return
-                            look.grain = Math.max(0, Math.min(0.2, Math.round(value) / 100))
-                            saveLookPrefs()
-                            applyLook()
-                            lookUpdate()
+                            applyGrain(Math.round(value) / 100)
+                            scheduleLookSave()
                           },
                         }),
                         h('span', { className: 'uc-typer-value' }, `${Math.round((lookSnapshot.grain || 0) * 100)}%`),
@@ -3917,6 +3958,7 @@ html[data-dsh-glass="1"] .uc-banner {
         readLookPrefs()
         installPerfCss()
         installLookCss()
+        ensureGlassNodes()
         lookCtx = ctx
         applyLook()
         // 主题在别处被切换时（官方外观设置），玻璃壁纸跟着换深浅色。

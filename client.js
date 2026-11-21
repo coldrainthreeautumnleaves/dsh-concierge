@@ -195,15 +195,16 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-glass > di
    all content. It used to be a fixed overlay at z-index 2 above the page, which
    forces the compositor to re-blend a full-viewport layer on every frame —
    scrolling and streaming text both paid for it. Behind the content it is
-   painted once with the wallpaper and costs nothing while you interact. */
+   painted once with the wallpaper and costs nothing while you interact.
+   The strength is baked into the SVG's own opacity (set by applyGrainImage)
+   instead of an opacity property on this element: a fractional opacity would make
+   the compositor keep it as its own full-screen layer and re-blend it every frame. */
 #dsh-concierge-grain { display: none; }
 html[data-dsh-glass="1"] #dsh-concierge-grain {
   display: block;
   position: absolute;
   inset: 0;
   pointer-events: none;
-  opacity: var(--dsh-glass-grain, 0);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
   background-size: 140px 140px;
 }
 /* Real frosted glass: every surface blurs the pixels behind it, then gets the
@@ -227,6 +228,13 @@ html[data-dsh-glass="1"]:not([data-dsh-glass-light="1"]) [data-conversation-regi
   will-change: transform;
   backdrop-filter: blur(12px) saturate(150%);
   -webkit-backdrop-filter: blur(12px) saturate(150%);
+}
+/* 视频壁纸每帧都是新画面：会话区那块模糊背后一直在变，等于每帧重算整屏。
+   静态壁纸才缓存得住，所以视频模式下这块不模糊——壁纸本身在动，面板半透明
+   已经够玻璃感。 */
+html[data-dsh-glass="1"][data-dsh-glass-wall="video"] [data-conversation-region="chat"]::before {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 /* 输入框那一圈不再自己模糊：它里面还压着输入卡自己的 backdrop-filter（走
    --dsw-menu-backdrop-filter），两层叠在「每帧都在动的聊天记录」上——这是全
@@ -870,13 +878,25 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       }, 140)
     }
 
+    // 颗粒强度写进 SVG 自己的 opacity：元素上不挂 opacity，合成器就不会把它单独
+    // 提成一层、每帧再和壁纸混一次。
+    function grainImage(value) {
+      const alpha = Math.max(0, Math.min(0.2, value))
+      if (alpha <= 0) return ''
+      return `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='${alpha}'/%3E%3C/svg%3E")`
+    }
+
+    function applyGrainImage() {
+      if (typeof document === 'undefined') return
+      const node = document.getElementById('dsh-concierge-grain')
+      if (!node) return
+      node.style.backgroundImage = look.skin === 'glass' && look.enabled ? grainImage(look.grain) : ''
+    }
+
     function applyGrain(value) {
       const next = Math.max(0, Math.min(0.2, value))
       look.grain = next
-      if (typeof document === 'undefined') return
-      if (look.skin === 'glass' && look.enabled) {
-        document.documentElement.style.setProperty('--dsh-glass-grain', String(next))
-      }
+      applyGrainImage()
     }
 
     function saveLookPrefs() {
@@ -971,7 +991,8 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         delete root.dataset.dshGlass
         delete root.dataset.dshGlassLight
         delete root.dataset.dshGlassScheme
-        root.style.removeProperty('--dsh-glass-grain')
+        delete root.dataset.dshGlassWall
+        applyGrainImage()
       }
       if (!look.enabled || !lookCtx) {
         clearGlassLayer()
@@ -1001,10 +1022,12 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       // 玻璃皮肤额外挂一层壁纸 + backdrop-filter（纯 CSS，不进官方样式）
       if (look.skin === 'glass' && root) {
         root.dataset.dshGlass = '1'
-        root.style.setProperty('--dsh-glass-grain', String(look.grain))
         // 轻玻璃：只关会话区那一条 blur，浮层不动（规则在 LOOK_CSS 里）。
         if (look.lightGlass) root.dataset.dshGlassLight = '1'
         else delete root.dataset.dshGlassLight
+        // 视频壁纸每帧都在变，会话区那块模糊会被逐帧重算，CSS 里按这个属性关掉。
+        root.dataset.dshGlassWall = (look.wall && look.wall.mode) || 'preset'
+        applyGrainImage()
         syncGlassScheme()
       } else {
         clearGlassLayer()
@@ -1368,6 +1391,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       lookWallPreset: '预设渐变',
       lookWallImage: '图片',
       lookWallVideo: '视频',
+      lookWallVideoHint: '视频每帧都在动，会话区的模糊会逐帧重算，所以视频模式下自动关掉它',
       lookWallPlaceholder: '图片或视频的完整路径 / URL（支持 Wallpaper Engine 导出的 mp4、webm）',
       lookWallApply: '应用背景',
       lookBrand: '品牌色',
@@ -1606,6 +1630,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       lookWallPreset: 'Preset gradient',
       lookWallImage: 'Image',
       lookWallVideo: 'Video',
+      lookWallVideoHint: 'A video changes every frame, so the chat blur would re-run each frame; it stays off in video mode',
       lookWallPlaceholder: 'Full path or URL of an image/video (mp4, webm exported from Wallpaper Engine work)',
       lookWallApply: 'Apply background',
       lookBrand: 'Brand color',
@@ -3149,7 +3174,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
                     }))
                   : null,
                 lookSnapshot.skin === 'glass'
-                  ? settingRow(t('lookWall'), null,
+                  ? settingRow(t('lookWall'), lookSnapshot.wall.mode === 'video' ? t('lookWallVideoHint') : null,
                       h('select', {
                         className: 'uc-select',
                         value: lookSnapshot.wall.mode,

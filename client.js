@@ -181,20 +181,20 @@ html[data-dsh-glass="1"] #dsh-concierge-glass {
 #dsh-concierge-glass > div:first-child {
   position: absolute;
   inset: 0;
+  /* 一套冷调、低饱和的底色：三团大而软的灰蓝，不再是四色相拼。面板是半透明的，
+     壁纸的色相会直接染到面板上——四色相会让人看到粉/黄/青混在文字底下。 */
   background:
-    radial-gradient(420px 300px at 14% 22%, rgba(99, 102, 241, 0.55), rgba(99, 102, 241, 0) 62%),
-    radial-gradient(380px 280px at 84% 16%, rgba(244, 114, 182, 0.45), rgba(244, 114, 182, 0) 60%),
-    radial-gradient(520px 360px at 68% 92%, rgba(56, 189, 248, 0.45), rgba(56, 189, 248, 0) 62%),
-    radial-gradient(300px 220px at 42% 62%, rgba(250, 204, 21, 0.32), rgba(250, 204, 21, 0) 60%),
-    linear-gradient(150deg, #f4f7ff 0%, #fdf2f8 40%, #ecfeff 72%, #f8fafc 100%);
+    radial-gradient(920px 640px at 14% 10%, rgba(186, 200, 224, 0.55), rgba(186, 200, 224, 0) 62%),
+    radial-gradient(860px 620px at 86% 8%, rgba(200, 202, 224, 0.45), rgba(200, 202, 224, 0) 64%),
+    radial-gradient(1000px 720px at 72% 98%, rgba(184, 206, 214, 0.45), rgba(184, 206, 214, 0) 66%),
+    linear-gradient(155deg, #f2f5fa 0%, #edf1f7 45%, #f4f7fb 78%, #f9fbfd 100%);
 }
 html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-glass > div:first-child {
   background:
-    radial-gradient(420px 300px at 14% 22%, rgba(99, 102, 241, 0.75), rgba(99, 102, 241, 0) 62%),
-    radial-gradient(380px 280px at 84% 16%, rgba(236, 72, 153, 0.6), rgba(236, 72, 153, 0) 60%),
-    radial-gradient(520px 360px at 68% 92%, rgba(34, 211, 238, 0.55), rgba(34, 211, 238, 0) 62%),
-    radial-gradient(300px 220px at 42% 62%, rgba(168, 85, 247, 0.5), rgba(168, 85, 247, 0) 60%),
-    linear-gradient(150deg, #131a33 0%, #2a1b3d 40%, #0e2437 72%, #0a0f1a 100%);
+    radial-gradient(920px 640px at 14% 10%, rgba(60, 74, 106, 0.55), rgba(60, 74, 106, 0) 62%),
+    radial-gradient(860px 620px at 86% 8%, rgba(66, 66, 96, 0.45), rgba(66, 66, 96, 0) 64%),
+    radial-gradient(1000px 720px at 72% 98%, rgba(40, 72, 88, 0.5), rgba(40, 72, 88, 0) 66%),
+    linear-gradient(155deg, #12171f 0%, #131a24 45%, #101720 78%, #0b1017 100%);
 }
 /* Grain: a tiled fractal-noise plate that rides ON the wallpaper layer, behind
    all content. It used to be a fixed overlay at z-index 2 above the page, which

@@ -890,6 +890,11 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         '--dsw-specific-menu': fill(0.52, 0.58),
         '--dsw-alias-menu-group-header-fill': fill(0.26, 0.3),
         '--dsw-alias-hovercard-bg': fill(0.56, 0.62),
+        // 悬浮卡（会话卡片那种）有自己的 label token，默认是给「深底卡片」准备的
+        // 近白色。底被改成半透明白之后，字就白压白了——这里跟着改成正文那组深色。
+        '--dsw-alias-hovercard-label-primary': pair('#1a1d23', '#e8ebf1'),
+        '--dsw-alias-hovercard-label-secondary': pair('#5d6470', '#9aa3b2'),
+        '--dsw-alias-hovercard-label-tertiary': pair('#6f7683', '#8b93a3'),
         // toast / tooltip 是「深底白字」：它们的 label token 是白/近白，把底也改成
         // 半透明白，字就彻底看不见了。这两样保持深色、只把 alpha 降一点，玻璃感靠
         // 背后的壁纸透出来，字还是白的。

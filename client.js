@@ -230,10 +230,10 @@ html[data-dsh-glass="1"] #dsh-concierge-top {
   pointer-events: none;
   backdrop-filter: blur(12px) saturate(150%);
   -webkit-backdrop-filter: blur(12px) saturate(150%);
-  background: rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.34);
 }
 html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-top {
-  background: rgba(21, 27, 43, 0.32);
+  background: rgba(21, 27, 43, 0.38);
 }
 html[data-dsh-glass="1"][data-fullscreen] #dsh-concierge-top { display: none; }
 /* 侧边栏：从「压回实色」改成半透明，和聊天区一样透出壁纸。这里**不加**
@@ -837,10 +837,11 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         '--dsw-specific-input-major': fill(0.42, 0.46),
         '--dsw-specific-login-input': fill(0.42, 0.46),
         // 标题栏那条是 Windows 原生 WCO 画的，颜色来自 preload 探针读的这个 token。
-        // 这里给一个几乎透明的值：透明通道生效时页面顶部的磨砂能透上来；不生效时
-        // 退回的是这个 token 的 RGB（浅色 #f0f3fc），也就是以前那种接近实色的样子。
+        // 关键是 alpha 要「几乎 0 但不是 0」：完全 0 会被 Electron 当成没设，回退成
+        // 窗口底色（#53004）；而 alpha 只要 < 1，WCO 的图层就不是不透明，#38693 之后
+        // 页面就能透上来。1/255 在肉眼上看不见，却刚好落在这个区间里。
         // 侧边栏另用 `[class*="_sidebarCol"]` 的规则给一档半透明，不跟着一起空掉。
-        '--dsw-specific-sidebar-fill': pair('rgba(240, 243, 252, 0.08)', 'rgba(21, 27, 43, 0.1)'),
+        '--dsw-specific-sidebar-fill': pair('rgba(240, 243, 252, 0.004)', 'rgba(21, 27, 43, 0.004)'),
         '--dsw-specific-sidebar-glass-fill': pair('#f0f3fc', '#151b2b'),
         '--dsw-specific-sidebar-glass-collapsed-fill': pair('#f0f3fc', '#151b2b'),
         '--dsw-alias-button-elevated-fill': fill(0.36, 0.4),

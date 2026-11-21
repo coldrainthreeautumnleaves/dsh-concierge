@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>GitHub Token 卡片预览</title>
+<style>
+  :root {
+    --dsw-alias-bg-overlay: #ffffff;
+    --dsw-alias-bg-layer-1: #f6f7f9;
+    --dsw-alias-bg-layer-2: #eef0f4;
+    --dsw-alias-border-l1: #e3e6ec;
+    --dsw-alias-border-l2: #d5d9e2;
+    --dsw-alias-label-primary: #14171c;
+    --dsw-alias-label-secondary: #6b7280;
+    --dsw-alias-brand-primary: #4f6ef7;
+    --dsw-alias-state-success-primary: #16a34a;
+  }
+  body { margin: 0; padding: 34px; background: #f2f4f8; font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif; color: #14171c; }
+  h1 { font-size: 14px; font-weight: 600; margin: 0 0 4px; }
+  .note { font-size: 12px; color: #6b7280; margin: 0 0 20px; }
+  .uc-card { max-width: 640px; border: 1px solid #e3e6ec; border-radius: 16px; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.04); margin-bottom: 26px; }
+  .uc-card-head { display: flex; align-items: center; gap: 10px; padding: 16px 20px 12px; }
+  .uc-card-title { font-size: 13.5px; font-weight: 600; }
+  .uc-chip { font-size: 11px; padding: 2px 9px; border-radius: 999px; border: 1px solid #e3e6ec; color: #6b7280; }
+  .uc-chip-ok { color: #16a34a; border-color: #16a34a; }
+  .uc-token-current { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; padding: 0 20px 2px; }
+  .uc-token-mono { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 12px; color: #14171c; }
+  .uc-token-current-hint { color: #6b7280; font-size: 11px; }
+  .uc-install { display: flex; gap: 8px; padding: 14px 20px 4px; }
+  .uc-install input { flex: 1; box-sizing: border-box; border: 1px solid #d5d9e2; border-radius: 11px; background: #fff; color: #14171c; font-size: 13px; padding: 9px 13px; outline: none; }
+  .uc-btn { appearance: none; border: 1px solid #d5d9e2; background: #fff; color: #14171c; border-radius: 10px; padding: 0 14px; min-height: 30px; font-size: 12px; cursor: pointer; }
+  .uc-btn-accent { background: #4f6ef7; border-color: #4f6ef7; color: #fff; font-weight: 600; }
+  .uc-btn-ghost { border-color: transparent; background: transparent; color: #6b7280; }
+  .uc-token-doc { display: flex; flex-direction: column; gap: 5px; padding: 6px 20px 16px; font-size: 11px; line-height: 1.6; color: #6b7280; }
+  .uc-token-doc p { margin: 0; }
+  .uc-token-links { display: flex; gap: 12px; }
+  .uc-token-link { color: #4f6ef7; text-decoration: none; }
+  .uc-muted { color: #6b7280; }
+</style>
+</head>
+<body>
+  <h1>GitHub Token 卡片 · 已配置状态</h1>
+  <p class="note">上面一行是当前保存的 token（掩码），输入框留空只用来粘贴新的。</p>
+
+  <div class="uc-card">
+    <div class="uc-card-head">
+      <div class="uc-card-title">GitHub Token</div>
+      <span class="uc-chip uc-chip-ok">已配置</span>
+    </div>
+    <div class="uc-token-current">
+      <span class="uc-token-mono">github_pat_…JUxa</span>
+      <span class="uc-token-current-hint">保存在 ~/.dsh/update-center/settings.json</span>
+    </div>
+    <div class="uc-install">
+      <input placeholder="粘贴新的 token 以替换">
+      <button class="uc-btn uc-btn-accent">保存</button>
+      <button class="uc-btn uc-btn-ghost">清除</button>
+    </div>
+    <div class="uc-token-doc">
+      <p>为什么要配：GitHub 对匿名请求按 IP 限流，每小时 60 次；带 token 是每小时 5000 次（按账号）。几条来源就能把匿名额度用完。</p>
+      <p>怎么申请：打开下面的页面，</p>
+      <div class="uc-token-links">
+        <a class="uc-token-link" href="#">细粒度 token（推荐）</a>
+        <a class="uc-token-link" href="#">经典 token</a>
+      </div>
+      <p>Repository access 选 Public repositories (read-only)，权限一个都不勾（经典 token 的 Scopes 也不勾）。生成后只显示一次，当场复制。</p>
+      <p>插件从哪里读：环境变量 GITHUB_TOKEN → GH_TOKEN → 本机 ~/.dsh/update-center/settings.json，环境变量优先。保存后立即生效。</p>
+    </div>
+  </div>
+
+  <div class="uc-card">
+    <div class="uc-card-head">
+      <div class="uc-card-title">GitHub Token</div>
+      <span class="uc-chip">未配置</span>
+    </div>
+    <div class="uc-install">
+      <input placeholder="ghp_… 或 github_pat_…">
+      <button class="uc-btn uc-btn-accent">保存</button>
+    </div>
+    <div class="uc-token-doc">
+      <p>为什么要配：GitHub 对匿名请求按 IP 限流，每小时 60 次；带 token 是每小时 5000 次（按账号）。</p>
+    </div>
+  </div>
+</body>
+</html>

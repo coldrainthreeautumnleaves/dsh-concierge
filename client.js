@@ -738,6 +738,11 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
       changelog: '更新内容',
       tokenTitle: 'GitHub Token',
       tokenPlaceholder: 'ghp_… 或 github_pat_…',
+      tokenReplacePlaceholder: '粘贴新的 token 以替换',
+      tokenConfigured: '已配置',
+      tokenMissing: '未配置',
+      tokenFromEnvChip: '来自环境变量',
+      tokenSavedHint: '保存在 ~/.dsh/update-center/settings.json',
       tokenSave: '保存',
       tokenClear: '清除',
       tokenSaved: 'Token 已保存',
@@ -920,6 +925,11 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
       changelog: "What's new",
       tokenTitle: 'GitHub token',
       tokenPlaceholder: 'ghp_… or github_pat_…',
+      tokenReplacePlaceholder: 'Paste a new token to replace it',
+      tokenConfigured: 'Configured',
+      tokenMissing: 'Not configured',
+      tokenFromEnvChip: 'From environment',
+      tokenSavedHint: 'Stored in ~/.dsh/update-center/settings.json',
       tokenSave: 'Save',
       tokenClear: 'Clear',
       tokenSaved: 'Token saved',
@@ -1112,6 +1122,9 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
 .uc-log-version { font-size: 12.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .uc-log-count { margin-left: auto; font-size: 11px; color: var(--dsw-alias-label-secondary); }
 .uc-log-items { margin: 0 0 10px; padding: 0 8px 0 26px; display: flex; flex-direction: column; gap: 5px; font-size: 11.5px; line-height: 1.6; color: var(--dsw-alias-label-secondary); }
+.uc-token-current { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; padding: 0 20px 2px; }
+.uc-token-mono { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 12px; color: var(--dsw-alias-label-primary); }
+.uc-token-current-hint { color: var(--dsw-alias-label-secondary); font-size: 11px; }
 .uc-token-doc { display: flex; flex-direction: column; gap: 5px; padding: 2px 18px 14px; font-size: 11px; line-height: 1.6; color: var(--dsw-alias-label-secondary); }
 .uc-token-doc p { margin: 0; }
 .uc-token-links { display: flex; flex-wrap: wrap; gap: 12px; }
@@ -2284,12 +2297,28 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
           ? h('section', { className: 'uc-card' },
               h('div', { className: 'uc-card-head' },
                 h('div', { className: 'uc-card-title' }, t('tokenTitle')),
+                tokenState
+                  ? h('span', {
+                      className: tokenState.hasToken ? 'uc-chip uc-chip-ok' : 'uc-chip',
+                    }, tokenState.fromEnv
+                      ? t('tokenFromEnvChip')
+                      : tokenState.hasToken
+                        ? t('tokenConfigured')
+                        : t('tokenMissing'))
+                  : null,
               ),
+              tokenState && tokenState.hasToken
+                ? h('div', { className: 'uc-token-current' },
+                    h('span', { className: 'uc-token-mono' }, tokenState.masked || '****'),
+                    h('span', { className: 'uc-token-current-hint' },
+                      tokenState.fromEnv ? t('tokenFromEnv') : t('tokenSavedHint')),
+                  )
+                : null,
               h('div', { className: 'uc-install' },
                 h('input', {
                   type: 'password',
                   value: tokenInput,
-                  placeholder: tokenState && tokenState.hasToken ? (tokenState.masked || '****') : t('tokenPlaceholder'),
+                  placeholder: tokenState && tokenState.hasToken ? t('tokenReplacePlaceholder') : t('tokenPlaceholder'),
                   onChange: (event) => setTokenInput(event.target.value),
                   onKeyDown: (event) => {
                     if (event.key === 'Enter') saveToken()

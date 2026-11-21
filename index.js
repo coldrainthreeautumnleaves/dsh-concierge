@@ -74,6 +74,9 @@ async function writeSettings() {
 function maskToken(token) {
   if (!token) return null
   if (token.length <= 8) return '****'
+  // Keep the recognizable prefix so the page can say which kind of token it is.
+  const prefix = /^(github_pat_|ghp_|gho_|ghu_|ghs_|ghr_)/.exec(token)
+  if (prefix) return `${prefix[1]}…${token.slice(-4)}`
   return `${token.slice(0, 4)}…${token.slice(-4)}`
 }
 

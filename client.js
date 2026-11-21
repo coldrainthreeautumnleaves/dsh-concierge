@@ -169,7 +169,7 @@ html[data-dsh-glass="1"] #dsh-concierge-glass {
 /* The wallpaper stays SHARP. Frost comes from each panel blurring what is
    behind it (backdrop-filter); pre-blurring the wallpaper leaves nothing to
    blur, so panels read as tinted boxes instead of glass. */
-#dsh-concierge-glass > div {
+#dsh-concierge-glass > div:first-child {
   position: absolute;
   inset: 0;
   background:
@@ -182,7 +182,7 @@ html[data-dsh-glass="1"] #dsh-concierge-glass {
     radial-gradient(300px 220px at 42% 62%, rgba(250, 204, 21, 0.32), rgba(250, 204, 21, 0) 60%),
     linear-gradient(150deg, #f4f7ff 0%, #fdf2f8 40%, #ecfeff 72%, #f8fafc 100%);
 }
-html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-glass > div {
+html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-glass > div:first-child {
   background:
     linear-gradient(180deg, #151b2b 0, #151b2b 40px, rgba(21, 27, 43, 0) 40px),
     radial-gradient(420px 300px at 14% 22%, rgba(99, 102, 241, 0.75), rgba(99, 102, 241, 0) 62%),
@@ -191,13 +191,16 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-glass > di
     radial-gradient(300px 220px at 42% 62%, rgba(168, 85, 247, 0.5), rgba(168, 85, 247, 0) 60%),
     linear-gradient(150deg, #131a33 0%, #2a1b3d 40%, #0e2437 72%, #0a0f1a 100%);
 }
-/* Grain: a tiled fractal-noise plate above everything. Low opacity only — it
-   adds the "sand" of real frosted glass without touching text legibility. */
-html[data-dsh-glass="1"] body::after {
-  content: '';
-  position: fixed;
+/* Grain: a tiled fractal-noise plate that rides ON the wallpaper layer, behind
+   all content. It used to be a fixed overlay at z-index 2 above the page, which
+   forces the compositor to re-blend a full-viewport layer on every frame —
+   scrolling and streaming text both paid for it. Behind the content it is
+   painted once with the wallpaper and costs nothing while you interact. */
+#dsh-concierge-grain { display: none; }
+html[data-dsh-glass="1"] #dsh-concierge-grain {
+  display: block;
+  position: absolute;
   inset: 0;
-  z-index: 2;
   pointer-events: none;
   opacity: var(--dsh-glass-grain, 0);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
@@ -207,8 +210,27 @@ html[data-dsh-glass="1"] body::after {
    rim highlight and shadow that make it read as a pane instead of a tint.
    Only surfaces are listed (not every element): each backdrop-filter samples
    the area behind it, so cost grows with the number of layers. */
-html[data-dsh-glass="1"] [data-conversation-region],
-html[data-dsh-glass="1"] [data-slot],
+/* 会话区不再把 backdrop-filter 挂在元素自己身上：Chromium 里带模糊的元素只要
+   自己内部在滚动、在流式更新，就会连同模糊整块重画；把模糊挪到独立的
+   ::before 一层（这一层背后只有静态壁纸），它只算一次，上面的文字照常重排。
+   同一招（模糊单独成层 + isolation）在 unsloth PR #16942 里把设置面板滚动的
+   CPU 压掉了 10–22 倍。 */
+html[data-dsh-glass="1"]:not([data-dsh-glass-light="1"]) [data-conversation-region="chat"] {
+  isolation: isolate;
+}
+html[data-dsh-glass="1"]:not([data-dsh-glass-light="1"]) [data-conversation-region="chat"]::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  will-change: transform;
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+}
+/* 输入框那一圈不再自己模糊：它里面还压着输入卡自己的 backdrop-filter（走
+   --dsw-menu-backdrop-filter），两层叠在「每帧都在动的聊天记录」上——这是全
+   界面唯一 blur 背后一直在变的地方。留卡片那一层就够看。 */
 html[data-dsh-glass="1"] [role="dialog"],
 html[data-dsh-glass="1"] [role="alertdialog"],
 html[data-dsh-glass="1"] [role="menu"],
@@ -219,14 +241,15 @@ html[data-dsh-glass="1"] [class*="_menu"],
 html[data-dsh-glass="1"] [class*="_portal_"],
 html[data-dsh-glass="1"] .uc-card,
 html[data-dsh-glass="1"] .uc-banner {
-  backdrop-filter: blur(20px) saturate(170%) brightness(1.04);
-  -webkit-backdrop-filter: blur(20px) saturate(170%) brightness(1.04);
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
 }
-/* 设置面板这种大面积浮层多糊一点：背后的色块糊开了，文字才不打架。 */
+/* 设置面板这种大面积浮层多糊一点：背后的色块糊开了，文字才不打架。
+   半径别往 26px 堆——采样成本随半径线性涨，14px 已经够糊开色块。 */
 html[data-dsh-glass="1"] [role="dialog"],
 html[data-dsh-glass="1"] [data-shell-overlay="true"] [data-slot] > * {
-  backdrop-filter: blur(26px) saturate(150%);
-  -webkit-backdrop-filter: blur(26px) saturate(150%);
+  backdrop-filter: blur(14px) saturate(150%);
+  -webkit-backdrop-filter: blur(14px) saturate(150%);
 }
 html[data-dsh-glass="1"] [role="dialog"],
 html[data-dsh-glass="1"] [role="menu"],
@@ -305,12 +328,21 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
     // 压到看不见的地方。
     function ensureGlassNodes() {
       if (typeof document === 'undefined' || !document.body) return
-      if (document.getElementById('dsh-concierge-glass')) return
-      const root = document.createElement('div')
-      root.id = 'dsh-concierge-glass'
-      const media = document.createElement('div')
-      root.appendChild(media)
-      document.body.appendChild(root)
+      let root = document.getElementById('dsh-concierge-glass')
+      if (!root) {
+        root = document.createElement('div')
+        root.id = 'dsh-concierge-glass'
+        const media = document.createElement('div')
+        root.appendChild(media)
+        document.body.appendChild(root)
+      }
+      // Grain rides inside the wallpaper layer (behind content). Repair it if an
+      // older root from a previous load is still around without one.
+      if (!root.querySelector('#dsh-concierge-grain')) {
+        const grain = document.createElement('div')
+        grain.id = 'dsh-concierge-grain'
+        root.appendChild(grain)
+      }
     }
 
     function applyNoAnim() {
@@ -628,6 +660,8 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       grain: 0.06,
       // 0 = 最实，100 = 最透；玻璃皮肤用它整体缩放各表面的 alpha
       transparency: 43,
+      // 轻玻璃：会话区整块不模糊，只留浮层。流式输出时不再整块重糊。
+      lightGlass: false,
       // 背景：预设渐变 / 图片 / 视频（Wallpaper Engine 导出的 mp4/webm 走视频）
       wall: { mode: 'preset', src: '' },
     }
@@ -714,7 +748,10 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         '--dsw-alias-turn-trigger-bg': fill(0.34, 0.38),
         '--dsw-alias-turn-trigger-bg-hover': fill(0.46, 0.5),
         '--dsw-alias-interactive-bg-hover': fill(0.24, 0.28),
-        '--dsw-menu-backdrop-filter': pair('blur(20px) saturate(150%)', 'blur(20px) saturate(150%)'),
+        // 菜单 / 输入卡 / 弹层都吃这个 token。原来是 20px：这些面里输入卡是压在
+        // 聊天记录上的，背后每帧都在变，模糊半径越大每帧越贵；12px 在浅色壁纸上
+        // 已经够糊开色块。
+        '--dsw-menu-backdrop-filter': pair('blur(12px) saturate(150%)', 'blur(12px) saturate(150%)'),
         '--dsw-alias-border-l1': pair('rgba(255, 255, 255, 0.6)', 'rgba(255, 255, 255, 0.12)'),
         '--dsw-alias-border-l2': pair('rgba(120, 130, 150, 0.18)', 'rgba(255, 255, 255, 0.18)'),
         '--dsw-alias-label-primary': pair('#1a1d23', '#e8ebf1'),
@@ -795,6 +832,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         if (typeof parsed.transparency === 'number' && Number.isFinite(parsed.transparency)) {
           look.transparency = Math.max(0, Math.min(100, Math.round(parsed.transparency)))
         }
+        if (typeof parsed.lightGlass === 'boolean') look.lightGlass = parsed.lightGlass
         if (parsed.wall && typeof parsed.wall === 'object') {
           const mode = typeof parsed.wall.mode === 'string' && LOOK_WALL_MODES.includes(parsed.wall.mode) ? parsed.wall.mode : 'preset'
           const src = typeof parsed.wall.src === 'string' ? parsed.wall.src : ''
@@ -853,6 +891,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
           fontStep: look.fontStep,
           codeFont: look.codeFont,
           grain: look.grain,
+          lightGlass: look.lightGlass,
         }))
       } catch {
         /* storage unavailable */
@@ -923,14 +962,34 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         }
         lookDispose = null
       }
-      if (!look.enabled || !lookCtx) return
+      const root = typeof document === 'undefined' ? null : document.documentElement
+      // 关掉外观 / 换回非玻璃皮肤时，壁纸层和这些属性都要收干净：漏掉
+      // data-dsh-glass 会话区虽然看不见了，`blur(14px)` 还在跑，壁纸层也一直挂着。
+      // 所以清理放在所有 early return 之前。
+      const clearGlassLayer = () => {
+        if (!root) return
+        delete root.dataset.dshGlass
+        delete root.dataset.dshGlassLight
+        delete root.dataset.dshGlassScheme
+        root.style.removeProperty('--dsh-glass-grain')
+      }
+      if (!look.enabled || !lookCtx) {
+        clearGlassLayer()
+        return
+      }
       const theme = themeService()
-      if (!theme) return
+      if (!theme) {
+        clearGlassLayer()
+        return
+      }
       applyThemePreference()
       applyFontStep()
       applyCodeFont()
       const skin = look.skin === 'glass' ? { tokens: glassTokens() } : LOOK_SKINS[look.skin]
-      if (!skin) return
+      if (!skin) {
+        clearGlassLayer()
+        return
+      }
       const tokens = { ...skin.tokens }
       const brand = LOOK_BRANDS[look.brand]
       if (brand) for (const name of BRAND_TOKEN_NAMES) tokens[name] = brand
@@ -940,15 +999,15 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         lookDispose = null
       }
       // 玻璃皮肤额外挂一层壁纸 + backdrop-filter（纯 CSS，不进官方样式）
-      const root = document.documentElement
-      if (look.skin === 'glass') {
+      if (look.skin === 'glass' && root) {
         root.dataset.dshGlass = '1'
         root.style.setProperty('--dsh-glass-grain', String(look.grain))
+        // 轻玻璃：只关会话区那一条 blur，浮层不动（规则在 LOOK_CSS 里）。
+        if (look.lightGlass) root.dataset.dshGlassLight = '1'
+        else delete root.dataset.dshGlassLight
         syncGlassScheme()
       } else {
-        delete root.dataset.dshGlass
-        delete root.dataset.dshGlassScheme
-        root.style.removeProperty('--dsh-glass-grain')
+        clearGlassLayer()
       }
       applyWallpaper()
     }
@@ -1303,6 +1362,8 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       lookSkinGlass: '玻璃',
       lookGrain: '颗粒',
       lookTransparency: '透明度',
+      lookLightGlass: '轻玻璃',
+      lookLightGlassHint: '会话区不再整块模糊，菜单和弹窗仍是毛玻璃；流式输出更顺',
       lookWall: '背景',
       lookWallPreset: '预设渐变',
       lookWallImage: '图片',
@@ -1315,7 +1376,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       lookBrandViolet: '紫',
       lookBrandGreen: '绿',
       lookBrandAmber: '橙',
-      lookHint: '默认关闭。透明度和颗粒只在玻璃皮肤下出现；本地背景走插件自己的路由，不读 file://。',
+      lookHint: '默认关闭。透明度、颗粒、轻玻璃只在玻璃皮肤下出现；本地背景走插件自己的路由，不读 file://。',
       foldersTitle: '目录与配置',
       safeModeAuto: '自动安全模式',
       safeModeAutoHint: '启动失败时自动进安全模式',
@@ -1539,6 +1600,8 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       lookSkinGlass: 'Glass',
       lookGrain: 'Grain',
       lookTransparency: 'Transparency',
+      lookLightGlass: 'Light glass',
+      lookLightGlassHint: 'No blur on the chat region; menus and dialogs stay frosted',
       lookWall: 'Background',
       lookWallPreset: 'Preset gradient',
       lookWallImage: 'Image',
@@ -3076,6 +3139,14 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
                         }),
                         h('span', { className: 'uc-typer-value' }, `${lookSnapshot.transparency}%`),
                       ))
+                  : null,
+                lookSnapshot.skin === 'glass'
+                  ? settingRow(t('lookLightGlass'), t('lookLightGlassHint'), switchControl(lookSnapshot.lightGlass, () => {
+                      look.lightGlass = !look.lightGlass
+                      saveLookPrefs()
+                      applyLook()
+                      lookUpdate()
+                    }))
                   : null,
                 lookSnapshot.skin === 'glass'
                   ? settingRow(t('lookWall'), null,

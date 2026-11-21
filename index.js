@@ -1,4 +1,4 @@
-/**
+﻿/**
  * dsh-concierge — Host half.
  *
  * Serves a small same-origin JSON API used by the settings page:
@@ -105,7 +105,7 @@ $json | ConvertTo-Json -Depth 100 | Set-Content $pkg -Encoding UTF8
 
 Write-Host '已进入安全模式：只加载官方插件，第三方插件已临时停用。' -ForegroundColor Green
 Write-Host '恢复：双击 restore-mode.cmd'
-Start-Process -FilePath $exe
+Start-Process -FilePath $exe -WindowStyle Hidden
 if (-not $Silent) { Read-Host '按回车关闭窗口' }
 `
 
@@ -134,7 +134,7 @@ if (Test-Path (Join-Path $backupDir 'cordis.patch.yml')) {
 }
 
 Write-Host '已恢复原来的插件配置。' -ForegroundColor Green
-Start-Process -FilePath $exe
+Start-Process -FilePath $exe -WindowStyle Hidden
 if (-not $Silent) { Read-Host '按回车关闭窗口' }
 `
 
@@ -149,7 +149,7 @@ $backupDir = Join-Path $env:USERPROFILE '.dsh\update-center\safe-backup'
 $running = Get-Process -Name 'DeepSeek Harness' -ErrorAction SilentlyContinue
 if ($running) { Write-Host '应用已经在运行。' -ForegroundColor Yellow; if (-not $Silent) { Read-Host '按回车退出' }; exit 0 }
 
-Start-Process -FilePath $exe
+Start-Process -FilePath $exe -WindowStyle Hidden
 Write-Host '正在启动，观察 30 秒看是否崩溃...'
 Start-Sleep -Seconds 30
 $alive = Get-Process -Name 'DeepSeek Harness' -ErrorAction SilentlyContinue
@@ -167,7 +167,7 @@ $json = Get-Content $pkg -Raw -Encoding UTF8 | ConvertFrom-Json
 $json.dsh.profile.bundles = @($json.dsh.profile.bundles | Where-Object { $_ -like '@deepseek-ai/*' })
 $json | ConvertTo-Json -Depth 100 | Set-Content $pkg -Encoding UTF8
 
-Start-Process -FilePath $exe
+Start-Process -FilePath $exe -WindowStyle Hidden
 Write-Host '已用安全模式重启（只加载官方插件）。修好后双击 restore-mode.cmd 恢复。' -ForegroundColor Green
 if (-not $Silent) { Read-Host '按回车关闭窗口' }
 `
@@ -179,11 +179,13 @@ $exe = Join-Path $env:LOCALAPPDATA 'Programs\DeepSeek Harness\DeepSeek Harness.e
 $running = Get-Process -Name 'DeepSeek Harness' -ErrorAction SilentlyContinue
 if ($running) { Write-Host '应用已经在运行。' -ForegroundColor Yellow; if (-not $Silent) { Read-Host '按回车退出' }; exit 0 }
 
-Start-Process -FilePath $exe
+Start-Process -FilePath $exe -WindowStyle Hidden
 Write-Host '已启动（自动安全模式已关闭）。' -ForegroundColor Green
 `
 
-const CMD_WRAPPER = (script) => `@echo off\r\npowershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0${script}"\r\n`
+// Hand off to the .vbs and exit: the console window closes immediately and the
+// app is started from a hidden host, so its stdout never attaches to a console.
+const CMD_WRAPPER = (script) => `@echo off\r\nwscript.exe "%~dp0${String(script).replace(/\.ps1$/, '')}.vbs"\r\nexit /b 0\r\n`
 
 // Silent twin of the .cmd wrappers: window style 0 hides the console entirely.
 const VBS_WRAPPER = (script) => `Set shell = CreateObject("WScript.Shell")\r\nSet fso = CreateObject("Scripting.FileSystemObject")\r\ndir = fso.GetParentFolderName(WScript.ScriptFullName)\r\nshell.Run "powershell -NoProfile -ExecutionPolicy Bypass -File """ & dir & "\\${script}"" -Silent", 0, False\r\n`
@@ -1033,7 +1035,7 @@ async function requestAppRestart(ctx) {
     "Note 'killed parent'",
     'Start-Sleep -Seconds 4',
     'for ($i = 0; $i -lt 3; $i++) {',
-    '  Start-Process -FilePath $exe',
+    '  Start-Process -FilePath $exe -WindowStyle Hidden',
     '  Note "launched $i"',
     '  Start-Sleep -Seconds 10',
     '  $p = Get-Process | Where-Object { $_.Path -eq $exe }',

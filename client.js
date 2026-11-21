@@ -72,7 +72,9 @@ window.__ModuleLoader__.load({
       forced: false,
       // Off by default: Chromium reports content-visibility repaints and scroll
       // stutter with it, and the chat already virtualizes its rows.
-      offscreen: false,
+      // Offscreen rows are skipped with content-visibility (the transcript is
+      // not virtualized, so this is what keeps layout bounded).
+      offscreen: true,
       // Skip offscreen rows only while the sidebar animates its width.
       resizeShield: true,
       // Opt-in: make the sidebar collapse instant instead of animated.
@@ -103,10 +105,16 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
   animation-delay: 0s !important;
   transition-duration: 0s !important;
 }
-/* The sidebar animates its width for 0.3s ([data-animating] is the app's own
-   marker). Every frame re-wraps the whole conversation, so for exactly that
-   window only the rows on screen are laid out. contain-intrinsic-size: auto
+/* The transcript is not virtualized, so every re-render, keystroke, menu open
+   or sidebar frame re-lays out the whole conversation. Skipping offscreen rows
+   bounds that cost to what is actually on screen. contain-intrinsic-size: auto
    reuses each row's last real height, so the scroll position does not jump. */
+html[data-dsh-offscreen="1"] [data-slot="conversation.chat.flow"] > * {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 120px;
+}
+/* The sidebar animates its width for 0.3s ([data-animating] is the app's own
+   marker); the same rule covers it, this keeps it explicit for the no-scan case. */
 [data-animating] [data-slot="conversation.chat.flow"] > *,
 html[data-dsh-resizing="1"] [data-slot="conversation.chat.flow"] > * {
   content-visibility: auto;
@@ -128,6 +136,13 @@ html[data-dsh-noanim="1"] [data-animating] {
       if (typeof document === 'undefined') return
       if (perf.noAnim) document.documentElement.dataset.dshNoanim = '1'
       else delete document.documentElement.dataset.dshNoanim
+    }
+
+    // Pure CSS offscreen skipping: no layout reads, no per-row bookkeeping.
+    function applyOffscreen() {
+      if (typeof document === 'undefined') return
+      if (perf.offscreen) document.documentElement.dataset.dshOffscreen = '1'
+      else delete document.documentElement.dataset.dshOffscreen
     }
 
     function installPerfCss() {
@@ -224,61 +239,6 @@ html[data-dsh-noanim="1"] [data-animating] {
       }
     }
 
-    // Offscreen row skipping: only long chats, only real measured heights, and
-    // applied from idle time in small slices so the scan itself never janks.
-    const OFFSCREEN_MIN_ROWS = 40
-
-    function scheduleIdle(callback) {
-      if (typeof requestIdleCallback === 'function') return requestIdleCallback(callback, { timeout: 600 })
-      return setTimeout(callback, 60)
-    }
-
-    function clearOffscreen() {
-      if (typeof document === 'undefined') return
-      for (const row of document.querySelectorAll('[data-dsh-cv]')) {
-        row.style.contentVisibility = ''
-        row.style.containIntrinsicSize = ''
-        delete row.dataset.dshCv
-      }
-      delete document.documentElement.dataset.dshOffscreen
-    }
-
-    function scanOffscreen() {
-      if (typeof document === 'undefined') return
-      let rows = []
-      try {
-        rows = [...document.querySelectorAll('[data-slot="conversation.chat.flow"] > *')]
-      } catch {
-        rows = []
-      }
-      if (!perf.offscreen || rows.length <= OFFSCREEN_MIN_ROWS) {
-        clearOffscreen()
-        return
-      }
-      document.documentElement.dataset.dshOffscreen = '1'
-      let index = 0
-      const step = () => {
-        const end = Math.min(rows.length, index + 30)
-        for (; index < end; index += 1) {
-          const row = rows[index]
-          if (!row || row.dataset.dshCv === '1') continue
-          const rect = row.getBoundingClientRect()
-          // Only off-screen rows benefit; touching a row that is on screen (the
-          // one currently streaming, for example) makes it repaint for nothing.
-          const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 0
-          if (rect.bottom > 0 && rect.top < viewportHeight) continue
-          const height = Math.round(rect.height)
-          if (height > 0) {
-            row.style.containIntrinsicSize = `auto ${height}px`
-            row.style.contentVisibility = 'auto'
-            row.dataset.dshCv = '1'
-          }
-        }
-        if (index < rows.length) scheduleIdle(step)
-      }
-      scheduleIdle(step)
-    }
-
     function startLongTasks() {
       if (typeof PerformanceObserver === 'undefined') return
       try {
@@ -318,8 +278,6 @@ html[data-dsh-noanim="1"] [data-animating] {
       // which reads as a blink: never change it more than once every 15 seconds.
       let lastModeAt = 0
       let streamingSince = 0
-      let lastRows = -1
-      let lastScanAt = 0
       const tick = (now) => {
         frames += 1
         const elapsed = now - last
@@ -400,11 +358,6 @@ html[data-dsh-noanim="1"] [data-animating] {
         })
         applyPerfStreaming()
         applyPerfMode()
-        if (rows !== lastRows || nowMs - lastScanAt > 15000) {
-          lastRows = rows
-          lastScanAt = nowMs
-          scanOffscreen()
-        }
       }, 2000)
     }
 
@@ -2713,8 +2666,7 @@ html[data-dsh-noanim="1"] [data-animating] {
             settingRow(t('perfOffscreen'), t('perfOffscreenHint'), switchControl(perfSnapshot.offscreen, () => {
               perf.offscreen = !perf.offscreen
               savePerfPrefs()
-              if (perf.offscreen) scanOffscreen()
-              else clearOffscreen()
+              applyOffscreen()
               perfUpdate({})
             })),
             settingRow(t('perfRefresh'), t('perfRefreshHint'),
@@ -3277,6 +3229,7 @@ html[data-dsh-noanim="1"] [data-animating] {
         readIgnore()
         installPerfCss()
         applyNoAnim()
+        applyOffscreen()
         startLongTasks()
         startPerfMonitor()
         installResizeShield()

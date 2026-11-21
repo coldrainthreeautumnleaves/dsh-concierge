@@ -246,6 +246,15 @@ html[data-dsh-glass="1"] [class*="_sidebarCol"] {
 html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] [class*="_sidebarCol"] {
   background: rgba(18, 22, 30, 0.52) !important;
 }
+/* 官方 Windows 布局在内容列左上角留 16px 圆角（--dsh-windows-content-radius），
+   壁纸铺满整窗之后，那个圆角会切出一块露壁纸的缺口，看着就是「一块空的」。
+   玻璃皮肤下把它归零，内容铺满、不留弧度。 */
+html[data-dsh-glass="1"] [class*="_frame"] {
+  --dsh-windows-content-radius: 0px !important;
+}
+html[data-dsh-glass="1"] [class*="_centerCol"] {
+  border-radius: 0 !important;
+}
 /* Real frosted glass: every surface blurs the pixels behind it, then gets the
    rim highlight and shadow that make it read as a pane instead of a tint.
    Only surfaces are listed (not every element): each backdrop-filter samples

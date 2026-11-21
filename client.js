@@ -450,7 +450,25 @@ html[data-dsh-noanim="1"] [data-animating] {
     // 官方要求每个 token 给 { light, dark } 一对，深浅色切换自动跟随，
     // DSH 升级也不会失效。
     const LOOK_STORAGE_KEY = 'dsh-concierge:look'
-    const look = { enabled: false, skin: 'soft', brand: 'default', custom: null }
+    const look = {
+      enabled: false,
+      skin: 'soft',
+      brand: 'default',
+      custom: null,
+      preference: 'system',
+      fontStep: 0,
+      codeFont: 'default',
+    }
+    const LOOK_PREFERENCES = ['system', 'light', 'dark']
+    const LOOK_FONT_STEPS = [-1, 0, 1]
+    const LOOK_CODE_FONTS = {
+      default: null,
+      consolas: "'Cascadia Code', Consolas, 'Courier New', monospace",
+      jetbrains: "'JetBrains Mono', Consolas, monospace",
+      fira: "'Fira Code', Consolas, monospace",
+    }
+    let lookAppliedFontStep = 0
+    let lookOriginalCodeFont = null
     const lookListeners = new Set()
     const lookUpdate = () => {
       for (const listener of [...lookListeners]) listener()
@@ -550,6 +568,9 @@ html[data-dsh-noanim="1"] [data-animating] {
         if (typeof parsed.enabled === 'boolean') look.enabled = parsed.enabled
         if (typeof parsed.skin === 'string' && (parsed.skin in LOOK_SKINS || parsed.skin === 'custom')) look.skin = parsed.skin
         if (typeof parsed.brand === 'string' && parsed.brand in LOOK_BRANDS) look.brand = parsed.brand
+        if (typeof parsed.preference === 'string' && LOOK_PREFERENCES.includes(parsed.preference)) look.preference = parsed.preference
+        if (LOOK_FONT_STEPS.includes(parsed.fontStep)) look.fontStep = parsed.fontStep
+        if (typeof parsed.codeFont === 'string' && parsed.codeFont in LOOK_CODE_FONTS) look.codeFont = parsed.codeFont
         if (parsed.custom) {
           const result = normalizeCustomTokens(parsed.custom)
           if (result.tokens) look.custom = result.tokens
@@ -566,9 +587,67 @@ html[data-dsh-noanim="1"] [data-animating] {
           skin: look.skin,
           brand: look.brand,
           custom: look.custom,
+          preference: look.preference,
+          fontStep: look.fontStep,
+          codeFont: look.codeFont,
         }))
       } catch {
         /* storage unavailable */
+      }
+    }
+
+    function themeService() {
+      if (!lookCtx || typeof lookCtx.get !== 'function') return null
+      try {
+        const theme = lookCtx.get('theme')
+        return theme && typeof theme.overrideTokens === 'function' ? theme : null
+      } catch {
+        return null
+      }
+    }
+
+    // 官方主题服务的其余接口：setTheme / adjustFontSizes / setFontFamily。
+    function applyThemePreference() {
+      const theme = themeService()
+      if (!theme || typeof theme.setTheme !== 'function') return
+      try {
+        theme.setTheme(look.preference)
+      } catch {
+        /* id rejected: keep current */
+      }
+    }
+
+    function applyFontStep() {
+      const theme = themeService()
+      if (!theme || typeof theme.adjustFontSizes !== 'function') return
+      const delta = look.fontStep - lookAppliedFontStep
+      if (!delta) return
+      try {
+        theme.adjustFontSizes(delta)
+        lookAppliedFontStep = look.fontStep
+      } catch {
+        /* ignore */
+      }
+    }
+
+    function applyCodeFont() {
+      const theme = themeService()
+      if (!theme || typeof theme.setFontFamily !== 'function') return
+      if (lookOriginalCodeFont === null) {
+        try {
+          const snapshot = typeof theme.getTheme === 'function' ? theme.getTheme() : null
+          const families = snapshot && snapshot.fontFamilies
+          if (families && typeof families.code === 'string') lookOriginalCodeFont = families.code
+        } catch {
+          /* ignore */
+        }
+      }
+      const family = LOOK_CODE_FONTS[look.codeFont] ?? lookOriginalCodeFont
+      if (!family) return
+      try {
+        theme.setFontFamily('code', family)
+      } catch {
+        /* ignore */
       }
     }
 
@@ -582,8 +661,11 @@ html[data-dsh-noanim="1"] [data-animating] {
         lookDispose = null
       }
       if (!look.enabled || !lookCtx) return
-      const theme = typeof lookCtx.get === 'function' ? lookCtx.get('theme') : null
-      if (!theme || typeof theme.overrideTokens !== 'function') return
+      const theme = themeService()
+      if (!theme) return
+      applyThemePreference()
+      applyFontStep()
+      applyCodeFont()
       const skin = look.skin === 'custom'
         ? { tokens: look.custom || defaultCustomTokens() }
         : LOOK_SKINS[look.skin]
@@ -912,6 +994,16 @@ html[data-dsh-noanim="1"] [data-animating] {
       lookTitle: '外观',
       lookEnabled: '外观',
       lookEnabledHint: '走官方主题 token，换肤不失效',
+      lookPreference: '主题',
+      lookPreferenceSystem: '跟随系统',
+      lookPreferenceLight: '浅色',
+      lookPreferenceDark: '深色',
+      lookFont: '字号',
+      lookFontSmall: '小',
+      lookFontStandard: '标准',
+      lookFontLarge: '大',
+      lookCodeFont: '代码字体',
+      lookCodeFontDefault: '默认',
       lookSkin: '皮肤',
       lookSkinSoft: '柔和',
       lookSkinInk: '墨色',
@@ -1133,6 +1225,16 @@ html[data-dsh-noanim="1"] [data-animating] {
       lookTitle: 'Appearance',
       lookEnabled: 'Appearance',
       lookEnabledHint: 'Native theme tokens, survives updates',
+      lookPreference: 'Theme',
+      lookPreferenceSystem: 'System',
+      lookPreferenceLight: 'Light',
+      lookPreferenceDark: 'Dark',
+      lookFont: 'Text size',
+      lookFontSmall: 'Small',
+      lookFontStandard: 'Standard',
+      lookFontLarge: 'Large',
+      lookCodeFont: 'Code font',
+      lookCodeFontDefault: 'Default',
       lookSkin: 'Skin',
       lookSkinSoft: 'Soft',
       lookSkinInk: 'Ink',
@@ -2560,6 +2662,22 @@ html[data-dsh-noanim="1"] [data-animating] {
                   applyLook()
                   lookUpdate()
                 })),
+                settingRow(t('lookPreference'), null,
+                  h('select', {
+                    className: 'uc-select',
+                    value: lookSnapshot.preference,
+                    disabled: !lookSnapshot.enabled,
+                    onChange: (event) => {
+                      look.preference = event.target.value
+                      saveLookPrefs()
+                      applyLook()
+                      lookUpdate()
+                    },
+                  },
+                    h('option', { value: 'system' }, t('lookPreferenceSystem')),
+                    h('option', { value: 'light' }, t('lookPreferenceLight')),
+                    h('option', { value: 'dark' }, t('lookPreferenceDark')),
+                  )),
                 settingRow(t('lookSkin'), null,
                   h('select', {
                     className: 'uc-select',
@@ -2594,6 +2712,41 @@ html[data-dsh-noanim="1"] [data-animating] {
                     h('option', { value: 'violet' }, t('lookBrandViolet')),
                     h('option', { value: 'green' }, t('lookBrandGreen')),
                     h('option', { value: 'amber' }, t('lookBrandAmber')),
+                  )),
+                settingRow(t('lookFont'), null,
+                  h('select', {
+                    className: 'uc-select',
+                    value: String(lookSnapshot.fontStep),
+                    disabled: !lookSnapshot.enabled,
+                    onChange: (event) => {
+                      const value = Number(event.target.value)
+                      if (!LOOK_FONT_STEPS.includes(value)) return
+                      look.fontStep = value
+                      saveLookPrefs()
+                      applyLook()
+                      lookUpdate()
+                    },
+                  },
+                    h('option', { value: '-1' }, t('lookFontSmall')),
+                    h('option', { value: '0' }, t('lookFontStandard')),
+                    h('option', { value: '1' }, t('lookFontLarge')),
+                  )),
+                settingRow(t('lookCodeFont'), null,
+                  h('select', {
+                    className: 'uc-select',
+                    value: lookSnapshot.codeFont,
+                    disabled: !lookSnapshot.enabled,
+                    onChange: (event) => {
+                      look.codeFont = event.target.value
+                      saveLookPrefs()
+                      applyLook()
+                      lookUpdate()
+                    },
+                  },
+                    h('option', { value: 'default' }, t('lookCodeFontDefault')),
+                    h('option', { value: 'consolas' }, 'Cascadia / Consolas'),
+                    h('option', { value: 'jetbrains' }, 'JetBrains Mono'),
+                    h('option', { value: 'fira' }, 'Fira Code'),
                   )),
                 lookSnapshot.skin === 'custom'
                   ? h('div', { className: 'uc-look-editor' },

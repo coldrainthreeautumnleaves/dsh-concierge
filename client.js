@@ -444,6 +444,98 @@ html[data-dsh-noanim="1"] [data-animating] {
       }
     }
 
+    /* ------------------------------------------------------------ appearance -- */
+
+    // 只覆盖设计变量（圆角 / 字号 / 品牌色），不碰官方 DOM 和布局：换主题、
+    // 升级版本、和皮肤类插件都不冲突。默认关闭。
+    const LOOK_STORAGE_KEY = 'dsh-concierge:look'
+    const look = { enabled: false, radius: 'standard', fontScale: 1, brand: 'default' }
+    const lookListeners = new Set()
+    const lookUpdate = () => {
+      for (const listener of [...lookListeners]) listener()
+    }
+
+    const LOOK_RADII = {
+      compact: { xs: '3px', sm: '6px', md: '8px', lg: '10px', xl: '12px', panel: '10px' },
+      standard: null,
+      round: { xs: '6px', sm: '10px', md: '14px', lg: '18px', xl: '22px', panel: '18px' },
+    }
+    const LOOK_BRANDS = {
+      default: null,
+      indigo: '#4f6ef7',
+      violet: '#8b5cf6',
+      green: '#16a34a',
+      amber: '#f59e0b',
+    }
+    const LOOK_FONT_SCALES = [0.94, 1, 1.06]
+    let lookFontOriginals = null
+
+    function readLookPrefs() {
+      try {
+        const raw = localStorage.getItem(LOOK_STORAGE_KEY)
+        if (!raw) return
+        const parsed = JSON.parse(raw)
+        if (typeof parsed.enabled === 'boolean') look.enabled = parsed.enabled
+        if (typeof parsed.radius === 'string' && parsed.radius in LOOK_RADII) look.radius = parsed.radius
+        if (typeof parsed.brand === 'string' && parsed.brand in LOOK_BRANDS) look.brand = parsed.brand
+        if (LOOK_FONT_SCALES.includes(parsed.fontScale)) look.fontScale = parsed.fontScale
+      } catch {
+        /* keep defaults */
+      }
+    }
+
+    function saveLookPrefs() {
+      try {
+        localStorage.setItem(LOOK_STORAGE_KEY, JSON.stringify({
+          enabled: look.enabled,
+          radius: look.radius,
+          fontScale: look.fontScale,
+          brand: look.brand,
+        }))
+      } catch {
+        /* storage unavailable */
+      }
+    }
+
+    // 官方字号 token 形如 --dsw-font-xs-13-font-size，先把原始 px 读出来再按倍率写回，
+    // 这样反复切换不会叠加。
+    function readFontSizes() {
+      if (lookFontOriginals) return lookFontOriginals
+      const map = new Map()
+      try {
+        const computed = getComputedStyle(document.documentElement)
+        for (let index = 0; index < computed.length; index += 1) {
+          const name = computed[index]
+          if (typeof name !== 'string' || !name.startsWith('--dsw-font-') || !name.endsWith('-font-size')) continue
+          const px = parseFloat(computed.getPropertyValue(name))
+          if (Number.isFinite(px) && px > 0) map.set(name, px)
+        }
+      } catch {
+        /* ignore */
+      }
+      lookFontOriginals = map
+      return map
+    }
+
+    function applyLook() {
+      if (typeof document === 'undefined') return
+      const root = document.documentElement
+      const sizes = readFontSizes()
+      for (const key of ['xs', 'sm', 'md', 'lg', 'xl', 'panel']) root.style.removeProperty(`--dsw-radius-${key}`)
+      root.style.removeProperty('--dsw-alias-brand-primary')
+      for (const name of sizes.keys()) root.style.removeProperty(name)
+      delete root.dataset.dshLook
+      if (!look.enabled) return
+      root.dataset.dshLook = '1'
+      const radius = LOOK_RADII[look.radius]
+      if (radius) for (const [key, value] of Object.entries(radius)) root.style.setProperty(`--dsw-radius-${key}`, value)
+      const brand = LOOK_BRANDS[look.brand]
+      if (brand) root.style.setProperty('--dsw-alias-brand-primary', brand)
+      if (look.fontScale !== 1) {
+        for (const [name, px] of sizes) root.style.setProperty(name, `${(px * look.fontScale).toFixed(2)}px`)
+      }
+    }
+
     function useTypewriter(text, active, speed) {
       const initial = typeof text === 'string' ? text.length : 0
       const [shown, setShown] = React.useState(initial)
@@ -755,6 +847,24 @@ html[data-dsh-noanim="1"] [data-animating] {
       pendingDisabled: '上次启动时有 {count} 个插件加载失败被禁用：{names}',
       enableAll: '全部启用',
       safetyTitle: '安全',
+      lookTitle: '外观微调',
+      lookEnabled: '外观微调',
+      lookEnabledHint: '只覆盖设计变量，不改官方布局',
+      lookRadius: '圆角',
+      lookRadiusCompact: '紧凑',
+      lookRadiusStandard: '标准',
+      lookRadiusRound: '圆润',
+      lookFont: '字号',
+      lookFontSmall: '小',
+      lookFontStandard: '标准',
+      lookFontLarge: '大',
+      lookBrand: '品牌色',
+      lookBrandDefault: '默认',
+      lookBrandIndigo: '靛蓝',
+      lookBrandViolet: '紫',
+      lookBrandGreen: '绿',
+      lookBrandAmber: '橙',
+      lookHint: '默认关闭；和皮肤类插件可能叠加，冲突时先关这个。',
       foldersTitle: '目录与配置',
       safeModeAuto: '自动安全模式',
       safeModeAutoHint: '启动失败时自动进安全模式',
@@ -958,6 +1068,24 @@ html[data-dsh-noanim="1"] [data-animating] {
       pendingDisabled: '{count} plugin(s) failed to load after the last start and were disabled: {names}',
       enableAll: 'Enable all',
       safetyTitle: 'Safety',
+      lookTitle: 'Appearance',
+      lookEnabled: 'Appearance tweaks',
+      lookEnabledHint: 'Overrides design tokens only, never the official layout',
+      lookRadius: 'Radius',
+      lookRadiusCompact: 'Compact',
+      lookRadiusStandard: 'Standard',
+      lookRadiusRound: 'Round',
+      lookFont: 'Text size',
+      lookFontSmall: 'Small',
+      lookFontStandard: 'Standard',
+      lookFontLarge: 'Large',
+      lookBrand: 'Brand color',
+      lookBrandDefault: 'Default',
+      lookBrandIndigo: 'Indigo',
+      lookBrandViolet: 'Violet',
+      lookBrandGreen: 'Green',
+      lookBrandAmber: 'Amber',
+      lookHint: 'Off by default; may stack with skin plugins, turn it off if they clash.',
       foldersTitle: 'Folders',
       safeModeAuto: 'Automatic safe mode',
       safeModeAutoHint: 'Safe mode if a start fails',
@@ -1432,6 +1560,13 @@ html[data-dsh-noanim="1"] [data-animating] {
       const [restartReady, setRestartReady] = React.useState(false)
       const [perfSnapshot, setPerfSnapshot] = React.useState({ ...perf })
       const [typerSnapshot, setTyperSnapshot] = React.useState({ ...typer })
+      const [lookSnapshot, setLookSnapshot] = React.useState({ ...look })
+
+      React.useEffect(() => {
+        const listener = () => setLookSnapshot({ ...look })
+        lookListeners.add(listener)
+        return () => lookListeners.delete(listener)
+      }, [])
 
       React.useEffect(() => {
         let alive = true
@@ -2506,6 +2641,75 @@ html[data-dsh-noanim="1"] [data-animating] {
             )
           : null,
 
+        tab === 'add'
+          ? h('section', { className: 'uc-card' },
+              h('div', { className: 'uc-card-head' },
+                h('div', { className: 'uc-card-title' }, t('lookTitle')),
+              ),
+              h('div', { className: 'uc-perf' },
+                settingRow(t('lookEnabled'), t('lookEnabledHint'), switchControl(lookSnapshot.enabled, () => {
+                  look.enabled = !look.enabled
+                  saveLookPrefs()
+                  applyLook()
+                  lookUpdate()
+                })),
+                settingRow(t('lookRadius'), null,
+                  h('select', {
+                    className: 'uc-select',
+                    value: lookSnapshot.radius,
+                    disabled: !lookSnapshot.enabled,
+                    onChange: (event) => {
+                      look.radius = event.target.value
+                      saveLookPrefs()
+                      applyLook()
+                      lookUpdate()
+                    },
+                  },
+                    h('option', { value: 'compact' }, t('lookRadiusCompact')),
+                    h('option', { value: 'standard' }, t('lookRadiusStandard')),
+                    h('option', { value: 'round' }, t('lookRadiusRound')),
+                  )),
+                settingRow(t('lookFont'), null,
+                  h('select', {
+                    className: 'uc-select',
+                    value: String(lookSnapshot.fontScale),
+                    disabled: !lookSnapshot.enabled,
+                    onChange: (event) => {
+                      const value = Number(event.target.value)
+                      if (!LOOK_FONT_SCALES.includes(value)) return
+                      look.fontScale = value
+                      saveLookPrefs()
+                      applyLook()
+                      lookUpdate()
+                    },
+                  },
+                    h('option', { value: '0.94' }, t('lookFontSmall')),
+                    h('option', { value: '1' }, t('lookFontStandard')),
+                    h('option', { value: '1.06' }, t('lookFontLarge')),
+                  )),
+                settingRow(t('lookBrand'), null,
+                  h('select', {
+                    className: 'uc-select',
+                    value: lookSnapshot.brand,
+                    disabled: !lookSnapshot.enabled,
+                    onChange: (event) => {
+                      look.brand = event.target.value
+                      saveLookPrefs()
+                      applyLook()
+                      lookUpdate()
+                    },
+                  },
+                    h('option', { value: 'default' }, t('lookBrandDefault')),
+                    h('option', { value: 'indigo' }, t('lookBrandIndigo')),
+                    h('option', { value: 'violet' }, t('lookBrandViolet')),
+                    h('option', { value: 'green' }, t('lookBrandGreen')),
+                    h('option', { value: 'amber' }, t('lookBrandAmber')),
+                  )),
+                h('p', { className: 'uc-perf-hint' }, t('lookHint')),
+              ),
+            )
+          : null,
+
         data && tab === 'plugins'
           ? h('section', { className: 'uc-card' },
               h('div', { className: 'uc-card-head' },
@@ -3262,7 +3466,9 @@ html[data-dsh-noanim="1"] [data-animating] {
 
         readPerfPrefs()
         readIgnore()
+        readLookPrefs()
         installPerfCss()
+        applyLook()
         applyNoAnim()
         applyOffscreen()
         startLongTasks()

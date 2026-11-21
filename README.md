@@ -81,6 +81,8 @@ dsh plugin --profile <profile> add github:coldrainthreeautumnleaves/dsh-concierg
 
 ## 开发约定
 
+**每次做功能前先上网深度搜索**：看官方/社区已经怎么做、有没有现成接口或已知坑，再动手。
+
 **加功能前先核对三件事**：
 
 1. **官方是否已经有**——先在设置页、内置插件列表、`app.asar` 里确认。官方已有的不重复造（例：官方「侧边卡片」内置后，再装一个接管侧边栏的插件只会更卡）。

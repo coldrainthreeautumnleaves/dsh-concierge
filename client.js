@@ -1573,6 +1573,19 @@ html[data-dsh-noanim="1"] [data-animating] {
 .uc-empty { padding: 28px 20px; }
 .uc-guide { margin: 0 20px 14px; }
 .uc-safe { padding: 12px 16px; border-radius: 12px; }
+
+/* --- own layout: vertical rail + content pane (not the official tab strip) --- */
+.uc-shell { display: grid; grid-template-columns: 172px minmax(0, 1fr); gap: 24px; align-items: start; }
+.uc-rail { display: flex; flex-direction: column; gap: 2px; position: sticky; top: 4px; }
+.uc-tab { width: 100%; text-align: left; padding: 9px 12px; border-radius: 9px; border-bottom: none; margin: 0; font-size: 13px; }
+.uc-tab:hover { background: var(--dsw-alias-bg-layer-2); }
+.uc-tab[data-active="true"] { background: var(--dsw-alias-bg-layer-2); color: var(--uc-accent); font-weight: 600; box-shadow: inset 2px 0 0 var(--uc-accent); }
+.uc-pane { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+@media (max-width: 780px) {
+  .uc-shell { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .uc-rail { flex-direction: row; flex-wrap: wrap; }
+  .uc-tab { width: auto; }
+}
 .uc-folder-actions { display: flex; flex-wrap: wrap; gap: 8px; padding: 2px 20px 10px; }
 .uc-folder-hint { margin: 0; padding: 0 20px 16px; font-size: 11px; line-height: 1.6; color: var(--dsw-alias-label-secondary); }
 `
@@ -2455,14 +2468,16 @@ html[data-dsh-noanim="1"] [data-animating] {
           ),
         ),
 
-        h('div', { className: 'uc-tabs', role: 'tablist' },
-          tabButton('update', t('tabUpdate')),
-          tabButton('plugins', t('tabPlugins')),
-          tabButton('add', t('tabAdd')),
-          tabButton('perf', t('tabPerf')),
-          tabButton('typer', t('tabTyper')),
-          tabButton('about', t('tabAbout')),
-        ),
+        h('div', { className: 'uc-shell' },
+          h('nav', { className: 'uc-rail', role: 'tablist' },
+            tabButton('update', t('tabUpdate')),
+            tabButton('plugins', t('tabPlugins')),
+            tabButton('add', t('tabAdd')),
+            tabButton('perf', t('tabPerf')),
+            tabButton('typer', t('tabTyper')),
+            tabButton('about', t('tabAbout')),
+          ),
+          h('div', { className: 'uc-pane' },
 
         loading ? h('div', { className: 'uc-progress', role: 'progressbar' }) : null,
 
@@ -3272,6 +3287,9 @@ html[data-dsh-noanim="1"] [data-animating] {
                 }),
           ),
         ) : null,
+
+          ),
+        ),
 
         h('footer', { className: 'uc-foot' },
           h('span', null, t('autoHint')),

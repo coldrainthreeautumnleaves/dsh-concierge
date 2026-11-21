@@ -230,10 +230,10 @@ html[data-dsh-glass="1"] #dsh-concierge-top {
   pointer-events: none;
   backdrop-filter: blur(12px) saturate(150%);
   -webkit-backdrop-filter: blur(12px) saturate(150%);
-  background: rgba(255, 255, 255, 0.34);
+  background: rgba(255, 255, 255, 0.42);
 }
 html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-top {
-  background: rgba(21, 27, 43, 0.38);
+  background: rgba(21, 27, 43, 0.48);
 }
 html[data-dsh-glass="1"][data-fullscreen] #dsh-concierge-top { display: none; }
 /* 侧边栏：从「压回实色」改成半透明，和聊天区一样透出壁纸。这里**不加**

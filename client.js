@@ -75,6 +75,8 @@ window.__ModuleLoader__.load({
       offscreen: false,
       // Skip offscreen rows only while the sidebar animates its width.
       resizeShield: true,
+      // Opt-in: make the sidebar collapse instant instead of animated.
+      noAnim: false,
       low: false,
       longActive: false,
     }
@@ -115,7 +117,18 @@ html[data-dsh-resizing="1"] [data-slot="conversation.chat.flow"] > * {
 [data-animating] [data-dsh-sidebar] {
   contain: layout paint;
 }
+/* Opt-in: zero out the 0.3s width animation. The collapse then costs exactly
+   one reflow instead of ~36, at the price of the sliding motion. */
+html[data-dsh-noanim="1"] [data-animating] {
+  --ds-transition-duration-slow: 0s !important;
+}
 `
+
+    function applyNoAnim() {
+      if (typeof document === 'undefined') return
+      if (perf.noAnim) document.documentElement.dataset.dshNoanim = '1'
+      else delete document.documentElement.dataset.dshNoanim
+    }
 
     function installPerfCss() {
       if (typeof document === 'undefined') return
@@ -136,6 +149,7 @@ html[data-dsh-resizing="1"] [data-slot="conversation.chat.flow"] > * {
         if (typeof parsed.forced === 'boolean') perf.forced = parsed.forced
         if (typeof parsed.offscreen === 'boolean') perf.offscreen = parsed.offscreen
         if (typeof parsed.resizeShield === 'boolean') perf.resizeShield = parsed.resizeShield
+        if (typeof parsed.noAnim === 'boolean') perf.noAnim = parsed.noAnim
         if (typeof parsed.refresh === 'number' && Number.isFinite(parsed.refresh)) perf.refreshOverride = parsed.refresh
       } catch {
         /* keep defaults */
@@ -150,6 +164,7 @@ html[data-dsh-resizing="1"] [data-slot="conversation.chat.flow"] > * {
           forced: perf.forced,
           offscreen: perf.offscreen,
         resizeShield: perf.resizeShield,
+        noAnim: perf.noAnim,
           refresh: perf.refreshOverride,
         }))
       } catch {
@@ -756,6 +771,8 @@ html[data-dsh-resizing="1"] [data-slot="conversation.chat.flow"] > * {
       perfForced: '强制精简',
       perfResize: '侧边栏收起优化',
       perfResizeHint: '收起/展开侧边栏时只重排可见的消息行，避免整段对话跟着掉帧',
+      perfNoAnim: '收起不做动画',
+      perfNoAnimHint: '把侧边栏 0.3 秒的滑动直接去掉，收起瞬间完成、只重排一次——不卡了，但没有滑动效果',
       perfOffscreen: '屏幕外行跳过',
       perfHint: '帧率按 5 秒平均；长任务统计最近 10 秒。屏幕外行跳过只作用于聊天流，出问题可关掉。',
       perfPeak: '峰值 {ms}ms',
@@ -953,6 +970,8 @@ html[data-dsh-resizing="1"] [data-slot="conversation.chat.flow"] > * {
       perfForced: 'Force lite',
       perfResize: 'Sidebar resize shield',
       perfResizeHint: 'While the sidebar animates, only the visible message rows are laid out',
+      perfNoAnim: 'No collapse animation',
+      perfNoAnimHint: 'Drop the 0.3s sidebar slide entirely: the collapse costs one reflow instead of ~36, with no motion',
       perfOffscreen: 'Skip offscreen rows',
       perfHint: 'FPS is a 5-second average; long tasks cover the last 10 seconds. Offscreen skipping only touches the chat flow; turn it off if anything misbehaves.',
       perfPeak: 'peak {ms}ms',
@@ -2685,6 +2704,12 @@ html[data-dsh-resizing="1"] [data-slot="conversation.chat.flow"] > * {
               savePerfPrefs()
               perfUpdate({})
             })),
+            settingRow(t('perfNoAnim'), t('perfNoAnimHint'), switchControl(perfSnapshot.noAnim, () => {
+              perf.noAnim = !perf.noAnim
+              savePerfPrefs()
+              applyNoAnim()
+              perfUpdate({})
+            })),
             settingRow(t('perfOffscreen'), t('perfOffscreenHint'), switchControl(perfSnapshot.offscreen, () => {
               perf.offscreen = !perf.offscreen
               savePerfPrefs()
@@ -3251,6 +3276,7 @@ html[data-dsh-resizing="1"] [data-slot="conversation.chat.flow"] > * {
         readPerfPrefs()
         readIgnore()
         installPerfCss()
+        applyNoAnim()
         startLongTasks()
         startPerfMonitor()
         installResizeShield()

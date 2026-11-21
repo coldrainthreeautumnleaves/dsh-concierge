@@ -101,13 +101,19 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
   animation-delay: 0s !important;
   transition-duration: 0s !important;
 }
-/* While the sidebar animates, the chat column's width changes every frame and
-   every row re-wraps its text. Skipping offscreen rows keeps that window at
-   frame rate; contain-intrinsic-size: auto reuses the last real height so the
-   scroll position does not jump. */
+/* The sidebar animates its width for 0.3s ([data-animating] is the app's own
+   marker). Every frame re-wraps the whole conversation, so for exactly that
+   window only the rows on screen are laid out. contain-intrinsic-size: auto
+   reuses each row's last real height, so the scroll position does not jump. */
+[data-animating] [data-slot="conversation.chat.flow"] > *,
 html[data-dsh-resizing="1"] [data-slot="conversation.chat.flow"] > * {
   content-visibility: auto;
   contain-intrinsic-size: auto 120px;
+}
+/* The sidebar itself is cheap to lay out but expensive to repaint while it
+   changes width; isolating it keeps that work off the conversation. */
+[data-animating] [data-dsh-sidebar] {
+  contain: layout paint;
 }
 `
 
@@ -191,7 +197,7 @@ html[data-dsh-resizing="1"] [data-slot="conversation.chat.flow"] > * {
           clearTimeout(resizeShieldTimer)
           resizeShieldTimer = setTimeout(() => {
             delete document.documentElement.dataset.dshResizing
-          }, 420)
+          }, 600)
         })
         observer.observe(region)
         return true

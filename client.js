@@ -722,6 +722,10 @@ html[data-dsh-noanim="1"] [data-animating] {
       perfAuto: '自动降级',
       perfLong: '长对话精简',
       perfForced: '强制精简',
+      perfTipsTitle: '掉帧时怎么调',
+      perfTip1: '收起侧边栏还掉帧 → 打开「收起不做动画」，用瞬间完成换流畅。',
+      perfTip2: '滚动位置跳动、内容闪一下 → 关掉「屏幕外行跳过」。',
+      perfTip3: '接管侧边栏渲染的插件（如 dsh-better-sidebar）会加重掉帧，官方「侧边卡片」已内置，不需要再装。',
       perfResize: '侧边栏收起优化',
       perfResizeHint: '收起/展开侧边栏时只重排可见的消息行，避免整段对话跟着掉帧',
       perfNoAnim: '收起不做动画',
@@ -921,6 +925,10 @@ html[data-dsh-noanim="1"] [data-animating] {
       perfAuto: 'Auto degrade',
       perfLong: 'Long-chat lite',
       perfForced: 'Force lite',
+      perfTipsTitle: 'When it still stutters',
+      perfTip1: 'Sidebar collapse still drops frames → turn on "No collapse animation".',
+      perfTip2: 'Scroll position jumps or content flashes → turn off "Skip offscreen rows".',
+      perfTip3: 'Plugins that take over sidebar rendering (e.g. dsh-better-sidebar) make it worse; the official Side card already covers it.',
       perfResize: 'Sidebar resize shield',
       perfResizeHint: 'While the sidebar animates, only the visible message rows are laid out',
       perfNoAnim: 'No collapse animation',
@@ -1175,6 +1183,9 @@ html[data-dsh-noanim="1"] [data-animating] {
 .uc-log-version { font-size: 12.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .uc-log-count { margin-left: auto; font-size: 11px; color: var(--dsw-alias-label-secondary); }
 .uc-log-items { margin: 0 0 10px; padding: 0 8px 0 26px; display: flex; flex-direction: column; gap: 5px; font-size: 11.5px; line-height: 1.6; color: var(--dsw-alias-label-secondary); }
+.uc-hintbox { margin: 2px 0 0; padding: 10px 12px; border: 1px solid var(--dsw-alias-border-l1); border-left: 3px solid var(--uc-accent); border-radius: 10px; background: var(--dsw-alias-bg-layer-1); }
+.uc-hintbox-title { font-size: 11.5px; font-weight: 600; color: var(--dsw-alias-label-primary); margin-bottom: 4px; }
+.uc-hintbox-list { margin: 0; padding-left: 16px; display: flex; flex-direction: column; gap: 3px; font-size: 11px; line-height: 1.55; color: var(--dsw-alias-label-secondary); }
 .uc-token-current { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; padding: 0 20px 2px; }
 .uc-token-mono { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 12px; color: var(--dsw-alias-label-primary); }
 .uc-token-current-hint { color: var(--dsw-alias-label-secondary); font-size: 11px; }
@@ -2684,6 +2695,14 @@ html[data-dsh-noanim="1"] [data-animating] {
                 [60, 90, 120, 144, 165, 240].map((rate) => h('option', { key: rate, value: String(rate) }, `${rate}Hz`)),
               )),
             h('p', { className: 'uc-perf-hint' }, t('perfHint')),
+            h('div', { className: 'uc-hintbox' },
+              h('div', { className: 'uc-hintbox-title' }, t('perfTipsTitle')),
+              h('ul', { className: 'uc-hintbox-list' },
+                h('li', null, t('perfTip1')),
+                h('li', null, t('perfTip2')),
+                h('li', null, t('perfTip3')),
+              ),
+            ),
           ),
         ) : null,
 

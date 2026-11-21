@@ -502,16 +502,43 @@ html[data-dsh-noanim="1"] [data-animating] {
     function readFontSizes() {
       if (lookFontOriginals) return lookFontOriginals
       const map = new Map()
+      const add = (name, value) => {
+        const px = parseFloat(value)
+        if (Number.isFinite(px) && px > 0) map.set(name, px)
+      }
+      // Chromium 不一定把自定义属性列进 getComputedStyle 的枚举里，所以再用
+      // CSSOM 扫一遍样式表兜底。
       try {
         const computed = getComputedStyle(document.documentElement)
         for (let index = 0; index < computed.length; index += 1) {
           const name = computed[index]
           if (typeof name !== 'string' || !name.startsWith('--dsw-font-') || !name.endsWith('-font-size')) continue
-          const px = parseFloat(computed.getPropertyValue(name))
-          if (Number.isFinite(px) && px > 0) map.set(name, px)
+          add(name, computed.getPropertyValue(name))
         }
       } catch {
         /* ignore */
+      }
+      if (map.size === 0) {
+        try {
+          for (const sheet of document.styleSheets) {
+            let rules = []
+            try {
+              rules = sheet.cssRules
+            } catch {
+              continue
+            }
+            for (const rule of rules) {
+              const style = rule && rule.style
+              if (!style) continue
+              for (let index = 0; index < style.length; index += 1) {
+                const name = style[index]
+                if (name.startsWith('--dsw-font-') && name.endsWith('-font-size')) add(name, style.getPropertyValue(name))
+              }
+            }
+          }
+        } catch {
+          /* ignore */
+        }
       }
       lookFontOriginals = map
       return map

@@ -151,12 +151,17 @@ html[data-dsh-noanim="1"] [data-animating] {
     // flat tint. Inert unless html[data-dsh-glass="1"] is on.
     const LOOK_CSS = `
 html[data-dsh-glass="1"], html[data-dsh-glass="1"] body { background: transparent !important; }
+/* The frost lives on the wallpaper itself: one blurred layer covers every
+   translucent surface, instead of paying a backdrop-filter per panel (each one
+   reads the pixels behind it and runs a blur kernel, so the cost scales with
+   area). Panels only keep a light blur where depth reads best: overlays. */
 html[data-dsh-glass="1"] body::before {
   content: '';
   position: fixed;
-  inset: 0;
+  inset: -8%;
   z-index: -1;
   pointer-events: none;
+  filter: blur(30px) saturate(140%);
   background:
     radial-gradient(1100px 560px at 8% -8%, rgba(99, 102, 241, 0.26), transparent 62%),
     radial-gradient(900px 520px at 98% 4%, rgba(236, 72, 153, 0.16), transparent 58%),
@@ -168,13 +173,15 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] body::before {
     radial-gradient(900px 520px at 98% 4%, rgba(139, 92, 246, 0.24), transparent 58%),
     linear-gradient(160deg, #0b0e14 0%, #10141c 46%, #0d1219 100%);
 }
-html[data-dsh-glass="1"] [data-conversation-region],
-html[data-dsh-glass="1"] [data-slot="conversation.chat.flow"],
-html[data-dsh-glass="1"] [data-slot="sidebar"],
+html[data-dsh-glass="1"] [role="dialog"],
+html[data-dsh-glass="1"] [role="alertdialog"],
+html[data-dsh-glass="1"] [role="menu"],
+html[data-dsh-glass="1"] [role="listbox"],
+html[data-dsh-glass="1"] [role="tooltip"],
 html[data-dsh-glass="1"] .uc-card,
 html[data-dsh-glass="1"] .uc-banner {
-  backdrop-filter: blur(18px) saturate(150%);
-  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
 }
 `
 
@@ -531,6 +538,60 @@ html[data-dsh-glass="1"] .uc-banner {
       '--dsw-alias-state-business-primary',
     ]
 
+    // 玻璃皮肤要把**所有**画背景的 token 都变半透明，否则总有一块地方是实心的。
+    // 官方一共 65 个背景类 token，这里覆盖真正承载表面的那些：底色、层级、
+    // 卡片、菜单、悬浮卡、提示、输入框、侧边栏、工具条、边框。
+    function glassTokens() {
+      const pair = (light, dark) => ({ light, dark })
+      const fill = (lightAlpha, darkAlpha) => pair(
+        `rgba(255, 255, 255, ${lightAlpha})`,
+        `rgba(20, 24, 32, ${darkAlpha})`,
+      )
+      return {
+        '--dsw-alias-bg-base': fill(0.5, 0.5),
+        '--dsw-alias-bg-layer-1': fill(0.66, 0.66),
+        '--dsw-alias-bg-layer-2': fill(0.44, 0.44),
+        '--dsw-alias-bg-layer-3': fill(0.34, 0.34),
+        '--dsw-alias-bg-overlay': fill(0.55, 0.62),
+        '--dsw-alias-bg-mask-1': fill(0.35, 0.45),
+        '--dsw-alias-bg-mask-2': fill(0.45, 0.55),
+        '--dsw-alias-bg-mask-3': fill(0.55, 0.65),
+        '--dsw-alias-card-fill': fill(0.62, 0.62),
+        '--dsw-alias-card-fill-hover': fill(0.72, 0.72),
+        '--dsw-alias-card-tile-fill': fill(0.58, 0.58),
+        '--dsw-alias-settings-card-fill': fill(0.62, 0.62),
+        '--dsw-alias-settings-card-stroke': pair('rgba(255, 255, 255, 0.6)', 'rgba(255, 255, 255, 0.12)'),
+        '--dsw-alias-onboarding-card-fill': fill(0.62, 0.62),
+        '--dsw-alias-onboarding-secondary-fill': fill(0.5, 0.5),
+        '--dsw-menu-surface-fill': fill(0.74, 0.8),
+        '--dsw-specific-menu': fill(0.74, 0.8),
+        '--dsw-alias-menu-group-header-fill': fill(0.4, 0.4),
+        '--dsw-alias-hovercard-bg': fill(0.76, 0.82),
+        '--dsw-alias-toast-bg': fill(0.78, 0.82),
+        '--dsw-alias-tooltip-bg': fill(0.84, 0.86),
+        '--dsw-alias-tooltip-key-bg': fill(0.6, 0.6),
+        '--dsw-specific-input-major': fill(0.7, 0.7),
+        '--dsw-specific-login-input': fill(0.7, 0.7),
+        '--dsw-specific-sidebar-fill': fill(0.4, 0.46),
+        '--dsw-specific-sidebar-glass-fill': fill(0.4, 0.46),
+        '--dsw-specific-sidebar-glass-collapsed-fill': fill(0.4, 0.46),
+        '--dsw-alias-button-elevated-fill': fill(0.56, 0.56),
+        '--dsw-alias-button-floating-fill': fill(0.62, 0.62),
+        '--dsw-alias-button-tool-bar-fill': fill(0.5, 0.5),
+        '--dsw-alias-turn-trigger-bg': fill(0.55, 0.55),
+        '--dsw-alias-turn-trigger-bg-hover': fill(0.7, 0.7),
+        '--dsw-alias-interactive-bg-hover': fill(0.35, 0.35),
+        '--dsw-menu-backdrop-filter': pair('blur(20px) saturate(150%)', 'blur(20px) saturate(150%)'),
+        '--dsw-alias-border-l1': pair('rgba(255, 255, 255, 0.6)', 'rgba(255, 255, 255, 0.12)'),
+        '--dsw-alias-border-l2': pair('rgba(120, 130, 150, 0.18)', 'rgba(255, 255, 255, 0.18)'),
+        '--dsw-alias-label-primary': pair('#1a1d23', '#e8ebf1'),
+        '--dsw-alias-label-secondary': pair('#5d6470', '#9aa3b2'),
+        '--dsw-radius-md': pair('14px', '14px'),
+        '--dsw-radius-lg': pair('18px', '18px'),
+        '--dsw-radius-panel': pair('18px', '18px'),
+      }
+    }
+
     // 每套皮肤是一组官方 token 覆盖，浅色/深色各一份。
     const LOOK_SKINS = {
       soft: {
@@ -563,21 +624,7 @@ html[data-dsh-glass="1"] .uc-banner {
           '--dsw-radius-panel': { light: '14px', dark: '14px' },
         },
       },
-      glass: {
-        tokens: {
-          '--dsw-specific-sidebar-fill': { light: 'rgba(255, 255, 255, 0.42)', dark: 'rgba(18, 21, 28, 0.45)' },
-          '--dsw-alias-bg-base': { light: 'rgba(255, 255, 255, 0.55)', dark: 'rgba(16, 18, 24, 0.55)' },
-          '--dsw-alias-bg-layer-1': { light: 'rgba(255, 255, 255, 0.72)', dark: 'rgba(22, 26, 34, 0.72)' },
-          '--dsw-alias-bg-layer-2': { light: 'rgba(255, 255, 255, 0.5)', dark: 'rgba(28, 33, 42, 0.5)' },
-          '--dsw-alias-border-l1': { light: 'rgba(255, 255, 255, 0.6)', dark: 'rgba(255, 255, 255, 0.12)' },
-          '--dsw-alias-border-l2': { light: 'rgba(120, 130, 150, 0.18)', dark: 'rgba(255, 255, 255, 0.18)' },
-          '--dsw-alias-label-primary': { light: '#1a1d23', dark: '#e8ebf1' },
-          '--dsw-alias-label-secondary': { light: '#5d6470', dark: '#9aa3b2' },
-          '--dsw-radius-md': { light: '14px', dark: '14px' },
-          '--dsw-radius-lg': { light: '18px', dark: '18px' },
-          '--dsw-radius-panel': { light: '18px', dark: '18px' },
-        },
-      },
+      glass: { tokens: glassTokens() },
       ocean: {
         tokens: {
           '--dsw-specific-sidebar-fill': { light: '#eaf3fb', dark: '#0d1822' },

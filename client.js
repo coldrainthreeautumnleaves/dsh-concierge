@@ -81,6 +81,8 @@ window.__ModuleLoader__.load({
       noAnim: false,
       low: false,
       longActive: false,
+      // 玻璃自动降级：帧率掉下来时临时关掉会话区模糊，不是用户的设置。
+      glassAuto: false,
     }
     const perfListeners = new Set()
     const perfUpdate = (patch) => {
@@ -150,7 +152,14 @@ html[data-dsh-noanim="1"] [data-animating] {
     // the official theme service), so the frost reads as real depth instead of a
     // flat tint. Inert unless html[data-dsh-glass="1"] is on.
     const LOOK_CSS = `
-html[data-dsh-glass="1"], html[data-dsh-glass="1"] body { background: transparent !important; }
+/* Keep the root OPAQUE. Chromium can only treat the frame as opaque (and let
+   Windows composite it without a per-frame blend) when the root background has
+   no alpha; a transparent root forces the compositor to blend the page with the
+   window surface every frame. The wallpaper layer sits at z-index: -1, i.e.
+   above this background, so nothing changes visually. */
+html[data-dsh-glass="1"] { background-color: #f0f3fc !important; }
+html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] { background-color: #151b2b !important; }
+html[data-dsh-glass="1"] body { background: transparent !important; }
 /* The frost lives on the wallpaper itself: one blurred layer covers every
    translucent surface, instead of paying a backdrop-filter per panel (each one
    reads the pixels behind it and runs a blur kernel, so the cost scales with
@@ -233,6 +242,12 @@ html[data-dsh-glass="1"]:not([data-dsh-glass-light="1"]) [data-conversation-regi
    静态壁纸才缓存得住，所以视频模式下这块不模糊——壁纸本身在动，面板半透明
    已经够玻璃感。 */
 html[data-dsh-glass="1"][data-dsh-glass-wall="video"] [data-conversation-region="chat"]::before {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+/* 玻璃自动降级：帧率掉下来时由性能监控临时关掉会话区模糊（不动用户的「轻玻璃」
+   设置），回升后自己还原。 */
+html[data-dsh-glass="1"][data-dsh-glass-auto="1"] [data-conversation-region="chat"]::before {
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
@@ -425,6 +440,15 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       if (perf.mode !== next) perfUpdate({ mode: next })
     }
 
+    // 玻璃自动降级只写一个属性，不碰用户的「轻玻璃」设置；关掉外观或换皮肤时由
+    // applyLook 清掉。
+    function applyGlassAuto() {
+      if (typeof document === 'undefined') return
+      const root = document.documentElement
+      if (perf.glassAuto && look.enabled && look.skin === 'glass') root.dataset.dshGlassAuto = '1'
+      else delete root.dataset.dshGlassAuto
+    }
+
     // Sidebar collapse animates the chat column width; during that window only
     // the rows on screen need laying out.
     let resizeShieldInstalled = false
@@ -495,6 +519,10 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       let last = performance.now()
       let lowFor = 0
       let goodFor = 0
+      // 玻璃自动降级的独立计数与冷却，和上面的精简模式互不影响。
+      let glassLowFor = 0
+      let glassGoodFor = 0
+      let lastGlassAt = 0
       // Flipping the lite mode rewrites animations, shadows and backdrop blur,
       // which reads as a blink: never change it more than once every 15 seconds.
       let lastModeAt = 0
@@ -539,8 +567,35 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
             if (now - lastModeAt < 15000) low = perf.low
             else lastModeAt = now
           }
-          perfUpdate({ fps: average, samples, low })
+          // 玻璃自动降级：120Hz 屏掉到 90 帧人已经能感觉到，但上面那条 50% 的阈值
+          // 不会触发。单独给玻璃一条更敏感的线：低于刷新率 75% 连续 2 秒就关掉会话区
+          // 模糊，回到 90% 连续 5 秒恢复；两次切换至少隔 20 秒，避免来回闪。
+          let glassAuto = false
+          if (perf.auto && look.skin === 'glass' && look.enabled) {
+            glassAuto = perf.glassAuto
+            const glassLow = Math.max(45, Math.round(effectiveRefresh * 0.75))
+            const glassGood = Math.max(glassLow + 5, Math.round(effectiveRefresh * 0.9))
+            if (average < glassLow) {
+              glassLowFor += 1
+              glassGoodFor = 0
+            } else if (average > glassGood) {
+              glassGoodFor += 1
+              glassLowFor = 0
+            } else {
+              glassLowFor = 0
+              glassGoodFor = 0
+            }
+            let next = glassAuto
+            if (glassLowFor >= 2) next = true
+            if (glassGoodFor >= 5) next = false
+            if (next !== glassAuto && now - lastGlassAt >= 20000) {
+              lastGlassAt = now
+              glassAuto = next
+            }
+          }
+          perfUpdate({ fps: average, samples, low, glassAuto })
           applyPerfMode()
+          applyGlassAuto()
         }
         requestAnimationFrame(tick)
       }
@@ -992,6 +1047,8 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         delete root.dataset.dshGlassLight
         delete root.dataset.dshGlassScheme
         delete root.dataset.dshGlassWall
+        delete root.dataset.dshGlassAuto
+        if (perf.glassAuto) perfUpdate({ glassAuto: false })
         applyGrainImage()
       }
       if (!look.enabled || !lookCtx) {
@@ -1028,6 +1085,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         // 视频壁纸每帧都在变，会话区那块模糊会被逐帧重算，CSS 里按这个属性关掉。
         root.dataset.dshGlassWall = (look.wall && look.wall.mode) || 'preset'
         applyGrainImage()
+        applyGlassAuto()
         syncGlassScheme()
       } else {
         clearGlassLayer()
@@ -1361,6 +1419,10 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       perfPeak: '近 80 秒峰值 {ms}ms',
       perfRefresh: '刷新率',
       perfRefreshHint: '默认跟随屏幕刷新率',
+      perfGlassAuto: '玻璃自动降级',
+      perfGlassAutoHint: '低于刷新率 75% 连续 2 秒就关掉会话区模糊，回升到 90% 连续 5 秒恢复',
+      perfGlassAutoOn: '已降级',
+      perfGlassAutoOff: '正常',
       perfRefreshAuto: '自动识别',
       pendingDisabled: '上次启动时有 {count} 个插件加载失败被禁用：{names}',
       enableAll: '全部启用',
@@ -1600,6 +1662,10 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       perfPeak: '80s peak {ms}ms',
       perfRefresh: 'Refresh rate',
       perfRefreshHint: 'Follows the display refresh by default',
+      perfGlassAuto: 'Glass auto-degrade',
+      perfGlassAutoHint: 'Drops the chat blur after 2s below 75% of the refresh rate; restores after 5s above 90%',
+      perfGlassAutoOn: 'Reduced',
+      perfGlassAutoOff: 'Normal',
       perfRefreshAuto: 'Auto detect',
       pendingDisabled: '{count} plugin(s) failed to load after the last start and were disabled: {names}',
       enableAll: 'Enable all',
@@ -3612,6 +3678,8 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
                 h('option', { value: '0' }, t('perfRefreshAuto')),
                 [60, 90, 120, 144, 165, 240].map((rate) => h('option', { key: rate, value: String(rate) }, `${rate}Hz`)),
               )),
+            settingRow(t('perfGlassAuto'), t('perfGlassAutoHint'),
+              h('span', { className: 'uc-typer-value' }, perfSnapshot.glassAuto ? t('perfGlassAutoOn') : t('perfGlassAutoOff'))),
             h('p', { className: 'uc-perf-hint' }, t('perfHint')),
             h('div', { className: 'uc-hintbox' },
               h('div', { className: 'uc-hintbox-title' }, t('perfTipsTitle')),

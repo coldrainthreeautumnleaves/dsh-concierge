@@ -89,6 +89,8 @@ dsh plugin --profile <profile> add github:coldrainthreeautumnleaves/dsh-concierg
 
 **加完要验证**：真实环境跑一遍——接口返回、页面渲染、日志都对上，不能只靠语法检查通过就交付。
 
+**排版规则**：带开关/选项的卡片一律排在所在页的最前面，信息类卡片（统计、来源列表、目录）排在后面。
+
 ## 发布流程
 
 每次发版都做这四件事，缺一不可：

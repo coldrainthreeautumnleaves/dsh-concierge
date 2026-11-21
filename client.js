@@ -2774,7 +2774,12 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
           ),
         ),
         h('div', { className: 'uc-banner-actions' },
-          isUpdate ? null : h('span', { className: 'uc-banner-hint' }, state.needsRestart ? t('bannerHint') : t('bannerHintRefresh')),
+          // The hint names what actually has to happen: restart banners say so,
+          // refresh banners say refresh, the background "updates found" one says nothing.
+          state.kind === 'update'
+            ? null
+            : h('span', { className: 'uc-banner-hint' },
+                state.kind === 'restart' || state.needsRestart ? t('bannerHint') : t('bannerHintRefresh')),
           state.action
             ? h('button', {
                 type: 'button',

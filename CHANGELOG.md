@@ -2,6 +2,11 @@
 
 版本规则：每次发版，最后一位 +1（0.1.1 → 0.1.2 → …）。
 
+## 0.1.3
+
+- 性能页新增「启动加速」开关：一键把应用目录、`~/.dsh`、插件目录加进 Windows Defender 排除项（弹一次 UAC）
+- 卸载两个可选的 subagent 包（`@deepseek-ai/dsh-subagent-codex`、`@deepseek-ai/dsh-subagent-claude-code`），profile 依赖从 1.1 GB 降到 490 MB
+
 ## 0.1.2
 
 - GitHub Token 卡片增加状态标签：「已配置 / 未配置 / 来自环境变量」

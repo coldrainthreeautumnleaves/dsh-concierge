@@ -680,6 +680,13 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
       groupRegistry: 'npm 插件',
       groupGit: 'GitHub 插件',
       groupLocal: '本地安装',
+      boostTitle: '启动加速',
+      boostSwitch: 'Defender 排除项',
+      boostHint: '把应用目录、~/.dsh 和插件目录加进 Windows Defender 排除项，启动时不再逐个扫文件',
+      boostOn: '已开启，排除项已添加（{time}）',
+      boostOff: '已关闭，排除项已移除',
+      boostUnknown: '还没设置过：打开开关会弹一次 UAC，确认后生效',
+      boostWaiting: '等待 UAC 确认…',
       perfTitle: '聊天性能',
       perfFps: '帧率',
       perfRows: '消息行',
@@ -867,6 +874,13 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
       groupRegistry: 'npm plugins',
       groupGit: 'GitHub plugins',
       groupLocal: 'Local installs',
+      boostTitle: 'Startup boost',
+      boostSwitch: 'Defender exclusions',
+      boostHint: 'Add the app directory, ~/.dsh and the plugins directory to the Windows Defender exclusions so startup no longer scans every file',
+      boostOn: 'On — exclusions added ({time})',
+      boostOff: 'Off — exclusions removed',
+      boostUnknown: 'Not set yet: turning it on shows one UAC prompt',
+      boostWaiting: 'Waiting for the UAC prompt…',
       perfTitle: 'Chat performance',
       perfFps: 'FPS',
       perfRows: 'Rows',
@@ -1365,6 +1379,50 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
           alive = false
         }
       }, [])
+
+      const [boostState, setBoostState] = React.useState(null)
+      const [boostBusy, setBoostBusy] = React.useState(false)
+
+      const loadBoost = React.useCallback(async () => {
+        try {
+          const response = await fetch(`${API}/startup-boost`, { cache: 'no-store' })
+          const body = await response.json().catch(() => null)
+          if (body && body.ok) setBoostState(body.state || null)
+        } catch {
+          /* ignore */
+        }
+      }, [])
+
+      React.useEffect(() => {
+        void loadBoost()
+      }, [loadBoost])
+
+      const toggleBoost = React.useCallback(async () => {
+        if (boostBusy) return
+        const next = !(boostState && boostState.enabled)
+        setBoostBusy(true)
+        try {
+          await fetch(`${API}/startup-boost`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ enabled: next }),
+          })
+          // The elevated script needs a UAC click; poll for its result.
+          for (let round = 0; round < 20; round += 1) {
+            await new Promise((resolve) => setTimeout(resolve, 1000))
+            const response = await fetch(`${API}/startup-boost`, { cache: 'no-store' })
+            const body = await response.json().catch(() => null)
+            if (body && body.ok && body.state && body.state.enabled === next) {
+              setBoostState(body.state)
+              break
+            }
+          }
+        } catch {
+          /* ignore */
+        } finally {
+          setBoostBusy(false)
+        }
+      }, [boostState, boostBusy])
 
       React.useEffect(() => {
         const listener = () => setPerfSnapshot({ ...perf })
@@ -2466,6 +2524,26 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
                   ),
             )
           : null,
+
+        tab === 'perf' ? h('section', { className: 'uc-card' },
+          h('div', { className: 'uc-card-head' },
+            h('div', { className: 'uc-card-title' }, t('boostTitle')),
+          ),
+          h('div', { className: 'uc-perf' },
+            settingRow(t('boostSwitch'), t('boostHint'), switchControl(
+              Boolean(boostState && boostState.enabled),
+              toggleBoost,
+            )),
+            h('p', { className: 'uc-perf-hint' },
+              boostBusy
+                ? t('boostWaiting')
+                : !boostState
+                  ? t('boostUnknown')
+                  : boostState.enabled
+                    ? t('boostOn', { time: boostState.at ? new Date(boostState.at).toLocaleString() : '' })
+                    : t('boostOff')),
+          ),
+        ) : null,
 
         tab === 'perf' ? h('section', { className: 'uc-card' },
           h('div', { className: 'uc-card-head' },

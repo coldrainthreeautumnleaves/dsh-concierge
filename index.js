@@ -327,6 +327,15 @@ export function apply(ctx) {
     'dsh-concierge: about route',
   )
 
+  ctx.effect(
+    () => ctx.webServer.register({
+      kind: 'exact',
+      path: `${ROUTE}/startup-boost`,
+      handler: (request, response) => handleStartupBoost(request, response),
+    }),
+    'dsh-concierge: startup boost route',
+  )
+
   // A plugin updated into a broken state should not keep breaking every start.
   ctx.effect(() => {
     const timer = setTimeout(() => {
@@ -491,6 +500,90 @@ async function handleSettings(request, response) {
       masked: maskToken(env || storedToken),
       safeModeAuto,
     }, 200)
+  } catch (error) {
+    sendNodeJson(response, { ok: false, error: messageOf(error) }, 500)
+  }
+}
+
+// Startup boost: the Host cannot touch Defender itself (that needs elevation),
+// so it writes a small script and asks Windows to run it elevated. The script
+// reports back through a JSON file the page polls.
+const STARTUP_BOOST_FILE = path.join(SAFE_DIR, 'startup-boost.json')
+const STARTUP_BOOST_SCRIPT = path.join(SAFE_DIR, 'startup-boost.ps1')
+
+function startupBoostPaths() {
+  return [
+    path.join(process.env.LOCALAPPDATA || '', 'Programs', 'DeepSeek Harness'),
+    path.join(homedir(), '.dsh'),
+    path.dirname(PLUGIN_DIR),
+  ].filter(Boolean)
+}
+
+function buildStartupBoostScript(enabled) {
+  const quoted = startupBoostPaths()
+    .map((item) => `'${String(item).replace(/'/g, "''")}'`)
+    .join(', ')
+  const action = enabled
+    ? 'Add-MpPreference -ExclusionPath $p -ErrorAction Stop'
+    : 'Remove-MpPreference -ExclusionPath $p -ErrorAction Stop'
+  return `$ErrorActionPreference = 'Stop'
+$paths = @(${quoted})
+$result = [ordered]@{
+  ok = $true
+  enabled = ${enabled ? '$true' : '$false'}
+  at = (Get-Date).ToString('o')
+  paths = @()
+  errors = @()
+}
+foreach ($p in $paths) {
+  if (-not (Test-Path $p)) { $result.errors += "missing: $p"; continue }
+  try {
+    ${action}
+    $result.paths += $p
+  } catch {
+    $result.ok = $false
+    $result.errors += $_.Exception.Message
+  }
+}
+$result | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath '${STARTUP_BOOST_FILE.replace(/'/g, "''")}' -Encoding UTF8
+`
+}
+
+async function readStartupBoost() {
+  try {
+    const parsed = JSON.parse(await readFile(STARTUP_BOOST_FILE, 'utf8'))
+    return parsed && typeof parsed === 'object' ? parsed : null
+  } catch {
+    return null
+  }
+}
+
+async function handleStartupBoost(request, response) {
+  try {
+    if (request.method === 'GET') {
+      sendNodeJson(response, { ok: true, state: await readStartupBoost() }, 200)
+      return
+    }
+    if (request.method !== 'POST') {
+      response.statusCode = 405
+      response.setHeader('allow', 'GET, POST')
+      response.end()
+      return
+    }
+    const body = await readNodeJson(request)
+    const enabled = body.enabled === true
+    await mkdir(SAFE_DIR, { recursive: true })
+    await writeFile(STARTUP_BOOST_SCRIPT, `\uFEFF${buildStartupBoostScript(enabled)}`, 'utf8')
+    // Run it elevated; the script writes the result file when it finishes.
+    const quotedScript = STARTUP_BOOST_SCRIPT.replace(/'/g, "''")
+    spawn('powershell.exe', [
+      '-NoProfile',
+      '-ExecutionPolicy',
+      'Bypass',
+      '-Command',
+      `Start-Process powershell -Verb RunAs -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-File','${quotedScript}'`,
+    ], { detached: true, stdio: 'ignore' }).unref()
+    sendNodeJson(response, { ok: true, launched: true }, 200)
   } catch (error) {
     sendNodeJson(response, { ok: false, error: messageOf(error) }, 500)
   }

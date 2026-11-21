@@ -112,6 +112,7 @@ Git 插件走「GitHub releases（没有 release 时退回 tags）→ 下载 →
 - **自动降级**：平均帧率连续 2 秒低于刷新率的 75% 时，给 `<html>` 加 `data-dsh-perf="low"`，关掉聊天区的动画、过渡、`backdrop-filter` 和阴影；连续 3 秒高于 90% 恢复。
 - **长对话精简**：消息行超过 60 条时加 `data-dsh-perf="long"`，关掉聊天流里的动画和过渡。
 - **强制精简**：不看帧率，始终按精简模式走。
+- **启动加速**：把应用目录、`~/.dsh`、插件目录加进 Windows Defender 排除项。宿主没有管理员权限，所以打开开关时它会写一个脚本并请求 UAC 提权执行，结果回写到 `~/.dsh/update-center/startup-boost.json`，页面轮询这个文件显示状态。
 - **屏幕外行跳过**：默认关。只在消息行超过 40 条时启用；按每行的**真实高度**写 `contain-intrinsic-size: auto <height>px`（不是固定占位），只处理真正在屏幕外的行，并在空闲时间分片扫描。Chromium 上 `content-visibility` 有已知的重绘和滚动抖动问题，聊天本身已经虚拟化了行，所以默认不开，长对话明显卡顿时再打开。
 
 另外，检测到聊天正在流式输出（`[data-phase="active"]`）时会临时关掉聊天区的 `backdrop-filter`，流式结束自动恢复。

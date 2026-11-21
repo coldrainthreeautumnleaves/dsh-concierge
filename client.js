@@ -450,7 +450,7 @@ html[data-dsh-noanim="1"] [data-animating] {
     // 官方要求每个 token 给 { light, dark } 一对，深浅色切换自动跟随，
     // DSH 升级也不会失效。
     const LOOK_STORAGE_KEY = 'dsh-concierge:look'
-    const look = { enabled: false, skin: 'soft', brand: 'default' }
+    const look = { enabled: false, skin: 'soft', brand: 'default', custom: null }
     const lookListeners = new Set()
     const lookUpdate = () => {
       for (const listener of [...lookListeners]) listener()
@@ -523,14 +523,37 @@ html[data-dsh-noanim="1"] [data-animating] {
     let lookCtx = null
     let lookDispose = null
 
+    // 自定义皮肤：{ '--dsw-xxx': { light, dark } }，官方 API 只认这种成对写法。
+    function normalizeCustomTokens(input) {
+      if (!input || typeof input !== 'object' || Array.isArray(input)) return { error: '需要一个 JSON 对象' }
+      const out = {}
+      for (const [name, value] of Object.entries(input)) {
+        if (typeof name !== 'string' || !name.startsWith('--dsw-')) return { error: `token 名要以 --dsw- 开头：${name}` }
+        if (!value || typeof value !== 'object' || typeof value.light !== 'string' || typeof value.dark !== 'string') {
+          return { error: `${name} 需要 { light, dark } 两个字符串` }
+        }
+        out[name] = { light: value.light, dark: value.dark }
+      }
+      if (Object.keys(out).length === 0) return { error: '至少给一个 token' }
+      return { tokens: out }
+    }
+
+    function defaultCustomTokens() {
+      return JSON.parse(JSON.stringify(LOOK_SKINS.soft.tokens))
+    }
+
     function readLookPrefs() {
       try {
         const raw = localStorage.getItem(LOOK_STORAGE_KEY)
         if (!raw) return
         const parsed = JSON.parse(raw)
         if (typeof parsed.enabled === 'boolean') look.enabled = parsed.enabled
-        if (typeof parsed.skin === 'string' && parsed.skin in LOOK_SKINS) look.skin = parsed.skin
+        if (typeof parsed.skin === 'string' && (parsed.skin in LOOK_SKINS || parsed.skin === 'custom')) look.skin = parsed.skin
         if (typeof parsed.brand === 'string' && parsed.brand in LOOK_BRANDS) look.brand = parsed.brand
+        if (parsed.custom) {
+          const result = normalizeCustomTokens(parsed.custom)
+          if (result.tokens) look.custom = result.tokens
+        }
       } catch {
         /* keep defaults */
       }
@@ -542,6 +565,7 @@ html[data-dsh-noanim="1"] [data-animating] {
           enabled: look.enabled,
           skin: look.skin,
           brand: look.brand,
+          custom: look.custom,
         }))
       } catch {
         /* storage unavailable */
@@ -560,7 +584,9 @@ html[data-dsh-noanim="1"] [data-animating] {
       if (!look.enabled || !lookCtx) return
       const theme = typeof lookCtx.get === 'function' ? lookCtx.get('theme') : null
       if (!theme || typeof theme.overrideTokens !== 'function') return
-      const skin = LOOK_SKINS[look.skin]
+      const skin = look.skin === 'custom'
+        ? { tokens: look.custom || defaultCustomTokens() }
+        : LOOK_SKINS[look.skin]
       if (!skin) return
       const tokens = { ...skin.tokens }
       const brand = LOOK_BRANDS[look.brand]
@@ -890,13 +916,17 @@ html[data-dsh-noanim="1"] [data-animating] {
       lookSkinSoft: '柔和',
       lookSkinInk: '墨色',
       lookSkinOcean: '海洋',
+      lookSkinCustom: '自定义',
+      lookApply: '应用',
+      lookReset: '重置为柔和',
+      lookCopy: '复制 JSON',
       lookBrand: '品牌色',
       lookBrandDefault: '默认',
       lookBrandIndigo: '靛蓝',
       lookBrandViolet: '紫',
       lookBrandGreen: '绿',
       lookBrandAmber: '橙',
-      lookHint: '默认关闭；和皮肤类插件可能叠加，冲突时先关这个。',
+      lookHint: '默认关闭；自定义皮肤写成 { "token": { light, dark } }。和换肤插件会叠加，冲突时先关这个。',
       foldersTitle: '目录与配置',
       safeModeAuto: '自动安全模式',
       safeModeAutoHint: '启动失败时自动进安全模式',
@@ -1107,13 +1137,17 @@ html[data-dsh-noanim="1"] [data-animating] {
       lookSkinSoft: 'Soft',
       lookSkinInk: 'Ink',
       lookSkinOcean: 'Ocean',
+      lookSkinCustom: 'Custom',
+      lookApply: 'Apply',
+      lookReset: 'Reset to Soft',
+      lookCopy: 'Copy JSON',
       lookBrand: 'Brand color',
       lookBrandDefault: 'Default',
       lookBrandIndigo: 'Indigo',
       lookBrandViolet: 'Violet',
       lookBrandGreen: 'Green',
       lookBrandAmber: 'Amber',
-      lookHint: 'Off by default; may stack with skin plugins, turn it off if they clash.',
+      lookHint: 'Off by default; custom skins use { "token": { light, dark } }. Stacks with skin plugins — turn it off if they clash.',
       foldersTitle: 'Folders',
       safeModeAuto: 'Automatic safe mode',
       safeModeAutoHint: 'Safe mode if a start fails',
@@ -1358,6 +1392,11 @@ html[data-dsh-noanim="1"] [data-animating] {
 .uc-hintbox { margin: 2px 0 0; padding: 10px 12px; border: 1px solid var(--dsw-alias-border-l1); border-left: 3px solid var(--uc-accent); border-radius: 10px; background: var(--dsw-alias-bg-layer-1); }
 .uc-hintbox-title { font-size: 11.5px; font-weight: 600; color: var(--dsw-alias-label-primary); margin-bottom: 4px; }
 .uc-hintbox-list { margin: 0; padding-left: 16px; display: flex; flex-direction: column; gap: 3px; font-size: 11px; line-height: 1.55; color: var(--dsw-alias-label-secondary); }
+.uc-look-editor { display: flex; flex-direction: column; gap: 8px; padding: 2px 20px 14px; }
+.uc-look-text { width: 100%; box-sizing: border-box; min-height: 190px; resize: vertical; border: 1px solid var(--dsw-alias-border-l2); border-radius: 10px; background: var(--dsw-alias-bg-layer-1); color: var(--dsw-alias-label-primary); font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 11px; line-height: 1.55; padding: 10px 12px; outline: none; }
+.uc-look-text:focus { border-color: var(--uc-accent); }
+.uc-look-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.uc-look-error { margin: 0; font-size: 11px; line-height: 1.5; color: var(--dsw-alias-label-secondary); }
 .uc-token-current { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; padding: 0 20px 2px; }
 .uc-token-mono { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 12px; color: var(--dsw-alias-label-primary); }
 .uc-token-current-hint { color: var(--dsw-alias-label-secondary); font-size: 11px; }
@@ -1589,6 +1628,39 @@ html[data-dsh-noanim="1"] [data-animating] {
       const [perfSnapshot, setPerfSnapshot] = React.useState({ ...perf })
       const [typerSnapshot, setTyperSnapshot] = React.useState({ ...typer })
       const [lookSnapshot, setLookSnapshot] = React.useState({ ...look })
+      const [customDraft, setCustomDraft] = React.useState(() => JSON.stringify(look.custom || defaultCustomTokens(), null, 2))
+      const [lookNotice, setLookNotice] = React.useState(null)
+
+      const applyCustomDraft = () => {
+        let parsed = null
+        try {
+          parsed = JSON.parse(customDraft)
+        } catch (error) {
+          setLookNotice(`JSON 解析失败：${error && error.message ? error.message : '未知错误'}`)
+          return
+        }
+        const result = normalizeCustomTokens(parsed)
+        if (result.error) {
+          setLookNotice(result.error)
+          return
+        }
+        look.custom = result.tokens
+        look.skin = 'custom'
+        look.enabled = true
+        saveLookPrefs()
+        applyLook()
+        lookUpdate()
+        setLookNotice(`已应用 ${Object.keys(result.tokens).length} 个 token`)
+      }
+
+      const copyCustomDraft = async () => {
+        try {
+          await navigator.clipboard.writeText(customDraft)
+          setLookNotice('已复制到剪贴板')
+        } catch {
+          setLookNotice('复制失败，手动选中文本吧')
+        }
+      }
 
       React.useEffect(() => {
         const listener = () => setLookSnapshot({ ...look })
@@ -2503,6 +2575,7 @@ html[data-dsh-noanim="1"] [data-animating] {
                     h('option', { value: 'soft' }, t('lookSkinSoft')),
                     h('option', { value: 'ink' }, t('lookSkinInk')),
                     h('option', { value: 'ocean' }, t('lookSkinOcean')),
+                    h('option', { value: 'custom' }, t('lookSkinCustom')),
                   )),
                 settingRow(t('lookBrand'), null,
                   h('select', {
@@ -2522,6 +2595,26 @@ html[data-dsh-noanim="1"] [data-animating] {
                     h('option', { value: 'green' }, t('lookBrandGreen')),
                     h('option', { value: 'amber' }, t('lookBrandAmber')),
                   )),
+                lookSnapshot.skin === 'custom'
+                  ? h('div', { className: 'uc-look-editor' },
+                      h('textarea', {
+                        className: 'uc-look-text',
+                        value: customDraft,
+                        spellCheck: false,
+                        onChange: (event) => setCustomDraft(event.target.value),
+                      }),
+                      h('div', { className: 'uc-look-actions' },
+                        h('button', { type: 'button', className: 'uc-btn uc-btn-accent', onClick: applyCustomDraft }, t('lookApply')),
+                        h('button', {
+                          type: 'button',
+                          className: 'uc-btn',
+                          onClick: () => setCustomDraft(JSON.stringify(defaultCustomTokens(), null, 2)),
+                        }, t('lookReset')),
+                        h('button', { type: 'button', className: 'uc-btn', onClick: copyCustomDraft }, t('lookCopy')),
+                      ),
+                      lookNotice ? h('p', { className: 'uc-look-error' }, lookNotice) : null,
+                    )
+                  : null,
                 h('p', { className: 'uc-perf-hint' }, t('lookHint')),
               ),
             )

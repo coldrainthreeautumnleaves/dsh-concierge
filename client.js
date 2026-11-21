@@ -66,7 +66,9 @@ window.__ModuleLoader__.load({
       blocking: 0,
       mode: 'normal',
       auto: true,
-      longPref: true,
+      // Off by default: freezing every animation in the chat flow also freezes
+      // the thinking/streaming indicators, which reads as "the app is stuck".
+      longPref: false,
       forced: false,
       // Off by default: Chromium reports content-visibility repaints and scroll
       // stutter with it, and the chat already virtualizes its rows.
@@ -80,7 +82,8 @@ window.__ModuleLoader__.load({
       for (const listener of [...perfListeners]) listener()
     }
     const longTaskLog = []
-    const PERF_STORAGE_KEY = 'dsh-concierge:perf'
+    // v2: the older key remembered long/offscreen modes that are now opt-in.
+    const PERF_STORAGE_KEY = 'dsh-concierge:perf:v2'
 
     // Only animation timing is touched: changing backdrop-filter or box-shadow
     // repaints the whole chat and reads as a flash, so those are left alone.
@@ -372,7 +375,9 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
     // message about 20 times a second, which reads as flicker on some layouts.
     // The throttle stays on: it batches the app's per-token renders into one
     // commit every 80ms, which is what actually stops the streaming flicker.
-    const typer = { enabled: false, speed: 60, throttle: true, throttleMs: 80 }
+    // 33ms still batches the app's per-token renders without the text arriving
+    // in visible chunks the way 80ms did.
+    const typer = { enabled: false, speed: 60, throttle: true, throttleMs: 33 }
     const typerListeners = new Set()
     const TYPER_STORAGE_KEY = 'dsh-concierge:typer'
     const typerUpdate = () => {

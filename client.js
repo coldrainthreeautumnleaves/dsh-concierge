@@ -166,25 +166,27 @@ html[data-dsh-glass="1"] #dsh-concierge-glass {
   pointer-events: none;
   overflow: hidden;
 }
+/* The wallpaper stays SHARP. Frost comes from each panel blurring what is
+   behind it (backdrop-filter); pre-blurring the wallpaper leaves nothing to
+   blur, so panels read as tinted boxes instead of glass. */
 #dsh-concierge-glass > div {
   position: absolute;
-  inset: -10%;
-  filter: blur(22px) saturate(150%);
-  will-change: filter;
+  inset: 0;
   background:
-    radial-gradient(1100px 560px at 8% -8%, rgba(99, 102, 241, 0.26), transparent 62%),
-    radial-gradient(900px 520px at 98% 4%, rgba(236, 72, 153, 0.16), transparent 58%),
-    linear-gradient(160deg, #eef2ff 0%, #f7f9fc 46%, #eaf4ff 100%);
+    radial-gradient(420px 300px at 14% 22%, rgba(99, 102, 241, 0.55), rgba(99, 102, 241, 0) 62%),
+    radial-gradient(380px 280px at 84% 16%, rgba(244, 114, 182, 0.45), rgba(244, 114, 182, 0) 60%),
+    radial-gradient(520px 360px at 68% 92%, rgba(56, 189, 248, 0.45), rgba(56, 189, 248, 0) 62%),
+    radial-gradient(300px 220px at 42% 62%, rgba(250, 204, 21, 0.32), rgba(250, 204, 21, 0) 60%),
+    linear-gradient(150deg, #f4f7ff 0%, #fdf2f8 40%, #ecfeff 72%, #f8fafc 100%);
 }
 html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-glass > div {
   background:
-    radial-gradient(1100px 560px at 8% -8%, rgba(79, 110, 247, 0.3), transparent 62%),
-    radial-gradient(900px 520px at 98% 4%, rgba(139, 92, 246, 0.24), transparent 58%),
-    linear-gradient(160deg, #0b0e14 0%, #10141c 46%, #0d1219 100%);
+    radial-gradient(420px 300px at 14% 22%, rgba(99, 102, 241, 0.75), rgba(99, 102, 241, 0) 62%),
+    radial-gradient(380px 280px at 84% 16%, rgba(236, 72, 153, 0.6), rgba(236, 72, 153, 0) 60%),
+    radial-gradient(520px 360px at 68% 92%, rgba(34, 211, 238, 0.55), rgba(34, 211, 238, 0) 62%),
+    radial-gradient(300px 220px at 42% 62%, rgba(168, 85, 247, 0.5), rgba(168, 85, 247, 0) 60%),
+    linear-gradient(150deg, #131a33 0%, #2a1b3d 40%, #0e2437 72%, #0a0f1a 100%);
 }
-/* Overlays keep their own frost so they read as floating above the app frame.
-   The attribute/class hooks mirror what dsh-skin-master keys on: the shell's
-   own overlay marker plus the CSS-module prefixes the popups carry. */
 /* Grain: a tiled fractal-noise plate above everything. Low opacity only — it
    adds the "sand" of real frosted glass without touching text legibility. */
 html[data-dsh-glass="1"] body::after {
@@ -197,6 +199,12 @@ html[data-dsh-glass="1"] body::after {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
   background-size: 140px 140px;
 }
+/* Real frosted glass: every surface blurs the pixels behind it, then gets the
+   rim highlight and shadow that make it read as a pane instead of a tint.
+   Only surfaces are listed (not every element): each backdrop-filter samples
+   the area behind it, so cost grows with the number of layers. */
+html[data-dsh-glass="1"] [data-conversation-region],
+html[data-dsh-glass="1"] [data-slot],
 html[data-dsh-glass="1"] [role="dialog"],
 html[data-dsh-glass="1"] [role="alertdialog"],
 html[data-dsh-glass="1"] [role="menu"],
@@ -207,8 +215,30 @@ html[data-dsh-glass="1"] [class*="_menu"],
 html[data-dsh-glass="1"] [class*="_portal_"],
 html[data-dsh-glass="1"] .uc-card,
 html[data-dsh-glass="1"] .uc-banner {
-  backdrop-filter: blur(20px) saturate(150%);
-  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  backdrop-filter: blur(20px) saturate(170%) brightness(1.04);
+  -webkit-backdrop-filter: blur(20px) saturate(170%) brightness(1.04);
+}
+html[data-dsh-glass="1"] [role="dialog"],
+html[data-dsh-glass="1"] [role="menu"],
+html[data-dsh-glass="1"] [role="listbox"],
+html[data-dsh-glass="1"] [role="tooltip"],
+html[data-dsh-glass="1"] .uc-card,
+html[data-dsh-glass="1"] .uc-banner {
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    0 10px 30px rgba(10, 15, 30, 0.1);
+}
+html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] [role="dialog"],
+html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] [role="menu"],
+html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] [role="listbox"],
+html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] [role="tooltip"],
+html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-card,
+html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
+  border-color: rgba(255, 255, 255, 0.14);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 10px 30px rgba(0, 0, 0, 0.35);
 }
 `
 
@@ -588,39 +618,39 @@ html[data-dsh-glass="1"] .uc-banner {
         `rgba(20, 24, 32, ${darkAlpha})`,
       )
       return {
-        '--dsw-alias-bg-base': fill(0.58, 0.58),
-        '--dsw-alias-bg-layer-1': fill(0.72, 0.72),
-        '--dsw-alias-bg-layer-2': fill(0.44, 0.44),
-        '--dsw-alias-bg-layer-3': fill(0.34, 0.34),
-        '--dsw-alias-bg-overlay': fill(0.55, 0.62),
-        '--dsw-alias-bg-mask-1': fill(0.35, 0.45),
-        '--dsw-alias-bg-mask-2': fill(0.45, 0.55),
-        '--dsw-alias-bg-mask-3': fill(0.55, 0.65),
-        '--dsw-alias-card-fill': fill(0.62, 0.62),
-        '--dsw-alias-card-fill-hover': fill(0.72, 0.72),
-        '--dsw-alias-card-tile-fill': fill(0.58, 0.58),
-        '--dsw-alias-settings-card-fill': fill(0.62, 0.62),
+        '--dsw-alias-bg-base': fill(0.28, 0.3),
+        '--dsw-alias-bg-layer-1': fill(0.38, 0.42),
+        '--dsw-alias-bg-layer-2': fill(0.24, 0.28),
+        '--dsw-alias-bg-layer-3': fill(0.2, 0.24),
+        '--dsw-alias-bg-overlay': fill(0.3, 0.4),
+        '--dsw-alias-bg-mask-1': fill(0.2, 0.3),
+        '--dsw-alias-bg-mask-2': fill(0.28, 0.38),
+        '--dsw-alias-bg-mask-3': fill(0.36, 0.46),
+        '--dsw-alias-card-fill': fill(0.34, 0.38),
+        '--dsw-alias-card-fill-hover': fill(0.44, 0.48),
+        '--dsw-alias-card-tile-fill': fill(0.3, 0.34),
+        '--dsw-alias-settings-card-fill': fill(0.34, 0.38),
         '--dsw-alias-settings-card-stroke': pair('rgba(255, 255, 255, 0.6)', 'rgba(255, 255, 255, 0.12)'),
-        '--dsw-alias-onboarding-card-fill': fill(0.62, 0.62),
-        '--dsw-alias-onboarding-secondary-fill': fill(0.5, 0.5),
-        '--dsw-menu-surface-fill': fill(0.74, 0.8),
-        '--dsw-specific-menu': fill(0.74, 0.8),
-        '--dsw-alias-menu-group-header-fill': fill(0.4, 0.4),
-        '--dsw-alias-hovercard-bg': fill(0.76, 0.82),
-        '--dsw-alias-toast-bg': fill(0.78, 0.82),
-        '--dsw-alias-tooltip-bg': fill(0.84, 0.86),
-        '--dsw-alias-tooltip-key-bg': fill(0.6, 0.6),
-        '--dsw-specific-input-major': fill(0.7, 0.7),
-        '--dsw-specific-login-input': fill(0.7, 0.7),
-        '--dsw-specific-sidebar-fill': fill(0.4, 0.46),
-        '--dsw-specific-sidebar-glass-fill': fill(0.4, 0.46),
-        '--dsw-specific-sidebar-glass-collapsed-fill': fill(0.4, 0.46),
-        '--dsw-alias-button-elevated-fill': fill(0.56, 0.56),
-        '--dsw-alias-button-floating-fill': fill(0.62, 0.62),
-        '--dsw-alias-button-tool-bar-fill': fill(0.5, 0.5),
-        '--dsw-alias-turn-trigger-bg': fill(0.55, 0.55),
-        '--dsw-alias-turn-trigger-bg-hover': fill(0.7, 0.7),
-        '--dsw-alias-interactive-bg-hover': fill(0.35, 0.35),
+        '--dsw-alias-onboarding-card-fill': fill(0.34, 0.38),
+        '--dsw-alias-onboarding-secondary-fill': fill(0.28, 0.32),
+        '--dsw-menu-surface-fill': fill(0.52, 0.58),
+        '--dsw-specific-menu': fill(0.52, 0.58),
+        '--dsw-alias-menu-group-header-fill': fill(0.26, 0.3),
+        '--dsw-alias-hovercard-bg': fill(0.56, 0.62),
+        '--dsw-alias-toast-bg': fill(0.6, 0.64),
+        '--dsw-alias-tooltip-bg': fill(0.66, 0.7),
+        '--dsw-alias-tooltip-key-bg': fill(0.4, 0.44),
+        '--dsw-specific-input-major': fill(0.42, 0.46),
+        '--dsw-specific-login-input': fill(0.42, 0.46),
+        '--dsw-specific-sidebar-fill': fill(0.22, 0.28),
+        '--dsw-specific-sidebar-glass-fill': fill(0.22, 0.28),
+        '--dsw-specific-sidebar-glass-collapsed-fill': fill(0.22, 0.28),
+        '--dsw-alias-button-elevated-fill': fill(0.36, 0.4),
+        '--dsw-alias-button-floating-fill': fill(0.44, 0.48),
+        '--dsw-alias-button-tool-bar-fill': fill(0.3, 0.34),
+        '--dsw-alias-turn-trigger-bg': fill(0.34, 0.38),
+        '--dsw-alias-turn-trigger-bg-hover': fill(0.46, 0.5),
+        '--dsw-alias-interactive-bg-hover': fill(0.24, 0.28),
         '--dsw-menu-backdrop-filter': pair('blur(20px) saturate(150%)', 'blur(20px) saturate(150%)'),
         '--dsw-alias-border-l1': pair('rgba(255, 255, 255, 0.6)', 'rgba(255, 255, 255, 0.12)'),
         '--dsw-alias-border-l2': pair('rgba(120, 130, 150, 0.18)', 'rgba(255, 255, 255, 0.18)'),

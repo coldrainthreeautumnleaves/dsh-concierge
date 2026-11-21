@@ -78,6 +78,16 @@ dsh plugin --profile <profile> add github:coldrainthreeautumnleaves/dsh-concierg
 
 工具页可以填一个 GitHub token：不带时 GitHub API 每小时 60 次（按 IP），带了是 5000 次（按账号）。存在 `~/.dsh/update-center/settings.json`，只读公开仓库的 token 就够；环境变量 `GITHUB_TOKEN` / `GH_TOKEN` 优先。
 
+## 开发约定
+
+**加功能前先核对三件事**：
+
+1. **官方是否已经有**——先在设置页、内置插件列表、`app.asar` 里确认。官方已有的不重复造（例：官方「侧边卡片」内置后，再装一个接管侧边栏的插件只会更卡）。
+2. **本插件是否已经实现**——先搜 `client.js` / `index.js` 里的文案、路由和开关，避免同一个功能两个入口。
+3. **是否和已装插件冲突**——同类功能（侧边栏、输入区增强、消息渲染）先看它们占了哪个槽位、改了哪块 DOM。
+
+**加完要验证**：真实环境跑一遍——接口返回、页面渲染、日志都对上，不能只靠语法检查通过就交付。
+
 ## 发布流程
 
 每次发版都做这四件事，缺一不可：

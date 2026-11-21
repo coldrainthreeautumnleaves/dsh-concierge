@@ -236,13 +236,15 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-top {
   background: rgba(21, 27, 43, 0.32);
 }
 html[data-dsh-glass="1"][data-fullscreen] #dsh-concierge-top { display: none; }
-/* 侧边栏继续用原来的实色：标题栏那条 token 现在带 alpha 是为了让顶部透上来，
-   侧边栏不能跟着透明，否则文件树会直接压在壁纸上。 */
+/* 侧边栏：从「压回实色」改成半透明，和聊天区一样透出壁纸。这里**不加**
+   backdrop-filter——侧边栏里挂着 fixed 定位的弹层，给容器加 filter 会把它们的
+   包含块换成侧边栏，弹层会错位（dsh-glass-skin 的 README 也提到这一点）。
+   壁纸是柔和的冷调渐变，不糊也看不出锯齿。 */
 html[data-dsh-glass="1"] [class*="_sidebarCol"] {
-  background: #f0f3fc !important;
+  background: rgba(245, 247, 252, 0.52) !important;
 }
 html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] [class*="_sidebarCol"] {
-  background: #151b2b !important;
+  background: rgba(18, 22, 30, 0.6) !important;
 }
 /* Real frosted glass: every surface blurs the pixels behind it, then gets the
    rim highlight and shadow that make it read as a pane instead of a tint.
@@ -826,15 +828,18 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         '--dsw-specific-menu': fill(0.52, 0.58),
         '--dsw-alias-menu-group-header-fill': fill(0.26, 0.3),
         '--dsw-alias-hovercard-bg': fill(0.56, 0.62),
-        '--dsw-alias-toast-bg': fill(0.6, 0.64),
-        '--dsw-alias-tooltip-bg': fill(0.66, 0.7),
-        '--dsw-alias-tooltip-key-bg': fill(0.4, 0.44),
+        // toast / tooltip 是「深底白字」：它们的 label token 是白/近白，把底也改成
+        // 半透明白，字就彻底看不见了。这两样保持深色、只把 alpha 降一点，玻璃感靠
+        // 背后的壁纸透出来，字还是白的。
+        '--dsw-alias-toast-bg': pair('rgba(22, 26, 34, 0.82)', 'rgba(30, 34, 42, 0.86)'),
+        '--dsw-alias-tooltip-bg': pair('rgba(22, 26, 34, 0.86)', 'rgba(34, 38, 46, 0.88)'),
+        '--dsw-alias-tooltip-key-bg': pair('rgba(255, 255, 255, 0.16)', 'rgba(255, 255, 255, 0.14)'),
         '--dsw-specific-input-major': fill(0.42, 0.46),
         '--dsw-specific-login-input': fill(0.42, 0.46),
         // 标题栏那条是 Windows 原生 WCO 画的，颜色来自 preload 探针读的这个 token。
         // 这里给一个几乎透明的值：透明通道生效时页面顶部的磨砂能透上来；不生效时
         // 退回的是这个 token 的 RGB（浅色 #f0f3fc），也就是以前那种接近实色的样子。
-        // 侧边栏另用 `[class*="_sidebarCol"]` 的规则压回实色，不跟着变透明。
+        // 侧边栏另用 `[class*="_sidebarCol"]` 的规则给一档半透明，不跟着一起空掉。
         '--dsw-specific-sidebar-fill': pair('rgba(240, 243, 252, 0.08)', 'rgba(21, 27, 43, 0.1)'),
         '--dsw-specific-sidebar-glass-fill': pair('#f0f3fc', '#151b2b'),
         '--dsw-specific-sidebar-glass-collapsed-fill': pair('#f0f3fc', '#151b2b'),

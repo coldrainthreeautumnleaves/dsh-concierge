@@ -1,4 +1,4 @@
-﻿/**
+/**
  * dsh-concierge — Host half.
  *
  * Serves a small same-origin JSON API used by the settings page:
@@ -1033,7 +1033,15 @@ async function requestAppRestart(ctx) {
     'Start-Sleep -Seconds 2',
     'Stop-Process -Id $parent -Force',
     "Note 'killed parent'",
-    'Start-Sleep -Seconds 4',
+    // Starting while an old instance still holds the single-instance lock makes
+    // the new one quit silently, which is what leaves a window without the
+    // composer. Wait for every instance to be gone first.
+    'for ($i = 0; $i -lt 40; $i++) {',
+    "  if (-not (Get-Process -Name 'DeepSeek Harness' -ErrorAction SilentlyContinue)) { break }",
+    '  Start-Sleep -Milliseconds 500',
+    '}',
+    "Note 'all instances gone'",
+    'Start-Sleep -Seconds 1',
     'for ($i = 0; $i -lt 3; $i++) {',
     '  Start-Process -FilePath $exe -WindowStyle Hidden',
     '  Note "launched $i"',

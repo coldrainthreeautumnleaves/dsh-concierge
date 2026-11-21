@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>玻璃皮肤预览</title>
+<style>
+  :root {
+    --dsw-specific-sidebar-fill: rgba(255, 255, 255, 0.42);
+    --dsw-alias-bg-base: rgba(255, 255, 255, 0.55);
+    --dsw-alias-bg-layer-1: rgba(255, 255, 255, 0.72);
+    --dsw-alias-bg-layer-2: rgba(255, 255, 255, 0.5);
+    --dsw-alias-border-l1: rgba(255, 255, 255, 0.6);
+    --dsw-alias-border-l2: rgba(120, 130, 150, 0.18);
+    --dsw-alias-label-primary: #1a1d23;
+    --dsw-alias-label-secondary: #5d6470;
+    --uc-accent: #4f6ef7;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: transparent; font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif; color: #1a1d23; }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background:
+      radial-gradient(1100px 560px at 8% -8%, rgba(99, 102, 241, 0.26), transparent 62%),
+      radial-gradient(900px 520px at 98% 4%, rgba(236, 72, 153, 0.16), transparent 58%),
+      linear-gradient(160deg, #eef2ff 0%, #f7f9fc 46%, #eaf4ff 100%);
+  }
+  .app { display: flex; height: 100vh; }
+  .sidebar {
+    width: 232px; flex: none; padding: 16px 14px;
+    background: var(--dsw-specific-sidebar-fill);
+    border-right: 1px solid var(--dsw-alias-border-l1);
+    backdrop-filter: blur(18px) saturate(150%);
+    -webkit-backdrop-filter: blur(18px) saturate(150%);
+  }
+  .brand { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 14px; margin-bottom: 14px; }
+  .newchat { width: 100%; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--dsw-alias-border-l2); background: var(--dsw-alias-bg-layer-1); font-size: 12.5px; text-align: left; color: inherit; }
+  .nav { margin-top: 14px; display: flex; flex-direction: column; gap: 2px; font-size: 12.5px; color: var(--dsw-alias-label-secondary); }
+  .nav div { padding: 7px 10px; border-radius: 8px; }
+  .nav div.on { background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-primary); font-weight: 600; }
+  .main { flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--dsw-alias-bg-base); backdrop-filter: blur(18px) saturate(150%); -webkit-backdrop-filter: blur(18px) saturate(150%); }
+  .topbar { height: 44px; display: flex; align-items: center; padding: 0 18px; font-size: 12.5px; color: var(--dsw-alias-label-secondary); border-bottom: 1px solid var(--dsw-alias-border-l1); }
+  .chat { flex: 1; padding: 22px 26px; display: flex; flex-direction: column; gap: 14px; overflow: hidden; }
+  .msg { max-width: 620px; padding: 12px 14px; border-radius: 14px; font-size: 13px; line-height: 1.6; background: var(--dsw-alias-bg-layer-1); border: 1px solid var(--dsw-alias-border-l1); }
+  .msg.me { align-self: flex-end; background: rgba(79, 110, 247, 0.14); border-color: rgba(79, 110, 247, 0.28); }
+  .composer { margin: 0 26px 22px; padding: 12px 14px; border-radius: 16px; background: var(--dsw-alias-bg-layer-1); border: 1px solid var(--dsw-alias-border-l2); font-size: 12.5px; color: var(--dsw-alias-label-secondary); backdrop-filter: blur(18px) saturate(150%); -webkit-backdrop-filter: blur(18px) saturate(150%); }
+</style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">deepseek <span style="background:#14171c;color:#fff;font-size:10px;padding:1px 6px;border-radius:5px;">HARNESS</span></div>
+      <button class="newchat">+ 新会话</button>
+      <nav class="nav">
+        <div>插件</div>
+        <div>插件市场</div>
+        <div>自动化任务</div>
+        <div class="on">维护中心</div>
+        <div>记忆框架</div>
+      </nav>
+    </aside>
+    <main class="main">
+      <div class="topbar">[草稿][新增需求] · 2 分钟前</div>
+      <div class="chat">
+        <div class="msg">你好，你是谁，能做什么</div>
+        <div class="msg me">帮我把维护中心的外观改成玻璃皮肤</div>
+        <div class="msg">玻璃皮肤走的是官方主题 token：面板半透明 + backdrop-filter 模糊，壁纸层由插件自己铺。</div>
+      </div>
+      <div class="composer">输入消息…</div>
+    </main>
+  </div>
+</body>
+</html>

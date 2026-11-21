@@ -145,6 +145,48 @@ html[data-dsh-noanim="1"] [data-animating] {
 }
 `
 
+    // Glass skin: a wallpaper layer behind everything plus backdrop-filter on the
+    // surfaces that paint a background. The tokens stay translucent (set through
+    // the official theme service), so the frost reads as real depth instead of a
+    // flat tint. Inert unless html[data-dsh-glass="1"] is on.
+    const LOOK_CSS = `
+html[data-dsh-glass="1"], html[data-dsh-glass="1"] body { background: transparent !important; }
+html[data-dsh-glass="1"] body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(1100px 560px at 8% -8%, rgba(99, 102, 241, 0.26), transparent 62%),
+    radial-gradient(900px 520px at 98% 4%, rgba(236, 72, 153, 0.16), transparent 58%),
+    linear-gradient(160deg, #eef2ff 0%, #f7f9fc 46%, #eaf4ff 100%);
+}
+html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] body::before {
+  background:
+    radial-gradient(1100px 560px at 8% -8%, rgba(79, 110, 247, 0.3), transparent 62%),
+    radial-gradient(900px 520px at 98% 4%, rgba(139, 92, 246, 0.24), transparent 58%),
+    linear-gradient(160deg, #0b0e14 0%, #10141c 46%, #0d1219 100%);
+}
+html[data-dsh-glass="1"] [data-conversation-region],
+html[data-dsh-glass="1"] [data-slot="conversation.chat.flow"],
+html[data-dsh-glass="1"] [data-slot="sidebar"],
+html[data-dsh-glass="1"] .uc-card,
+html[data-dsh-glass="1"] .uc-banner {
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+}
+`
+
+    function installLookCss() {
+      if (typeof document === 'undefined') return
+      if (document.getElementById('dsh-concierge-look-css')) return
+      const style = document.createElement('style')
+      style.id = 'dsh-concierge-look-css'
+      style.textContent = LOOK_CSS
+      document.head.appendChild(style)
+    }
+
     function applyNoAnim() {
       if (typeof document === 'undefined') return
       if (perf.noAnim) document.documentElement.dataset.dshNoanim = '1'
@@ -521,6 +563,21 @@ html[data-dsh-noanim="1"] [data-animating] {
           '--dsw-radius-panel': { light: '14px', dark: '14px' },
         },
       },
+      glass: {
+        tokens: {
+          '--dsw-specific-sidebar-fill': { light: 'rgba(255, 255, 255, 0.42)', dark: 'rgba(18, 21, 28, 0.45)' },
+          '--dsw-alias-bg-base': { light: 'rgba(255, 255, 255, 0.55)', dark: 'rgba(16, 18, 24, 0.55)' },
+          '--dsw-alias-bg-layer-1': { light: 'rgba(255, 255, 255, 0.72)', dark: 'rgba(22, 26, 34, 0.72)' },
+          '--dsw-alias-bg-layer-2': { light: 'rgba(255, 255, 255, 0.5)', dark: 'rgba(28, 33, 42, 0.5)' },
+          '--dsw-alias-border-l1': { light: 'rgba(255, 255, 255, 0.6)', dark: 'rgba(255, 255, 255, 0.12)' },
+          '--dsw-alias-border-l2': { light: 'rgba(120, 130, 150, 0.18)', dark: 'rgba(255, 255, 255, 0.18)' },
+          '--dsw-alias-label-primary': { light: '#1a1d23', dark: '#e8ebf1' },
+          '--dsw-alias-label-secondary': { light: '#5d6470', dark: '#9aa3b2' },
+          '--dsw-radius-md': { light: '14px', dark: '14px' },
+          '--dsw-radius-lg': { light: '18px', dark: '18px' },
+          '--dsw-radius-panel': { light: '18px', dark: '18px' },
+        },
+      },
       ocean: {
         tokens: {
           '--dsw-specific-sidebar-fill': { light: '#eaf3fb', dark: '#0d1822' },
@@ -678,6 +735,34 @@ html[data-dsh-noanim="1"] [data-animating] {
       } catch {
         lookDispose = null
       }
+      // 玻璃皮肤额外挂一层壁纸 + backdrop-filter（纯 CSS，不进官方样式）
+      const root = document.documentElement
+      if (look.skin === 'glass') {
+        root.dataset.dshGlass = '1'
+        syncGlassScheme()
+      } else {
+        delete root.dataset.dshGlass
+        delete root.dataset.dshGlassScheme
+      }
+    }
+
+    function syncGlassScheme() {
+      if (typeof document === 'undefined') return
+      const root = document.documentElement
+      if (look.skin !== 'glass' || !look.enabled) {
+        delete root.dataset.dshGlassScheme
+        return
+      }
+      const theme = themeService()
+      let scheme = 'light'
+      try {
+        const snapshot = theme && typeof theme.getTheme === 'function' ? theme.getTheme() : null
+        const active = snapshot && snapshot.active
+        if (active && (active.colorScheme === 'dark' || active.id === 'dark')) scheme = 'dark'
+      } catch {
+        /* ignore */
+      }
+      root.dataset.dshGlassScheme = scheme
     }
 
     function useTypewriter(text, active, speed) {
@@ -1008,6 +1093,7 @@ html[data-dsh-noanim="1"] [data-animating] {
       lookSkinSoft: '柔和',
       lookSkinInk: '墨色',
       lookSkinOcean: '海洋',
+      lookSkinGlass: '玻璃',
       lookSkinCustom: '自定义',
       lookApply: '应用',
       lookReset: '重置为柔和',
@@ -1239,6 +1325,7 @@ html[data-dsh-noanim="1"] [data-animating] {
       lookSkinSoft: 'Soft',
       lookSkinInk: 'Ink',
       lookSkinOcean: 'Ocean',
+      lookSkinGlass: 'Glass',
       lookSkinCustom: 'Custom',
       lookApply: 'Apply',
       lookReset: 'Reset to Soft',
@@ -2700,6 +2787,7 @@ html[data-dsh-noanim="1"] [data-animating] {
                     h('option', { value: 'soft' }, t('lookSkinSoft')),
                     h('option', { value: 'ink' }, t('lookSkinInk')),
                     h('option', { value: 'ocean' }, t('lookSkinOcean')),
+                    h('option', { value: 'glass' }, t('lookSkinGlass')),
                     h('option', { value: 'custom' }, t('lookSkinCustom')),
                   )),
                 settingRow(t('lookBrand'), null,
@@ -3731,8 +3819,13 @@ html[data-dsh-noanim="1"] [data-animating] {
         readIgnore()
         readLookPrefs()
         installPerfCss()
+        installLookCss()
         lookCtx = ctx
         applyLook()
+        // 主题在别处被切换时（官方外观设置），玻璃壁纸跟着换深浅色。
+        // 这里只同步属性，不能再调 overrideTokens——那会 publish 出新的
+        // theme/change，自己把自己转成死循环。
+        if (typeof ctx.on === 'function') ctx.on('theme/change', () => syncGlassScheme())
         applyNoAnim()
         applyOffscreen()
         startLongTasks()

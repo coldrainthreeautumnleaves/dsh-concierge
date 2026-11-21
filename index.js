@@ -754,14 +754,26 @@ async function handleInstallNpm(ctx, state, request, response) {
       sendNodeJson(response, { ok: false, error: 'pluginManager 服务不可用' }, 400)
       return
     }
-    const result = await pm.installBundle(spec, {})
+    // pnpm 的 minimumReleaseAge（fresh-release hold）会拒绝刚发布的版本，然后
+    // 静默装一个旧版——表现就是「装上了但版本不对」。先把最新版号钉死再装。
+    const { name: pkgName, version: pkgVersion } = splitNpmSpec(spec)
+    let target = spec
+    if (pkgName && !pkgVersion) {
+      const latest = await mirrorLatest(pkgName).catch(() => null)
+      if (latest) target = `${pkgName}@${latest}`
+    }
+    const result = await pm.installBundle(target, {})
     state.cache = null
     const application = result && result.application
     const failed = application === 'failed' || application === 'cancelled'
-    const error = failed && result && result.error
-      ? (result.error.diagnostic || result.error.code || '安装失败')
-      : undefined
-    sendNodeJson(response, { ok: !failed, spec, error, result }, 200)
+    let error
+    if (failed && result && result.error) {
+      const raw = result.error.diagnostic || result.error.code || '安装失败'
+      error = /approve-builds|build scripts/i.test(String(raw))
+        ? '这个插件需要执行构建脚本，pnpm 默认拦截。到插件市场点「允许构建脚本并重试」，或在终端跑 pnpm approve-builds 后重试。'
+        : raw
+    }
+    sendNodeJson(response, { ok: !failed, spec: target, error, result }, 200)
   } catch (error) {
     sendNodeJson(response, { ok: false, error: messageOf(error) }, 500)
   }
@@ -1005,9 +1017,13 @@ async function handleInstallGit(ctx, state, request, response) {
     state.cache = null
     const application = result && result.application
     const failed = application === 'failed' || application === 'cancelled'
-    const error = failed && result && result.error
-      ? (result.error.diagnostic || result.error.code || '安装失败')
-      : undefined
+    let error
+    if (failed && result && result.error) {
+      const raw = result.error.diagnostic || result.error.code || '安装失败'
+      error = /approve-builds|build scripts/i.test(String(raw))
+        ? '这个插件需要执行构建脚本，pnpm 默认拦截。到插件市场点「允许构建脚本并重试」，或在终端跑 pnpm approve-builds 后重试。'
+        : raw
+    }
     sendNodeJson(response, { ok: !failed, spec, error, result }, 200)
   } catch (error) {
     sendNodeJson(response, { ok: false, error: messageOf(error) }, 500)
@@ -2195,6 +2211,23 @@ async function mirrorLatest(name) {
   if (!response.ok) return null
   const body = await response.json().catch(() => null)
   return body && typeof body.version === 'string' ? body.version : null
+}
+
+// "@scope/name@1.2.3" / "name@1.2.3" / "name" → { name, version }
+function splitNpmSpec(spec) {
+  const value = String(spec || '').trim()
+  if (!value) return { name: '', version: '' }
+  if (value.startsWith('@')) {
+    const slash = value.indexOf('/')
+    if (slash < 0) return { name: value, version: '' }
+    const rest = value.slice(slash + 1)
+    const at = rest.indexOf('@')
+    return at < 0
+      ? { name: value, version: '' }
+      : { name: value.slice(0, slash + 1 + at), version: rest.slice(at + 1) }
+  }
+  const at = value.indexOf('@')
+  return at < 0 ? { name: value, version: '' } : { name: value.slice(0, at), version: value.slice(at + 1) }
 }
 
 function messageOf(error) {

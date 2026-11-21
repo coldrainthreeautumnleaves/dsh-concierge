@@ -80,6 +80,8 @@ Git 插件走「GitHub releases（没有 release 时退回 tags）→ 下载 →
 
 把桌面快捷方式指向 `safe-launch.cmd`，以后应用起不来会自动落到安全模式，不用手动判断。
 
+`safe-launch` 同时负责**自动恢复**：连续两次观察到启动正常后，自动把备份的插件配置放回去并重启一次（连续两次恢复失败后停止自动尝试；手动 `restore-mode` 会清零计数）。
+
 「工具」页最上面的「安全」卡片里有一个 **自动安全模式** 开关（存在 `~/.dsh/update-center/settings.json` 的 `safeModeAuto`，默认开）：开着时 `safe-launch.cmd` 会观察 30 秒并在失败时自动切安全模式；关掉后它只负责启动应用，不再自动切。开关一变，脚本会立刻重写，不需要重启。
 
 所有脚本都要求应用已完全退出，不需要管理员权限；`.ps1` 带 UTF-8 BOM，Windows PowerShell 5.1 读中文不会乱码。

@@ -134,6 +134,8 @@ if (Test-Path (Join-Path $backupDir 'cordis.patch.yml')) {
 }
 
 Write-Host '已恢复原来的插件配置。' -ForegroundColor Green
+# 手动恢复后清零自动恢复的计数，避免下次启动又触发一次。
+@{ cleanStarts = 0; restoreAttempts = 0 } | ConvertTo-Json | Set-Content -Path (Join-Path $env:USERPROFILE '.dsh\update-center\safe-state.json') -Encoding UTF8
 Start-Process -FilePath $exe -WindowStyle Hidden
 if (-not $Silent) { Read-Host '按回车关闭窗口' }
 `
@@ -146,16 +148,54 @@ $pkg = Join-Path $profileDir 'package.json'
 $patch = Join-Path $profileDir 'cordis.patch.yml'
 $backupDir = Join-Path $env:USERPROFILE '.dsh\update-center\safe-backup'
 
+$stateFile = Join-Path $env:USERPROFILE '.dsh\update-center\safe-state.json'
+$logFile = Join-Path $env:USERPROFILE '.dsh\update-center\safe-launch.log'
+
+function Note($m) { "$([DateTime]::Now.ToString('o')) $m" | Out-File -FilePath $logFile -Encoding utf8 -Append }
+function ReadState {
+  if (-not (Test-Path $stateFile)) { return @{ cleanStarts = 0; restoreAttempts = 0 } }
+  try {
+    $s = Get-Content $stateFile -Raw -Encoding UTF8 | ConvertFrom-Json
+    return @{ cleanStarts = [int]$s.cleanStarts; restoreAttempts = [int]$s.restoreAttempts }
+  } catch { return @{ cleanStarts = 0; restoreAttempts = 0 } }
+}
+function WriteState($clean, $attempts) {
+  @{ cleanStarts = $clean; restoreAttempts = $attempts } | ConvertTo-Json | Set-Content -Path $stateFile -Encoding UTF8
+}
+
 $running = Get-Process -Name 'DeepSeek Harness' -ErrorAction SilentlyContinue
 if ($running) { Write-Host '应用已经在运行。' -ForegroundColor Yellow; if (-not $Silent) { Read-Host '按回车退出' }; exit 0 }
 
+$state = ReadState
 Start-Process -FilePath $exe -WindowStyle Hidden
 Write-Host '正在启动，观察 30 秒看是否崩溃...'
+Note 'started, watching'
 Start-Sleep -Seconds 30
 $alive = Get-Process -Name 'DeepSeek Harness' -ErrorAction SilentlyContinue
-if ($alive) { Write-Host '启动正常。' -ForegroundColor Green; exit 0 }
+if ($alive) {
+  $clean = $state.cleanStarts + 1
+  WriteState $clean $state.restoreAttempts
+  Note "clean start #$clean"
+  Write-Host '启动正常。' -ForegroundColor Green
+  # 连续两次正常启动 + 有备份 = 应用已经好了：自动把原插件配置放回去并重启一次。
+  # 恢复后如果又崩，下次启动会重新落回安全模式；连续两次恢复失败就不再自动尝试。
+  if ($clean -ge 2 -and $state.restoreAttempts -lt 2 -and (Test-Path (Join-Path $backupDir 'package.json'))) {
+    Write-Host '连续两次启动正常，自动恢复原插件配置并重启...' -ForegroundColor Cyan
+    Note 'auto restore'
+    Get-Process -Name 'DeepSeek Harness' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 3
+    Copy-Item (Join-Path $backupDir 'package.json') $pkg -Force
+    if (Test-Path (Join-Path $backupDir 'cordis.patch.yml')) { Copy-Item (Join-Path $backupDir 'cordis.patch.yml') $patch -Force }
+    WriteState 0 ($state.restoreAttempts + 1)
+    Start-Process -FilePath $exe -WindowStyle Hidden
+    Note 'restored and restarted'
+  }
+  if (-not $Silent) { Read-Host '按回车关闭窗口' }
+  exit 0
+}
 
 Write-Host '检测到启动失败，自动进入安全模式...' -ForegroundColor Yellow
+Note 'start failed, entering safe mode'
 Get-Process -Name 'DeepSeek Harness' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 Start-Sleep -Seconds 2
 
@@ -166,9 +206,10 @@ if (Test-Path $patch) { Copy-Item $patch (Join-Path $backupDir 'cordis.patch.yml
 $json = Get-Content $pkg -Raw -Encoding UTF8 | ConvertFrom-Json
 $json.dsh.profile.bundles = @($json.dsh.profile.bundles | Where-Object { $_ -like '@deepseek-ai/*' })
 $json | ConvertTo-Json -Depth 100 | Set-Content $pkg -Encoding UTF8
+WriteState 0 $state.restoreAttempts
 
 Start-Process -FilePath $exe -WindowStyle Hidden
-Write-Host '已用安全模式重启（只加载官方插件）。修好后双击 restore-mode.cmd 恢复。' -ForegroundColor Green
+Write-Host '已用安全模式重启（只加载官方插件）。连续两次正常启动后会自动恢复；也可以双击 restore-mode.cmd 立即恢复。' -ForegroundColor Green
 if (-not $Silent) { Read-Host '按回车关闭窗口' }
 `
 

@@ -668,6 +668,7 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
       bannerTitleOk: '插件更新完成',
       bannerTitleFail: '部分插件更新失败',
       bannerHint: '重启 DSH 后生效',
+      bannerHintRefresh: '刷新后生效',
       bannerDismiss: '知道了',
       bannerCount: '{n} 个插件',
       bannerFailedCount: '{n} 个失败',
@@ -841,6 +842,7 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
       bannerTitleOk: 'Plugin updates installed',
       bannerTitleFail: 'Some plugin updates failed',
       bannerHint: 'Restart DSH to load them',
+      bannerHintRefresh: 'Refresh to load them',
       bannerDismiss: 'Got it',
       bannerCount: '{n} plugins',
       bannerFailedCount: '{n} failed',
@@ -1172,6 +1174,7 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
 .uc-banner-detail{color:var(--dsw-alias-label-secondary);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .uc-banner-actions{display:flex;align-items:center;justify-content:flex-end;gap:6px;flex-wrap:wrap;}
 .uc-banner-hint{color:var(--dsw-alias-label-secondary);font-size:11px;margin-right:auto;}
+.uc-banner-error-text{color:var(--dsw-alias-state-error-primary);font-size:11px;}
 .uc-banner-action{appearance:none;border:1px solid transparent;background:transparent;color:var(--dsw-alias-label-secondary);border-radius:8px;padding:5px 10px;font-size:11px;cursor:pointer;}
 .uc-banner-action:hover{background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary);}
 .uc-banner-action-primary{background:var(--dsw-alias-brand-primary);border-color:var(--dsw-alias-brand-primary);color:#fff;font-weight:600;}
@@ -1408,11 +1411,12 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
               // Restart prompts live in the top popup, like the app updater's own.
               bannerStore.set({
                 kind: 'restart',
+                needsRestart: true,
                 title: t('restartBannerTitle'),
                 detail: t('restartBannerDetail', { name: row.name, version: result.to }),
-                action: restartReady
-                  ? { label: t('restartApp'), run: () => { requestRestart() } }
-                  : null,
+                // The host can always restart the app, so the button is always
+                // there; a failure is reported back in the banner.
+                action: { label: t('restartApp'), run: () => requestRestart() },
               })
             } else {
               bannerStore.set({
@@ -1457,8 +1461,9 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
           bannerStore.set({
             kind: failed === 0 ? 'ok' : 'error',
             items: results,
+            needsRestart,
             action: needsRestart
-              ? (restartReady ? { label: t('restartApp'), run: () => { requestRestart() } } : null)
+              ? { label: t('restartApp'), run: () => requestRestart() }
               : (failed === 0 ? { label: t('reloadUi'), run: () => { try { window.location.reload() } catch { /* ignore */ } } } : null),
           })
           await load(true)
@@ -2625,7 +2630,19 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
     function UpdateBanner(props) {
       const t = typeof props.t === 'function' ? props.t : (key) => key
       const [state, setState] = React.useState(() => bannerStore.get())
+      const [actionError, setActionError] = React.useState(null)
       React.useEffect(() => bannerStore.subscribe(() => setState(bannerStore.get())), [])
+
+      const runAction = async () => {
+        if (!state || !state.action) return
+        setActionError(null)
+        try {
+          const result = await state.action.run()
+          if (result && result.ok === false) setActionError(result.error || t('restartRefused', { reason: 'unknown' }))
+        } catch (error) {
+          setActionError(error && error.message ? error.message : String(error))
+        }
+      }
 
       // Success banners go away on their own even when they carry an action, so
       // a finished update cannot keep covering the chat.
@@ -2753,21 +2770,16 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
           h('div', { className: 'uc-banner-copy' },
             h('div', { className: 'uc-banner-title' }, title),
             h('div', { className: 'uc-banner-detail', title: detail }, detail),
+            actionError ? h('div', { className: 'uc-banner-error-text' }, actionError) : null,
           ),
         ),
         h('div', { className: 'uc-banner-actions' },
-          isUpdate ? null : h('span', { className: 'uc-banner-hint' }, t('bannerHint')),
+          isUpdate ? null : h('span', { className: 'uc-banner-hint' }, state.needsRestart ? t('bannerHint') : t('bannerHintRefresh')),
           state.action
             ? h('button', {
                 type: 'button',
                 className: 'uc-banner-action uc-banner-action-primary',
-                onClick: () => {
-                  try {
-                    state.action.run()
-                  } catch {
-                    /* bridge unavailable */
-                  }
-                },
+                onClick: runAction,
               }, state.action.label)
             : null,
           h('button', {

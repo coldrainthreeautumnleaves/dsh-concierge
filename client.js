@@ -173,6 +173,9 @@ html[data-dsh-glass="1"] #dsh-concierge-glass {
   position: absolute;
   inset: 0;
   background:
+    /* 顶部 40px 与 Windows 原生标题栏同色（那条由 IPC 设成实色，改不了），
+       这样关闭/最小化/全屏那一条和下面的壁纸接得上。 */
+    linear-gradient(180deg, #f0f3fc 0, #f0f3fc 40px, rgba(240, 243, 252, 0) 40px),
     radial-gradient(420px 300px at 14% 22%, rgba(99, 102, 241, 0.55), rgba(99, 102, 241, 0) 62%),
     radial-gradient(380px 280px at 84% 16%, rgba(244, 114, 182, 0.45), rgba(244, 114, 182, 0) 60%),
     radial-gradient(520px 360px at 68% 92%, rgba(56, 189, 248, 0.45), rgba(56, 189, 248, 0) 62%),
@@ -181,6 +184,7 @@ html[data-dsh-glass="1"] #dsh-concierge-glass {
 }
 html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-glass > div {
   background:
+    linear-gradient(180deg, #151b2b 0, #151b2b 40px, rgba(21, 27, 43, 0) 40px),
     radial-gradient(420px 300px at 14% 22%, rgba(99, 102, 241, 0.75), rgba(99, 102, 241, 0) 62%),
     radial-gradient(380px 280px at 84% 16%, rgba(236, 72, 153, 0.6), rgba(236, 72, 153, 0) 60%),
     radial-gradient(520px 360px at 68% 92%, rgba(34, 211, 238, 0.55), rgba(34, 211, 238, 0) 62%),
@@ -642,9 +646,14 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         '--dsw-alias-tooltip-key-bg': fill(0.4, 0.44),
         '--dsw-specific-input-major': fill(0.42, 0.46),
         '--dsw-specific-login-input': fill(0.42, 0.46),
-        '--dsw-specific-sidebar-fill': fill(0.22, 0.28),
-        '--dsw-specific-sidebar-glass-fill': fill(0.22, 0.28),
-        '--dsw-specific-sidebar-glass-collapsed-fill': fill(0.22, 0.28),
+        // 侧边栏底色这一项**必须是实色**：桌面端 preload 用一个
+        // `background-color: var(--dsw-specific-sidebar-fill)` 的探针读它，把读到的
+        // 颜色通过 windowsAppearance IPC 设成 Windows 标题栏（关闭/最小化/全屏那
+        // 一条）的底色。给它半透明值，标题栏就会和玻璃对不上，看起来是一块突
+        // 兀的实色。所以这里取壁纸顶部的近似色，让那一条和界面接上。
+        '--dsw-specific-sidebar-fill': pair('#f0f3fc', '#151b2b'),
+        '--dsw-specific-sidebar-glass-fill': pair('#f0f3fc', '#151b2b'),
+        '--dsw-specific-sidebar-glass-collapsed-fill': pair('#f0f3fc', '#151b2b'),
         '--dsw-alias-button-elevated-fill': fill(0.36, 0.4),
         '--dsw-alias-button-floating-fill': fill(0.44, 0.48),
         '--dsw-alias-button-tool-bar-fill': fill(0.3, 0.34),

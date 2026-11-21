@@ -80,7 +80,8 @@ function maskToken(token) {
   return `${token.slice(0, 4)}…${token.slice(-4)}`
 }
 
-const SAFE_MODE_PS1 = String.raw`$ErrorActionPreference = 'Stop'
+const SAFE_MODE_PS1 = String.raw`param([switch]$Silent)
+$ErrorActionPreference = 'Stop'
 $profileDir = Join-Path $env:USERPROFILE '.dsh\profiles\desktop'
 $exe = Join-Path $env:LOCALAPPDATA 'Programs\DeepSeek Harness\DeepSeek Harness.exe'
 $pkg = Join-Path $profileDir 'package.json'
@@ -90,7 +91,7 @@ $backupDir = Join-Path $env:USERPROFILE '.dsh\update-center\safe-backup'
 $running = Get-Process -Name 'DeepSeek Harness' -ErrorAction SilentlyContinue
 if ($running) {
   Write-Host '应用正在运行，请先完全退出 DeepSeek Harness，再运行本脚本。' -ForegroundColor Yellow
-  Read-Host '按回车退出'
+  if (-not $Silent) { Read-Host '按回车退出' }
   exit 1
 }
 
@@ -105,10 +106,11 @@ $json | ConvertTo-Json -Depth 100 | Set-Content $pkg -Encoding UTF8
 Write-Host '已进入安全模式：只加载官方插件，第三方插件已临时停用。' -ForegroundColor Green
 Write-Host '恢复：双击 restore-mode.cmd'
 Start-Process -FilePath $exe
-Read-Host '按回车关闭窗口'
+if (-not $Silent) { Read-Host '按回车关闭窗口' }
 `
 
-const RESTORE_PS1 = String.raw`$ErrorActionPreference = 'Stop'
+const RESTORE_PS1 = String.raw`param([switch]$Silent)
+$ErrorActionPreference = 'Stop'
 $profileDir = Join-Path $env:USERPROFILE '.dsh\profiles\desktop'
 $exe = Join-Path $env:LOCALAPPDATA 'Programs\DeepSeek Harness\DeepSeek Harness.exe'
 $backupDir = Join-Path $env:USERPROFILE '.dsh\update-center\safe-backup'
@@ -116,13 +118,13 @@ $backupDir = Join-Path $env:USERPROFILE '.dsh\update-center\safe-backup'
 $running = Get-Process -Name 'DeepSeek Harness' -ErrorAction SilentlyContinue
 if ($running) {
   Write-Host '应用正在运行，请先完全退出 DeepSeek Harness，再运行本脚本。' -ForegroundColor Yellow
-  Read-Host '按回车退出'
+  if (-not $Silent) { Read-Host '按回车退出' }
   exit 1
 }
 
 if (-not (Test-Path (Join-Path $backupDir 'package.json'))) {
   Write-Host '没有找到安全模式备份，无法恢复。' -ForegroundColor Yellow
-  Read-Host '按回车退出'
+  if (-not $Silent) { Read-Host '按回车退出' }
   exit 1
 }
 
@@ -133,10 +135,11 @@ if (Test-Path (Join-Path $backupDir 'cordis.patch.yml')) {
 
 Write-Host '已恢复原来的插件配置。' -ForegroundColor Green
 Start-Process -FilePath $exe
-Read-Host '按回车关闭窗口'
+if (-not $Silent) { Read-Host '按回车关闭窗口' }
 `
 
-const SAFE_LAUNCH_PS1 = String.raw`$ErrorActionPreference = 'Stop'
+const SAFE_LAUNCH_PS1 = String.raw`param([switch]$Silent)
+$ErrorActionPreference = 'Stop'
 $exe = Join-Path $env:LOCALAPPDATA 'Programs\DeepSeek Harness\DeepSeek Harness.exe'
 $profileDir = Join-Path $env:USERPROFILE '.dsh\profiles\desktop'
 $pkg = Join-Path $profileDir 'package.json'
@@ -144,7 +147,7 @@ $patch = Join-Path $profileDir 'cordis.patch.yml'
 $backupDir = Join-Path $env:USERPROFILE '.dsh\update-center\safe-backup'
 
 $running = Get-Process -Name 'DeepSeek Harness' -ErrorAction SilentlyContinue
-if ($running) { Write-Host '应用已经在运行。' -ForegroundColor Yellow; Read-Host '按回车退出'; exit 0 }
+if ($running) { Write-Host '应用已经在运行。' -ForegroundColor Yellow; if (-not $Silent) { Read-Host '按回车退出' }; exit 0 }
 
 Start-Process -FilePath $exe
 Write-Host '正在启动，观察 30 秒看是否崩溃...'
@@ -166,20 +169,24 @@ $json | ConvertTo-Json -Depth 100 | Set-Content $pkg -Encoding UTF8
 
 Start-Process -FilePath $exe
 Write-Host '已用安全模式重启（只加载官方插件）。修好后双击 restore-mode.cmd 恢复。' -ForegroundColor Green
-Read-Host '按回车关闭窗口'
+if (-not $Silent) { Read-Host '按回车关闭窗口' }
 `
 
-const PLAIN_LAUNCH_PS1 = String.raw`$ErrorActionPreference = 'Stop'
+const PLAIN_LAUNCH_PS1 = String.raw`param([switch]$Silent)
+$ErrorActionPreference = 'Stop'
 $exe = Join-Path $env:LOCALAPPDATA 'Programs\DeepSeek Harness\DeepSeek Harness.exe'
 
 $running = Get-Process -Name 'DeepSeek Harness' -ErrorAction SilentlyContinue
-if ($running) { Write-Host '应用已经在运行。' -ForegroundColor Yellow; Read-Host '按回车退出'; exit 0 }
+if ($running) { Write-Host '应用已经在运行。' -ForegroundColor Yellow; if (-not $Silent) { Read-Host '按回车退出' }; exit 0 }
 
 Start-Process -FilePath $exe
 Write-Host '已启动（自动安全模式已关闭）。' -ForegroundColor Green
 `
 
 const CMD_WRAPPER = (script) => `@echo off\r\npowershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0${script}"\r\n`
+
+// Silent twin of the .cmd wrappers: window style 0 hides the console entirely.
+const VBS_WRAPPER = (script) => `Set shell = CreateObject("WScript.Shell")\r\nSet fso = CreateObject("Scripting.FileSystemObject")\r\ndir = fso.GetParentFolderName(WScript.ScriptFullName)\r\nshell.Run "powershell -NoProfile -ExecutionPolicy Bypass -File """ & dir & "\\${script}"" -Silent", 0, False\r\n`
 
 async function writeSafeModeScripts() {
   try {
@@ -195,6 +202,10 @@ async function writeSafeModeScripts() {
     const launchScript = safeModeAuto ? SAFE_LAUNCH_PS1 : PLAIN_LAUNCH_PS1
     await writeFile(path.join(SAFE_DIR, 'safe-launch.ps1'), bom + launchScript, 'utf8')
     await writeFile(path.join(SAFE_DIR, 'safe-launch.cmd'), CMD_WRAPPER('safe-launch.ps1'), 'utf8')
+    // Silent variants for people who do not want a console window at all.
+    await writeFile(path.join(SAFE_DIR, 'safe-launch.vbs'), VBS_WRAPPER('safe-launch.ps1'), 'utf8')
+    await writeFile(path.join(SAFE_DIR, 'safe-mode.vbs'), VBS_WRAPPER('safe-mode.ps1'), 'utf8')
+    await writeFile(path.join(SAFE_DIR, 'restore-mode.vbs'), VBS_WRAPPER('restore-mode.ps1'), 'utf8')
   } catch {
     /* best effort */
   }

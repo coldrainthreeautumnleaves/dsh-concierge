@@ -222,6 +222,12 @@ html[data-dsh-glass="1"] .uc-banner {
   backdrop-filter: blur(20px) saturate(170%) brightness(1.04);
   -webkit-backdrop-filter: blur(20px) saturate(170%) brightness(1.04);
 }
+/* 设置面板这种大面积浮层多糊一点：背后的色块糊开了，文字才不打架。 */
+html[data-dsh-glass="1"] [role="dialog"],
+html[data-dsh-glass="1"] [data-shell-overlay="true"] [data-slot] > * {
+  backdrop-filter: blur(26px) saturate(150%);
+  -webkit-backdrop-filter: blur(26px) saturate(150%);
+}
 html[data-dsh-glass="1"] [role="dialog"],
 html[data-dsh-glass="1"] [role="menu"],
 html[data-dsh-glass="1"] [role="listbox"],
@@ -622,18 +628,19 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         `rgba(20, 24, 32, ${darkAlpha})`,
       )
       return {
-        '--dsw-alias-bg-base': fill(0.28, 0.3),
-        '--dsw-alias-bg-layer-1': fill(0.38, 0.42),
-        '--dsw-alias-bg-layer-2': fill(0.24, 0.28),
-        '--dsw-alias-bg-layer-3': fill(0.2, 0.24),
-        '--dsw-alias-bg-overlay': fill(0.3, 0.4),
+        '--dsw-alias-bg-base': fill(0.3, 0.32),
+        '--dsw-alias-bg-layer-1': fill(0.5, 0.52),
+        // 设置面板用的就是 layer-2，太薄了字会糊在壁纸上，这里给足不透明度
+        '--dsw-alias-bg-layer-2': fill(0.62, 0.66),
+        '--dsw-alias-bg-layer-3': fill(0.55, 0.6),
+        '--dsw-alias-bg-overlay': fill(0.55, 0.6),
         '--dsw-alias-bg-mask-1': fill(0.2, 0.3),
         '--dsw-alias-bg-mask-2': fill(0.28, 0.38),
         '--dsw-alias-bg-mask-3': fill(0.36, 0.46),
         '--dsw-alias-card-fill': fill(0.34, 0.38),
         '--dsw-alias-card-fill-hover': fill(0.44, 0.48),
         '--dsw-alias-card-tile-fill': fill(0.3, 0.34),
-        '--dsw-alias-settings-card-fill': fill(0.34, 0.38),
+        '--dsw-alias-settings-card-fill': fill(0.7, 0.72),
         '--dsw-alias-settings-card-stroke': pair('rgba(255, 255, 255, 0.6)', 'rgba(255, 255, 255, 0.12)'),
         '--dsw-alias-onboarding-card-fill': fill(0.34, 0.38),
         '--dsw-alias-onboarding-secondary-fill': fill(0.28, 0.32),

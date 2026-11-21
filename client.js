@@ -1154,25 +1154,29 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
 .uc-folder-hint { margin: 0; padding: 0 20px 16px; font-size: 11px; line-height: 1.6; color: var(--dsw-alias-label-secondary); }
 `
 
+    // A corner toast, not a centered bar: the centered version covered the
+    // conversation header and the first lines of the message.
     const BANNER_CSS = `
 [data-shell-overlay]{z-index:500!important;}
-.uc-banner{position:fixed;top:56px;left:50%;transform:translateX(-50%);width:min(560px,calc(100vw - 32px));z-index:9999;pointer-events:auto;display:flex;align-items:center;gap:12px;padding:12px 14px 12px 18px;border:1px solid var(--dsw-alias-border-l2);border-radius:14px;background:var(--dsw-alias-bg-overlay);color:var(--dsw-alias-label-primary);box-shadow:0 18px 44px rgba(0,0,0,.28),0 2px 6px rgba(0,0,0,.1);font-size:12px;line-height:1.45;animation:uc-drop .2s ease-out;}
-@keyframes uc-drop{from{opacity:0;transform:translate(-50%,-10px)}to{opacity:1;transform:translate(-50%,0)}}
+.uc-banner{position:fixed;top:46px;right:14px;left:auto;transform:none;width:min(376px,calc(100vw - 28px));z-index:9999;pointer-events:auto;display:flex;flex-direction:column;gap:9px;padding:12px 13px 12px 16px;border:1px solid var(--dsw-alias-border-l2);border-radius:14px;background:var(--dsw-alias-bg-overlay);color:var(--dsw-alias-label-primary);box-shadow:0 14px 34px rgba(0,0,0,.22),0 2px 6px rgba(0,0,0,.08);font-size:12px;line-height:1.45;animation:uc-toast-in .18s ease-out;}
+@keyframes uc-toast-in{from{opacity:0;transform:translateX(14px)}to{opacity:1;transform:none}}
 .uc-banner::before{content:'';position:absolute;left:0;top:12px;bottom:12px;width:3px;border-radius:0 3px 3px 0;background:var(--dsw-alias-state-success-primary);}
 .uc-banner-error::before{background:var(--dsw-alias-state-error-primary);}
 .uc-banner-update::before{background:var(--dsw-alias-state-warn-primary);}
-.uc-banner-icon{flex:none;width:30px;height:30px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-state-success-primary);}
+.uc-banner-top{display:flex;align-items:flex-start;gap:10px;}
+.uc-banner-icon{flex:none;width:28px;height:28px;border-radius:9px;display:flex;align-items:center;justify-content:center;background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-state-success-primary);}
 .uc-banner-error .uc-banner-icon{color:var(--dsw-alias-state-error-primary);}
 .uc-banner-update .uc-banner-icon{color:var(--dsw-alias-state-warn-primary);}
-.uc-banner-copy{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
+.uc-banner-copy{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;}
 .uc-banner-title{font-weight:600;font-size:12.5px;}
 .uc-banner-detail{color:var(--dsw-alias-label-secondary);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.uc-banner-hint{flex:none;color:var(--dsw-alias-label-secondary);font-size:11px;}
-.uc-banner-action{flex:none;appearance:none;border:1px solid transparent;background:transparent;color:var(--dsw-alias-label-secondary);border-radius:8px;padding:6px 10px;font-size:11px;cursor:pointer;}
+.uc-banner-actions{display:flex;align-items:center;justify-content:flex-end;gap:6px;flex-wrap:wrap;}
+.uc-banner-hint{color:var(--dsw-alias-label-secondary);font-size:11px;margin-right:auto;}
+.uc-banner-action{appearance:none;border:1px solid transparent;background:transparent;color:var(--dsw-alias-label-secondary);border-radius:8px;padding:5px 10px;font-size:11px;cursor:pointer;}
 .uc-banner-action:hover{background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary);}
 .uc-banner-action-primary{background:var(--dsw-alias-brand-primary);border-color:var(--dsw-alias-brand-primary);color:#fff;font-weight:600;}
 .uc-banner-action-primary:hover{background:var(--dsw-alias-brand-primary);border-color:var(--dsw-alias-brand-primary);color:#fff;filter:brightness(1.06);}
-.uc-banner-progress{padding-bottom:16px;}
+.uc-banner-progress{padding-bottom:18px;}
 .uc-banner-bar{position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--dsw-alias-border-l1);border-radius:0 0 14px 14px;overflow:hidden;}
 .uc-banner-bar-fill{height:100%;background:var(--dsw-alias-brand-primary);transition:width .35s ease;}
 .uc-banner-bar-indeterminate{width:30%;animation:uc-indeterminate 1.2s ease-in-out infinite;}
@@ -2623,9 +2627,11 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
       const [state, setState] = React.useState(() => bannerStore.get())
       React.useEffect(() => bannerStore.subscribe(() => setState(bannerStore.get())), [])
 
+      // Success banners go away on their own even when they carry an action, so
+      // a finished update cannot keep covering the chat.
       React.useEffect(() => {
-        if (!state || state.kind !== 'ok' || state.action) return undefined
-        const timer = setTimeout(() => bannerStore.set(null), 15000)
+        if (!state || state.kind !== 'ok') return undefined
+        const timer = setTimeout(() => bannerStore.set(null), 20000)
         return () => clearTimeout(timer)
       }, [state])
 
@@ -2668,19 +2674,21 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
           'aria-live': 'polite',
         },
           h('style', null, BANNER_CSS),
-          h('span', { className: 'uc-banner-icon', 'aria-hidden': true },
-            h('svg', {
-              viewBox: '0 0 24 24', width: 15, height: 15, fill: 'none', stroke: 'currentColor',
-              'stroke-width': 2.2, 'stroke-linecap': 'round', 'stroke-linejoin': 'round',
-            },
-              h('path', { d: 'M12 4v11' }),
-              h('path', { d: 'M7 10l5 5 5-5' }),
-              h('path', { d: 'M5 20h14' }),
+          h('div', { className: 'uc-banner-top' },
+            h('span', { className: 'uc-banner-icon', 'aria-hidden': true },
+              h('svg', {
+                viewBox: '0 0 24 24', width: 15, height: 15, fill: 'none', stroke: 'currentColor',
+                'stroke-width': 2.2, 'stroke-linecap': 'round', 'stroke-linejoin': 'round',
+              },
+                h('path', { d: 'M12 4v11' }),
+                h('path', { d: 'M7 10l5 5 5-5' }),
+                h('path', { d: 'M5 20h14' }),
+              ),
             ),
-          ),
-          h('div', { className: 'uc-banner-copy' },
-            h('div', { className: 'uc-banner-title' }, title),
-            h('div', { className: 'uc-banner-detail' }, percent === null ? version : `${version} · ${percent}%`),
+            h('div', { className: 'uc-banner-copy' },
+              h('div', { className: 'uc-banner-title' }, title),
+              h('div', { className: 'uc-banner-detail' }, percent === null ? version : `${version} · ${percent}%`),
+            ),
           ),
           h('div', { className: 'uc-banner-bar' },
             h('div', {
@@ -2717,53 +2725,57 @@ html[data-dsh-perf="long"] [data-slot="conversation.chat.flow"] * {
         'aria-live': 'polite',
       },
         h('style', null, BANNER_CSS),
-        h('span', { className: 'uc-banner-icon', 'aria-hidden': true },
-          h('svg', {
-            viewBox: '0 0 24 24', width: 15, height: 15, fill: 'none', stroke: 'currentColor',
-            'stroke-width': 2.2, 'stroke-linecap': 'round', 'stroke-linejoin': 'round',
-          },
-            state.kind === 'ok'
-              ? h('path', { d: 'M20 6 9 17l-5-5' })
-              : state.kind === 'error'
-                ? h('g', null,
-                    h('path', { d: 'M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z' }),
-                    h('path', { d: 'M12 9v4' }),
-                    h('path', { d: 'M12 17h.01' }),
-                  )
-                : state.kind === 'restart' || state.kind === 'refresh'
+        h('div', { className: 'uc-banner-top' },
+          h('span', { className: 'uc-banner-icon', 'aria-hidden': true },
+            h('svg', {
+              viewBox: '0 0 24 24', width: 15, height: 15, fill: 'none', stroke: 'currentColor',
+              'stroke-width': 2.2, 'stroke-linecap': 'round', 'stroke-linejoin': 'round',
+            },
+              state.kind === 'ok'
+                ? h('path', { d: 'M20 6 9 17l-5-5' })
+                : state.kind === 'error'
                   ? h('g', null,
-                      h('path', { d: 'M21 12a9 9 0 1 1-2.64-6.36' }),
-                      h('path', { d: 'M21 3v6h-6' }),
+                      h('path', { d: 'M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z' }),
+                      h('path', { d: 'M12 9v4' }),
+                      h('path', { d: 'M12 17h.01' }),
                     )
-                  : h('g', null,
-                      h('path', { d: 'M12 19V5' }),
-                      h('path', { d: 'M5 12l7-7 7 7' }),
-                    ),
+                  : state.kind === 'restart' || state.kind === 'refresh'
+                    ? h('g', null,
+                        h('path', { d: 'M21 12a9 9 0 1 1-2.64-6.36' }),
+                        h('path', { d: 'M21 3v6h-6' }),
+                      )
+                    : h('g', null,
+                        h('path', { d: 'M12 19V5' }),
+                        h('path', { d: 'M5 12l7-7 7 7' }),
+                      ),
+            ),
+          ),
+          h('div', { className: 'uc-banner-copy' },
+            h('div', { className: 'uc-banner-title' }, title),
+            h('div', { className: 'uc-banner-detail', title: detail }, detail),
           ),
         ),
-        h('div', { className: 'uc-banner-copy' },
-          h('div', { className: 'uc-banner-title' }, title),
-          h('div', { className: 'uc-banner-detail', title: detail }, detail),
+        h('div', { className: 'uc-banner-actions' },
+          isUpdate ? null : h('span', { className: 'uc-banner-hint' }, t('bannerHint')),
+          state.action
+            ? h('button', {
+                type: 'button',
+                className: 'uc-banner-action uc-banner-action-primary',
+                onClick: () => {
+                  try {
+                    state.action.run()
+                  } catch {
+                    /* bridge unavailable */
+                  }
+                },
+              }, state.action.label)
+            : null,
+          h('button', {
+            type: 'button',
+            className: 'uc-banner-action',
+            onClick: () => bannerStore.set(null),
+          }, t('bannerDismiss')),
         ),
-        state.action
-          ? h('button', {
-              type: 'button',
-              className: 'uc-banner-action uc-banner-action-primary',
-              onClick: () => {
-                try {
-                  state.action.run()
-                } catch {
-                  /* bridge unavailable */
-                }
-              },
-            }, state.action.label)
-          : null,
-        isUpdate ? null : h('span', { className: 'uc-banner-hint' }, t('bannerHint')),
-        h('button', {
-          type: 'button',
-          className: 'uc-banner-action',
-          onClick: () => bannerStore.set(null),
-        }, t('bannerDismiss')),
       )
     }
 

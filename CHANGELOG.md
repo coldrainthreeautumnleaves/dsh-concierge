@@ -2,6 +2,11 @@
 
 版本规则：每次发版，最后一位 +1（0.1.1 → 0.1.2 → …）。
 
+## 0.1.63
+
+- 加了插件市场要用的两样东西：卡片图标 `assets/icon-180.png`（列表只收 GitHub 托管的位图，SVG 会被拒），以及 `screenshots.json`（详情页截图，指向 `docs/` 里那三张预览）
+- `package.json` 的 `files` 跟着补上 `assets` 和 `screenshots.json`
+
 ## 0.1.62
 
 - 加了一个**帧率诊断落盘**：客户端把「流式开始 / 结束」两个时刻前后 ≥40ms 的长帧、以及当时的 fps 样本，POST 到宿主，宿主写到 `~/.dsh/update-center/perf-report.json`。用来判断「结束那一刻掉到 60」是模糊挂回去的那次重绘，还是应用自己在收尾——不靠猜

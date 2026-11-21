@@ -1,6 +1,6 @@
 {
   "name": "dsh-concierge",
-  "version": "0.1.62",
+  "version": "0.1.63",
   "description": "Maintenance center for DeepSeek Harness: checks the desktop app feed and installed plugin updates, updates and rolls back plugins, watches GitHub sources, and keeps long chats smooth.",
   "type": "module",
   "main": "index.js",
@@ -19,7 +19,9 @@
     "icon.svg",
     "README.md",
     "CHANGELOG.md",
-    "LICENSE"
+    "LICENSE",
+    "assets",
+    "screenshots.json"
   ],
   "keywords": [
     "deepseek",

@@ -173,11 +173,17 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] body::before {
     radial-gradient(900px 520px at 98% 4%, rgba(139, 92, 246, 0.24), transparent 58%),
     linear-gradient(160deg, #0b0e14 0%, #10141c 46%, #0d1219 100%);
 }
+/* Overlays keep their own frost so they read as floating above the app frame.
+   The attribute/class hooks mirror what dsh-skin-master keys on: the shell's
+   own overlay marker plus the CSS-module prefixes the popups carry. */
 html[data-dsh-glass="1"] [role="dialog"],
 html[data-dsh-glass="1"] [role="alertdialog"],
 html[data-dsh-glass="1"] [role="menu"],
 html[data-dsh-glass="1"] [role="listbox"],
 html[data-dsh-glass="1"] [role="tooltip"],
+html[data-dsh-glass="1"] [data-shell-overlay="true"] [data-slot] > *,
+html[data-dsh-glass="1"] [class*="_menu"],
+html[data-dsh-glass="1"] [class*="_portal_"],
 html[data-dsh-glass="1"] .uc-card,
 html[data-dsh-glass="1"] .uc-banner {
   backdrop-filter: blur(20px) saturate(150%);

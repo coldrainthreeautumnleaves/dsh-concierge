@@ -212,9 +212,10 @@ html[data-dsh-glass="1"] #dsh-concierge-grain {
   pointer-events: none;
   background-size: 140px 140px;
 }
-/* 顶部那条 40px（窗口按钮所在的标题栏）：原生 WCO 现在拿到的是带 alpha 的
-   颜色，透明通道生效时页面就能透上来，于是这一条也做成磨砂；按钮由系统绘制，
-   浮在它上面。全屏时标题栏高度归零，这条要跟着藏起来。 */
+/* 顶部那条 40px（窗口按钮所在的标题栏）：原生 WCO 拿到的是带 alpha 的颜色，
+   透明通道生效时页面就能透上来。tint 用侧边栏那一档的冷白/深蓝，别让壁纸的彩色
+   直接当顶栏颜色——那样会跟侧边栏接不上。模糊留着，壁纸的明暗还会透一点。
+   全屏时标题栏高度归零，这条跟着藏起来。 */
 #dsh-concierge-top { display: none; }
 html[data-dsh-glass="1"] #dsh-concierge-top {
   display: block;
@@ -224,10 +225,10 @@ html[data-dsh-glass="1"] #dsh-concierge-top {
   pointer-events: none;
   backdrop-filter: blur(14px) saturate(150%);
   -webkit-backdrop-filter: blur(14px) saturate(150%);
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(240, 243, 252, 0.62);
 }
 html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-top {
-  background: rgba(21, 27, 43, 0.24);
+  background: rgba(21, 27, 43, 0.68);
 }
 html[data-dsh-glass="1"][data-fullscreen] #dsh-concierge-top { display: none; }
 /* 侧边栏继续用原来的实色：标题栏那条 token 现在带 alpha 是为了让顶部透上来，

@@ -155,30 +155,30 @@ html[data-dsh-noanim="1"] [data-animating] {
    no alpha; a transparent root forces the compositor to blend the page with the
    window surface every frame. The wallpaper layer sits at z-index: -1, i.e.
    above this background, so nothing changes visually. */
-/* 根画布必须是透明的：原来为了合成器快路径把它设成不透明（#f0f3fc），
-   代价是窗口缩放时新露出的区域先画成这块颜色——就是那条横贯整窗的浅色带
-   （实测 RGB(239,242,251)，和 #f0f3fc 的 (240,243,252) 是同一块）。
-   透明之后那块露出的是壁纸层/窗口底色，不再是白板。 */
-html[data-dsh-glass="1"] { background-color: #eef3fa !important; }
-html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] { background-color: #0e1116 !important; }
+/* 画布色在这里定义一次，玻璃、壁纸基色、过渡兜底全部从 --dsh-canvas 派生。
+   唯一的另一份是 JS 里的 LOOK_CANVAS（原生皮肤的 token 是 JS 对象，读不到 CSS
+   变量），两处必须保持同一组值。 */
+
+   根层必须不透明：Chromium 只在「整帧判定为不透明」时才允许在窗口尺寸跳变时
+   拉伸上一帧；非不透明的帧只能等下一次提交，那一两帧就露出窗口表面色
+   （拖边框白带、全屏闪白都是这个原因）。 */
+html[data-dsh-glass="1"] {
+  --dsh-canvas: #eef3fa;
+  background-color: var(--dsh-canvas) !important;
+}
+html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] {
+  --dsh-canvas: #0e1116;
+  background-color: var(--dsh-canvas) !important;
+}
 html[data-dsh-glass="1"] body,
-html[data-dsh-glass="1"] #root { background: transparent !important; }
-/* 根层必须不透明。Chromium 只在「整帧判定为不透明」时才允许在窗口尺寸跳变时拉伸上一帧；
-   非不透明的帧只能等下一次提交，那一两帧就露出窗口表面色。全屏切换是一次性大跳，
-   所以特别明显。这个底色必须和壁纸基色一致，否则壁纸没铺满的地方会露出异色。 */
-html[data-dsh-glass="1"] body { background-color: #eef3fa !important; }
-html[data-dsh-glass="1"] #root { background-color: #eef3fa !important; }
-html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] body { background-color: #0e1116 !important; }
-html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #root { background-color: #0e1116 !important; }
-/* 「原生」没有壁纸层，也不涂根层。窗口底色被补丁改成透明之后（见
-   scripts/patch-window-clear.mjs），它会真的透出桌面——所以这里必须自己把根层
-   涂实。深色用 body 上的 data-ds-dark-theme 判断：原生不走玻璃那套 scheme 属性。 */
+html[data-dsh-glass="1"] #root { background-color: var(--dsh-canvas) !important; }
+/* 「原生」没有壁纸层，画布同样从 --dsh-canvas 派生。深色用 body 上的
+   data-ds-dark-theme 判断：原生不走玻璃那套 scheme 属性。 */
+html[data-dsh-skin="native"] { --dsh-canvas: #eef3fa; }
+html[data-dsh-skin="native"]:has(body[data-ds-dark-theme]) { --dsh-canvas: #0e1116; }
 html[data-dsh-skin="native"],
 html[data-dsh-skin="native"] body,
-html[data-dsh-skin="native"] #root { background-color: #eef3fa !important; }
-html[data-dsh-skin="native"]:has(body[data-ds-dark-theme]),
-html[data-dsh-skin="native"]:has(body[data-ds-dark-theme]) body,
-html[data-dsh-skin="native"]:has(body[data-ds-dark-theme]) #root { background-color: #0e1116 !important; }
+html[data-dsh-skin="native"] #root { background-color: var(--dsh-canvas) !important; }
 /* The frost lives on the wallpaper itself: one blurred layer covers every
    translucent surface, instead of paying a backdrop-filter per panel (each one
    reads the pixels behind it and runs a blur kernel, so the cost scales with
@@ -246,16 +246,11 @@ html[data-dsh-edge="1"] #dsh-concierge-glass {
 }
 /* 全屏 / 改尺寸的过渡期（约 200ms）把根层铺实。窗口是真透明的，新露出的区域在
    下一帧提交前会露出桌面；铺成和壁纸同色的实色之后整帧重新判定为不透明，
-   合成器就能拉伸上一帧，露出来的是内容。 */
+   合成器就能拉伸上一帧，露出来的是内容。颜色同样走 --dsh-canvas。 */
 html[data-dsh-edge="1"][data-dsh-edge-settle="1"],
 html[data-dsh-edge="1"][data-dsh-edge-settle="1"] body,
 html[data-dsh-edge="1"][data-dsh-edge-settle="1"] #root {
-  background-color: #eef3fa !important;
-}
-html[data-dsh-edge="1"][data-dsh-edge-settle="1"][data-dsh-glass-scheme="dark"],
-html[data-dsh-edge="1"][data-dsh-edge-settle="1"][data-dsh-glass-scheme="dark"] body,
-html[data-dsh-edge="1"][data-dsh-edge-settle="1"][data-dsh-glass-scheme="dark"] #root {
-  background-color: #0e1116 !important;
+  background-color: var(--dsh-canvas) !important;
 }
 /* The wallpaper stays SHARP. Frost comes from each panel blurring what is
    behind it (backdrop-filter); pre-blurring the wallpaper leaves nothing to
@@ -271,7 +266,7 @@ html[data-dsh-edge="1"][data-dsh-edge-settle="1"][data-dsh-glass-scheme="dark"] 
     radial-gradient(900px 700px at 8% 0%, rgba(122, 162, 214, 0.55) 0%, rgba(122, 162, 214, 0) 60%),
     radial-gradient(820px 640px at 92% 6%, rgba(150, 180, 222, 0.35) 0%, rgba(150, 180, 222, 0) 62%),
     radial-gradient(940px 720px at 78% 100%, rgba(214, 206, 196, 0.30) 0%, rgba(214, 206, 196, 0) 62%),
-    linear-gradient(165deg, #eef3fa 0%, #e7eef7 50%, #eaf1f1 100%);
+    linear-gradient(165deg, var(--dsh-canvas) 0%, #e7eef7 50%, #eaf1f1 100%);
   background-size: 140px 140px, auto, auto, auto, auto;
   background-repeat: repeat, no-repeat, no-repeat, no-repeat, no-repeat;
 }
@@ -282,14 +277,14 @@ html[data-dsh-edge="1"][data-dsh-edge-settle="1"][data-dsh-glass-scheme="dark"] 
 html[data-dsh-simple-wallpaper="1"] #dsh-concierge-glass > div:first-child {
   background-image:
     var(--dsh-grain, none),
-    linear-gradient(165deg, #eef3fa 0%, #e7eef7 50%, #eaf1f1 100%);
+    linear-gradient(165deg, var(--dsh-canvas) 0%, #e7eef7 50%, #eaf1f1 100%);
   background-size: 140px 140px, auto;
   background-repeat: repeat, no-repeat;
 }
 html[data-dsh-simple-wallpaper="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-glass > div:first-child {
   background-image:
     var(--dsh-grain, none),
-    linear-gradient(165deg, #0e1116 0%, #121a24 50%, #0c1417 100%);
+    linear-gradient(165deg, var(--dsh-canvas) 0%, #121a24 50%, #0c1417 100%);
   background-size: 140px 140px, auto;
   background-repeat: repeat, no-repeat;
 }
@@ -313,7 +308,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-glass > di
     radial-gradient(900px 700px at 8% 0%, rgba(52, 86, 140, 0.55) 0%, rgba(52, 86, 140, 0) 60%),
     radial-gradient(820px 640px at 92% 6%, rgba(44, 64, 96, 0.40) 0%, rgba(44, 64, 96, 0) 62%),
     radial-gradient(940px 720px at 78% 100%, rgba(70, 66, 62, 0.28) 0%, rgba(70, 66, 62, 0) 62%),
-    linear-gradient(165deg, #0e1116 0%, #121a24 50%, #0c1417 100%);
+    linear-gradient(165deg, var(--dsh-canvas) 0%, #121a24 50%, #0c1417 100%);
 }
 /* 颗粒现在是壁纸层背景里的第一层（--dsh-grain），不再是独立元素：多一个全屏
    元素就多一个全屏合成层，每帧都要和壁纸混一次。强度仍然烘进 SVG 自己的
@@ -465,7 +460,7 @@ html[data-dsh-glass="1"] #dsh-concierge-frost {
     radial-gradient(900px 700px at 8% 0%, rgba(122, 162, 214, 0.55) 0%, rgba(122, 162, 214, 0) 60%),
     radial-gradient(820px 640px at 92% 6%, rgba(150, 180, 222, 0.35) 0%, rgba(150, 180, 222, 0) 62%),
     radial-gradient(940px 720px at 78% 100%, rgba(214, 206, 196, 0.30) 0%, rgba(214, 206, 196, 0) 62%),
-    linear-gradient(165deg, #eef3fa 0%, #e7eef7 50%, #eaf1f1 100%);
+    linear-gradient(165deg, var(--dsh-canvas) 0%, #e7eef7 50%, #eaf1f1 100%);
   background-size: 140px 140px, auto, auto, auto, auto;
   background-repeat: repeat, no-repeat, no-repeat, no-repeat, no-repeat;
   /* 源色已经是低饱和，这里只做轻微收口：不再用 0.32 硬压，
@@ -478,7 +473,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-frost > di
     radial-gradient(900px 700px at 8% 0%, rgba(52, 86, 140, 0.55) 0%, rgba(52, 86, 140, 0) 60%),
     radial-gradient(820px 640px at 92% 6%, rgba(44, 64, 96, 0.40) 0%, rgba(44, 64, 96, 0) 62%),
     radial-gradient(940px 720px at 78% 100%, rgba(70, 66, 62, 0.28) 0%, rgba(70, 66, 62, 0) 62%),
-    linear-gradient(165deg, #0e1116 0%, #121a24 50%, #0c1417 100%);
+    linear-gradient(165deg, var(--dsh-canvas) 0%, #121a24 50%, #0c1417 100%);
   filter: blur(28px) saturate(0.55) brightness(0.98);
 }
 /* 会话区磨砂现在由上面那层预模糊负责，::before 不再挂 backdrop-filter。 */
@@ -1497,6 +1492,11 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       amber: { light: '#d97706', dark: '#fbbf24' },
     }
 
+    // 画布色。CSS 那边也有一份（--dsh-canvas，见文件开头的样式表），两处必须一致：
+    // CSS 那份管根层/壁纸/过渡兜底，这份给「原生」皮肤的 token 用（token 是 JS
+    // 对象，读不到 CSS 变量）。
+    const LOOK_CANVAS = { light: '#eef3fa', dark: '#0e1116' }
+
     const BRAND_TOKEN_NAMES = [
       '--dsw-alias-brand-primary',
       '--dsw-alias-brand-text',
@@ -1615,7 +1615,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       // 两套皮肤来回切时底色不会跳。
       native: {
         tokens: {
-          '--dsw-alias-bg-base': { light: '#eef3fa', dark: '#0e1116' },
+          '--dsw-alias-bg-base': LOOK_CANVAS,
         },
       },
     }

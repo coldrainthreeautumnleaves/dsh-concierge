@@ -226,31 +226,16 @@ html[data-dsh-glass="1"] #dsh-concierge-top {
   inset: 0 0 auto;
   height: var(--dsh-windows-titlebar-height, 40px);
   pointer-events: none;
-  /* 不用 backdrop-filter：它每帧重新采样，正是为了帧率才清掉的东西。
-     也不能用 0.58——那样壁纸的蓝→紫→青会原样透上来，顶部变成渐变。
-     取 0.88，和内容层同一个透明度：壁纸只剩 12% 参与，色差被压到看不出来，
-     同时它仍然是「透」的，不是一块实色。不加边框，靠内容从下面滑过去分层级。 */
-  background: rgba(var(--dsh-tint-rgb), 0.88);
+  /* 标题栏和内容区必须是同一块：这条不再自己算底色，直接透明，
+     露出和会话区同一层壁纸。窗口框架的背景也一起透明，否则会露出一条
+     侧边栏色的带子，形成分界。 */
+  background: transparent;
 }
 html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-top {
-  background: rgba(21, 27, 43, 0.88);
+  background: transparent;
 }
 html[data-dsh-glass="1"][data-fullscreen] #dsh-concierge-top { display: none; }
 
-/* 主窗口：外壳内缩 12px 当玻璃壳，内容仍在壳里。结构由 shell 探针确认：
-   #root > div > [class*="_frame"]（1280×822，position: relative）。 */
-html[data-dsh-glass="1"] #root > div > [class*="_frame"] {
-  margin: 12px;
-  width: calc(100% - 24px) !important;
-  height: calc(100% - 24px) !important;
-  border-radius: 12px;
-  overflow: hidden;
-  background: rgba(var(--dsh-tint-rgb), 0.76) !important;
-  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--dsw-alias-label-on-color) 7%, transparent);
-}
-html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #root > div > [class*="_frame"] {
-  background: rgba(16, 20, 28, 0.78) !important;
-}
 /* 侧边栏：从「压回实色」改成半透明，和聊天区一样透出壁纸。这里**不加**
    backdrop-filter——侧边栏里挂着 fixed 定位的弹层，给容器加 filter 会把它们的
    包含块换成侧边栏，弹层会错位（dsh-glass-skin 的 README 也提到这一点）。
@@ -266,6 +251,11 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] [class*="_sidebarCol"] {
    玻璃皮肤下把它归零，内容铺满、不留弧度。 */
 html[data-dsh-glass="1"] [class*="_frame"] {
   --dsh-windows-content-radius: 0px !important;
+}
+
+/* 窗口框架自身不再刷底色：标题栏那 40px 露出的是和会话区一样的壁纸。 */
+html[data-dsh-glass="1"] [data-windows-titlebar] [class*="_frame"] {
+  background: transparent !important;
 }
 html[data-dsh-glass="1"] [class*="_centerCol"] {
   border-radius: 0 !important;

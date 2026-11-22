@@ -220,10 +220,13 @@ html[data-dsh-edge="1"],
 html[data-dsh-edge="1"] body,
 html[data-dsh-edge="1"] #root { background: transparent !important; }
 html[data-dsh-edge="1"] #root,
-html[data-dsh-edge="1"] #dsh-concierge-glass,
-html[data-dsh-edge="1"] #dsh-concierge-frost {
+html[data-dsh-edge="1"] #dsh-concierge-glass {
   clip-path: inset(var(--dsh-edge) round var(--dsh-edge-radius));
 }
+/* 注意：#dsh-concierge-frost 不在这条规则里。它是玻璃层的子元素，本来就会被
+   父层的切口带着裁；而它自己的盒子只是「会话区那一小块」（left/top/width/height
+   由 JS 按 getBoundingClientRect 设），再套一次 inset(10px) 会从那一小块四边各
+   切掉 10px——模糊层比内容小一圈、整体偏上，看起来就是玻璃和界面对不齐。 */
 /* 切口内侧压一条 1px 的壁纸色描边。clip-path 的抗锯齿像素会和窗口表面混色，
    在边界上留一条发白的细线；这条描边就贴在切口内侧，把那条线盖住。
    它画在 #root 里面，被同一个切口裁着，所以和内容共用一条边界，不会再出现

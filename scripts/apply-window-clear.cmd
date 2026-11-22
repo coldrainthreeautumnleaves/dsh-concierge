@@ -5,14 +5,14 @@ cd /d "%~dp0.."
 tasklist /FI "IMAGENAME eq DeepSeek Harness.exe" 2>nul | find /I "DeepSeek Harness.exe" >nul
 if not errorlevel 1 goto running
 
-echo 正在生成并应用窗口透明补丁……
+echo 正在生成并应用窗口透明补丁...
 node scripts\patch-window-clear.mjs
 if errorlevel 1 goto failed
 
 node scripts\patch-window-clear.mjs --apply
 if errorlevel 1 goto failed
 
-echo 已应用，正在启动 DSH，并观察 25 秒……
+echo 已应用，正在启动 DSH，并观察 25 秒...
 start "" "%LOCALAPPDATA%\Programs\DeepSeek Harness\DeepSeek Harness.exe"
 timeout /t 25 /nobreak >nul
 
@@ -21,7 +21,8 @@ if errorlevel 1 goto crashed
 
 echo.
 echo DSH 起来了。看看留边那圈是不是变成桌面壁纸的模糊了。
-echo 要还原：node scripts\patch-window-clear.mjs --revert
+echo 要还原的话，运行下面这行：
+echo    node scripts\patch-window-clear.mjs --revert
 pause
 exit /b 0
 
@@ -41,9 +42,9 @@ exit /b 1
 
 :crashed
 echo.
-echo DSH 没起来，正在自动还原……
+echo DSH 没起来，正在自动还原...
 node scripts\patch-window-clear.mjs --revert
-echo 已还原，重新启动 DSH……
+echo 已还原，重新启动 DSH...
 start "" "%LOCALAPPDATA%\Programs\DeepSeek Harness\DeepSeek Harness.exe"
 echo.
 echo 结论：这个补丁在当前版本会让启动失败，先别用了。

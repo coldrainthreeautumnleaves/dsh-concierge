@@ -170,6 +170,15 @@ html[data-dsh-glass="1"] body { background-color: #eef3fa !important; }
 html[data-dsh-glass="1"] #root { background-color: #eef3fa !important; }
 html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] body { background-color: #0e1116 !important; }
 html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #root { background-color: #0e1116 !important; }
+/* 「原生」没有壁纸层，也不涂根层。窗口底色被补丁改成透明之后（见
+   scripts/patch-window-clear.mjs），它会真的透出桌面——所以这里必须自己把根层
+   涂实。深色用 body 上的 data-ds-dark-theme 判断：原生不走玻璃那套 scheme 属性。 */
+html[data-dsh-skin="native"],
+html[data-dsh-skin="native"] body,
+html[data-dsh-skin="native"] #root { background-color: #eef3fa !important; }
+html[data-dsh-skin="native"]:has(body[data-ds-dark-theme]),
+html[data-dsh-skin="native"]:has(body[data-ds-dark-theme]) body,
+html[data-dsh-skin="native"]:has(body[data-ds-dark-theme]) #root { background-color: #0e1116 !important; }
 /* The frost lives on the wallpaper itself: one blurred layer covers every
    translucent surface, instead of paying a backdrop-filter per panel (each one
    reads the pixels behind it and runs a blur kernel, so the cost scales with
@@ -1942,6 +1951,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         delete root.dataset.dshGlassScheme
         delete root.dataset.dshEdge
         delete root.dataset.dshEdgeDebug
+        delete root.dataset.dshSkin
         applyGrainImage()
       }
       if (!look.enabled || !lookCtx) {
@@ -1956,6 +1966,9 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       applyThemePreference()
       applyFontStep()
       applyCodeFont()
+      // 记下当前皮肤，供 CSS 区分「原生」——它没有壁纸层，窗口底色透明之后
+      // 必须自己把根层涂实，否则会真的透出桌面。
+      if (root) root.dataset.dshSkin = look.skin
       const skin = isGlassSkin() ? { tokens: glassTokens() } : LOOK_SKINS[look.skin]
       if (!skin) {
         clearGlassLayer()

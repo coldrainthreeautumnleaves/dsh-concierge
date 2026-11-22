@@ -1169,53 +1169,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       payload.band = probeBand
       payload.resize = resizeSamples.slice()
       payload.floating = floatingLog.slice()
-      // 临时探针：把页面顶部几处的元素层级和背景色带回来，用来定位「横带」是谁画的。
-      // 设置页容器是 pointer-events: none，命中测试会穿透，所以这里不用 elementFromPoint
-      // 判断当前页，直接量 _page 的尺寸；再把它的子树逐层 dump 一份。
-      const pageRoot = document.querySelector('[class*="_page"]')
-      const pageRect = pageRoot ? pageRoot.getBoundingClientRect() : null
-      payload.page = pageRect && pageRect.width > 400 && pageRect.height > 300 ? 'settings' : 'chat'
-      payload.pageChain = pageRoot
-        ? (() => {
-            const out = []
-            let el = pageRoot
-            for (let i = 0; i < 6 && el; i += 1) {
-              const cs = getComputedStyle(el)
-              const r = el.getBoundingClientRect()
-              const pseudo = ['::before', '::after'].map((name) => {
-                const ps = getComputedStyle(el, name)
-                const bg = ps.backgroundColor
-                const img = ps.backgroundImage
-                const hasBg = bg && bg !== 'rgba(0, 0, 0, 0)'
-                const hasImg = img && img !== 'none'
-                if (!hasBg && !hasImg) return ''
-                return `${name} bg=${bg} img=${hasImg ? img.slice(0, 60) : '-'}`
-              }).filter(Boolean).join(' ')
-              out.push(
-                `${el.tagName.toLowerCase()}.${String(el.className || '').split(' ')[0]} y=${Math.round(r.top)} h=${Math.round(r.height)} bg=${cs.backgroundColor} img=${cs.backgroundImage === 'none' ? '-' : 'yes'}${pseudo ? '|' + pseudo : ''}`,
-              )
-              el = el.firstElementChild
-            }
-            return out
-          })()
-        : null
-      payload.hits = [30, 90, 230].map((y) => {
-        const x = Math.round(window.innerWidth * 0.5)
-        const chain = document.elementsFromPoint(x, y).slice(0, 6).map((el) => {
-          const cs = getComputedStyle(el)
-          const pseudo = ['::before', '::after'].map((name) => {
-            const ps = getComputedStyle(el, name)
-            const bg = ps.backgroundColor
-            const img = ps.backgroundImage
-            const hasBg = bg && bg !== 'rgba(0, 0, 0, 0)'
-            const hasImg = img && img !== 'none'
-            if (!hasBg && !hasImg) return ''
-            return `${name} bg=${bg} img=${hasImg ? img.slice(0, 50) : '-'}`
-          }).filter(Boolean).join(' ')
-          return `${el.tagName.toLowerCase()}.${String(el.className || '').split(' ')[0].slice(0, 40)}|bg=${cs.backgroundColor}|img=${cs.backgroundImage === 'none' ? '-' : 'yes'}${pseudo ? '|' + pseudo : ''}`
-        })
-        return { x, y, chain }
-      })
       fetch(`${API}/perf-report`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -1224,30 +1177,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
     }
 
     installResizeProbe()
-
-    // 临时调试：Ctrl+Alt+H 立刻上报一次（带上页面顶部三处的元素层级）。
-    if (typeof window !== 'undefined' && !window.__dshHitProbe) {
-      window.__dshHitProbe = true
-      window.addEventListener('keydown', (event) => {
-        if (event.ctrlKey && event.altKey && String(event.key).toLowerCase() === 'h') {
-          event.preventDefault()
-          probeSend()
-        }
-      })
-      // 设置页真的显示出来时自动上报一次。判定不用命中测试（容器是
-      // pointer-events: none，会穿透），改成量 `_page` 的尺寸。
-      let pageProbeSent = false
-      const pageTimer = setInterval(() => {
-        if (pageProbeSent) return
-        const el = document.querySelector('[class*="_page"]')
-        if (!el) return
-        const r = el.getBoundingClientRect()
-        if (r.width < 400 || r.height < 300) return
-        pageProbeSent = true
-        clearInterval(pageTimer)
-        setTimeout(probeSend, 900)
-      }, 1200)
-    }
 
     function scheduleProbeSend(delay) {
       if (probeReportTimer) clearTimeout(probeReportTimer)

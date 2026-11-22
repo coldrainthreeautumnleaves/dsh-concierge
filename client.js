@@ -359,7 +359,6 @@ html[data-dsh-glass="1"] :is(
   [role="alertdialog"],
   [role="menu"],
   [role="listbox"],
-  [role="tooltip"],
   [data-shell-overlay="true"] [data-slot] > *,
   [class*="_popover"],
   [class*="_hovercard"],
@@ -382,7 +381,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] :is(
   [role="alertdialog"],
   [role="menu"],
   [role="listbox"],
-  [role="tooltip"],
   [data-shell-overlay="true"] [data-slot] > *,
   [class*="_popover"],
   [class*="_hovercard"],
@@ -397,10 +395,18 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] :is(
 ) {
   background-color: rgba(16, 20, 28, 0.96) !important;
 }
+/* tooltip 单独处理：它的文字色 token 就是白色（--dsw-alias-tooltip-label =
+   neutral-bluish-00），刷成浅底会变成白字压浅底，整行看不见。tooltip 本来就该是
+   深色小浮条，所以这里保持深底白字，不参与上面那条浅色实底。 */
+html[data-dsh-glass="1"] [role="tooltip"] {
+  background-color: rgba(20, 24, 32, 0.94) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
 html[data-dsh-glass="1"] [role="dialog"],
 html[data-dsh-glass="1"] [role="menu"],
 html[data-dsh-glass="1"] [role="listbox"],
-html[data-dsh-glass="1"] [role="tooltip"],
 html[data-dsh-glass="1"] .uc-card,
 html[data-dsh-glass="1"] .uc-banner {
   border: 1px solid rgba(255, 255, 255, 0.38);
@@ -411,7 +417,6 @@ html[data-dsh-glass="1"] .uc-banner {
 html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] [role="dialog"],
 html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] [role="menu"],
 html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] [role="listbox"],
-html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] [role="tooltip"],
 html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-card,
 html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
   border-color: rgba(255, 255, 255, 0.14);

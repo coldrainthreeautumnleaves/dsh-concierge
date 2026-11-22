@@ -206,6 +206,12 @@ html[data-dsh-edge="1"] {
   /* 切口那条 1px 内描边的颜色：取壁纸基色。clip-path 的抗锯齿会跟窗口表面
      混色，在边界上留一条发白的细线；这条描边盖在切口内侧，把它压掉。 */
   --dsh-edge-line: #eef3fa;
+  /* 顶部 40px 是 Windows 的 WCO 遮罩，颜色来自这个 token。玻璃皮肤给的是
+     alpha 0.004——几乎透明但不是零，它会在顶部盖一层极淡的白，和左右下三边的
+     纯亚克力形成一条线。留边模式下必须完全透明。
+     用 rgba(1,0,0,0) 而不是 rgba(0,0,0,0)：后者在部分 Electron 版本会回退成
+     默认帧色（Electron v43 才修），前者是实测可用的逃生值。 */
+  --dsw-specific-sidebar-fill: rgba(1, 0, 0, 0) !important;
 }
 html[data-dsh-edge="1"][data-dsh-glass-scheme="dark"] {
   --dsh-edge-line: #0e1116;
@@ -2000,6 +2006,12 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         else delete root.dataset.dshEdge
         if (look.edgeGlass && look.edgeDebug) root.dataset.dshEdgeDebug = '1'
         else delete root.dataset.dshEdgeDebug
+        // WCO 遮罩的颜色由 preload 的探针读 token、经 IPC 送出；探针只监听 head 和
+        // body 的 style，而切换留边只改了 html 的 data 属性，不会触发它重发。
+        // 这里轻推一下 body 的 style，让探针重新读一次（值没变时它自己会 dedupe）。
+        if (look.edgeGlass && typeof document !== 'undefined' && document.body) {
+          document.body.style.setProperty('--dsh-edge-ping', String(Date.now()))
+        }
         installResizeDegrade()
         applyGrainImage()
         applyFrostLayer()

@@ -382,8 +382,12 @@ html[data-dsh-glass="1"] [class*="_centerCol"] > * {
 }
 /* 会话标题栏（标题 + 图标 + 对话/轨迹/统计 标签行）只压一点点色，把壁纸的蓝→紫
    渐变压住，保证文字可读；但它和下面的内容区之间不能出现新的边界，所以底部 16px
-   用一条很短的 alpha 渐变收到 0。这里排除掉包含会话区的那个子元素，避免连累内容区。 */
-html[data-dsh-glass="1"] [class*="_centerCol"] > *:not(:has([data-conversation-region="chat"])) {
+   用一条很短的 alpha 渐变收到 0。这里排除掉包含会话区的那个子元素，避免连累内容区。
+
+   只在「中心列里有会话区」时生效。设置页（插件 / 插件市场 / 维护中心）也是中心列的
+   直接子元素，但里面没有会话区——原来的写法会把它整页也压上一层 0.16 的色，页面顶部
+   和下面的内容各压一层，交界处就是一条横带。 */
+html[data-dsh-glass="1"] [class*="_centerCol"]:has([data-conversation-region="chat"]) > *:not(:has([data-conversation-region="chat"])) {
   background: linear-gradient(
     to bottom,
     rgba(var(--dsh-tint-rgb), 0.16) calc(100% - 16px),

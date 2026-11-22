@@ -287,6 +287,11 @@ html[data-dsh-glass="1"] [data-windows-titlebar] [class*="_frame"] {
 html[data-dsh-glass="1"] [class*="_bottomRow"] {
   background: transparent !important;
 }
+/* 临时诊断：把输入卡那层 0.96 的底染成红色，用来确认缩放时那条白带是不是它。
+   确认完立刻删掉。 */
+html[data-dsh-glass="1"] [data-composer-dock] > div {
+  background-color: rgba(255, 0, 0, 0.9) !important;
+}
 html[data-dsh-glass="1"] [class*="_centerCol"] {
   border-radius: 0 !important;
 }

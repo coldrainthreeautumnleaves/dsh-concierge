@@ -193,6 +193,24 @@ html[data-dsh-glass="1"] #dsh-concierge-glass {
   pointer-events: none;
   overflow: hidden;
 }
+/* 真透明留边。窗口本身是 backgroundColor #00000000 + backgroundMaterial acrylic，
+   DWM 一直在窗口后面画桌面壁纸的模糊——只是被页面铺满的不透明底盖住了。
+   这里把页面四周留出 10px 不画任何东西，那圈就露出真毛玻璃；内容区（壁纸 + 面板）
+   跟着内缩同样的距离，所以中间永远实心，尺寸变化时不会露白。 */
+html[data-dsh-edge="1"],
+html[data-dsh-edge="1"] body,
+html[data-dsh-edge="1"] #root { background: transparent !important; }
+html[data-dsh-edge="1"] #dsh-concierge-glass {
+  inset: 10px;
+  border-radius: 14px;
+  overflow: hidden;
+}
+html[data-dsh-edge="1"] [class*="_frame"] {
+  margin: 10px;
+  border-radius: 14px;
+  overflow: hidden;
+  background: transparent !important;
+}
 /* The wallpaper stays SHARP. Frost comes from each panel blurring what is
    behind it (backdrop-filter); pre-blurring the wallpaper leaves nothing to
    blur, so panels read as tinted boxes instead of glass. */
@@ -1389,6 +1407,9 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       simpleWallpaper: true,
       // 拖动窗口期间临时把壁纸和预模糊层降级成纯色。
       resizeDegrade: true,
+      // 真透明留边：窗口本身是 #00000000 + acrylic，页面四周留一圈不画东西，
+      // 露出来的是 DWM 画的桌面壁纸模糊（真毛玻璃），而不是页面自己的假透明。
+      edgeGlass: false,
       // 背景：预设渐变 / 图片 / 视频（Wallpaper Engine 导出的 mp4/webm 走视频）
       wall: { mode: 'preset', src: '' },
       // 存档版本：配色方案改版时用来做一次性迁移
@@ -1613,6 +1634,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         if (typeof parsed.squareWindow === 'boolean') look.squareWindow = parsed.squareWindow
         if (typeof parsed.simpleWallpaper === 'boolean') look.simpleWallpaper = parsed.simpleWallpaper
         if (typeof parsed.resizeDegrade === 'boolean') look.resizeDegrade = parsed.resizeDegrade
+        if (typeof parsed.edgeGlass === 'boolean') look.edgeGlass = parsed.edgeGlass
         // 0.7.3 重做了玻璃配色：透明度映射和颗粒基准都换了。旧存档里的滑杆值
         // （排查时常见透明度 100、颗粒 7%）在新配色下会明显不对，一次性回落到新默认。
         if ((parsed.lookRev || 0) < LOOK_REV) {
@@ -1739,6 +1761,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
           squareWindow: look.squareWindow,
           simpleWallpaper: look.simpleWallpaper,
           resizeDegrade: look.resizeDegrade,
+          edgeGlass: look.edgeGlass,
           lookRev: LOOK_REV,
         }))
       } catch {
@@ -1869,6 +1892,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         delete root.dataset.dshGlass
         delete root.dataset.dshNative
         delete root.dataset.dshGlassScheme
+        delete root.dataset.dshEdge
         applyGrainImage()
       }
       if (!look.enabled || !lookCtx) {
@@ -1903,6 +1927,8 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         // 仍要采样一次）。会话区那块已经换成预模糊层，和这个开关无关。
         root.dataset.dshSimpleWallpaper = look.simpleWallpaper ? '1' : '0'
         root.dataset.dshResizeDegrade = look.resizeDegrade ? '1' : '0'
+        if (look.edgeGlass) root.dataset.dshEdge = '1'
+        else delete root.dataset.dshEdge
         installResizeDegrade()
         applyGrainImage()
         applyFrostLayer()
@@ -2271,6 +2297,8 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       lookSimpleWallpaperHint: '砍掉壁纸的三层径向光斑，换窗口缩放时更轻的重绘；关掉恢复原样',
       lookResizeDegrade: '拖动时降级',
       lookResizeDegradeHint: '拖窗口期间把壁纸换成纯色，松手 150ms 后恢复，减少缩放时的填充条',
+      lookEdgeGlass: '真透明留边（试验）',
+      lookEdgeGlassHint: '四周留 10px 露出窗口的 Acrylic：透出桌面壁纸的模糊。需要 Windows 11 且开启透明效果',
       lookNative: '原生材质',
       lookNativeHint: '窗口透明，由 Windows 画 Acrylic；需先给 app.asar 打补丁',
       lookWall: '背景',
@@ -2542,6 +2570,8 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       lookSimpleWallpaperHint: 'Drops the three radial light spots so resizing repaints less; turn off to restore',
       lookResizeDegrade: 'Degrade while resizing',
       lookResizeDegradeHint: 'Paints the wallpaper flat while the window is being dragged, restores 150ms after',
+      lookEdgeGlass: 'Real transparency margin (experimental)',
+      lookEdgeGlassHint: 'Leaves 10px around the window showing the Acrylic backdrop: the blurred desktop wallpaper. Needs Windows 11 with transparency effects on',
       lookNative: 'Native material',
       lookNativeHint: 'Transparent window, Acrylic drawn by Windows (needs the asar patch)',
       lookWall: 'Background',
@@ -4225,6 +4255,14 @@ html:not([data-dsh-glass="1"]) .uc-root {
                 isGlassSkin(lookSnapshot.skin)
                   ? settingRow(t('lookResizeDegrade'), t('lookResizeDegradeHint'), switchControl(lookSnapshot.resizeDegrade, () => {
                       look.resizeDegrade = !look.resizeDegrade
+                      saveLookPrefs()
+                      applyLook()
+                      lookUpdate()
+                    }))
+                  : null,
+                lookSnapshot.skin === 'glass'
+                  ? settingRow(t('lookEdgeGlass'), t('lookEdgeGlassHint'), switchControl(lookSnapshot.edgeGlass, () => {
+                      look.edgeGlass = !look.edgeGlass
                       saveLookPrefs()
                       applyLook()
                       lookUpdate()

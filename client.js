@@ -278,9 +278,16 @@ html[data-dsh-glass="1"][data-dsh-native="1"] body {
 html[data-dsh-glass="1"][data-dsh-native="1"] #dsh-concierge-glass {
   display: none !important;
 }
+/* 原生材质下会话区完全透明会露出应用自己的白底 token，整块发白、和侧边栏的冷调
+   脱节。这里铺一层同色系的半透明冷调：Acrylic 仍然透得出来，但整块和侧边栏是
+   同一个色温。alpha 跟着「透明度」走，用户还能自己调。 */
 html[data-dsh-glass="1"][data-dsh-native="1"] [data-conversation-region="chat"],
 html[data-dsh-glass="1"][data-dsh-native="1"] [class*="_centerCol"] {
-  background: transparent !important;
+  background: var(--dsh-native-chat-tint, rgba(214, 227, 245, 0.45)) !important;
+}
+html[data-dsh-glass="1"][data-dsh-native="1"][data-dsh-glass-scheme="dark"] [data-conversation-region="chat"],
+html[data-dsh-glass="1"][data-dsh-native="1"][data-dsh-glass-scheme="dark"] [class*="_centerCol"] {
+  background: rgba(15, 21, 30, 0.5) !important;
 }
 /* 面板已经不透明，模糊没有东西可糊，整层去掉——留着只是白花一次合成。 */
 html[data-dsh-glass="1"] [data-conversation-region="chat"] {
@@ -963,6 +970,12 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         '--dsw-specific-menu': fill(0.52, 0.58),
         '--dsw-alias-menu-group-header-fill': fill(0.26, 0.3),
         '--dsw-alias-hovercard-bg': fill(0.56, 0.62),
+        // 原生材质皮肤下会话区那层冷调：alpha 跟着「透明度」滑杆走，这样整块既能
+        // 透出 DWM 画的 Acrylic，又能和侧边栏保持同一色温。
+        '--dsh-native-chat-tint': pair(
+          `rgba(214, 227, 245, ${scale(0.36)})`,
+          `rgba(15, 21, 30, ${scale(0.4)})`,
+        ),
         // 悬浮卡（会话卡片那种）有自己的 label token，默认是给「深底卡片」准备的
         // 近白色。底被改成半透明白之后，字就白压白了——这里跟着改成正文那组深色。
         '--dsw-alias-hovercard-label-primary': pair('#1a1d23', '#e8ebf1'),

@@ -1,21 +1,23 @@
 @echo off
-rem 启动 DSH：
-rem   1) 先确认窗口补丁还在（应用更新会覆盖 app.asar，补丁随之失效）；
-rem   2) 再把下面的 FLAGS 传给主程序——GPU/合成层的开关走命令行就行，不用改 asar。
+rem 启动 DSH，并可选地带上 GPU/合成层的开关。
 rem
-rem 测试开关时只改 FLAGS 这一行，一次只留一个，方便定位是哪个起作用。
+rem   launch-with-patch.cmd        → 不带任何开关（原样）
+rem   launch-with-patch.cmd 1      → --enable-features=windows11-mica-titlebar
+rem   launch-with-patch.cmd 2      → --use-angle=d3d9            （消白闪，帧率会掉）
+rem   launch-with-patch.cmd 3      → --disable-gpu-compositing    （软件合成，整体变慢）
+rem   launch-with-patch.cmd 4      → --disable-direct-composition （绕开 DirectComposition）
+rem
+rem 每次只用一个，方便定位是哪个起作用。
 setlocal
 set "HERE=%~dp0"
 set "APP=%LOCALAPPDATA%\Programs\DeepSeek Harness\DeepSeek Harness.exe"
 
-rem 当前测试：第 1 个开关（缓解 resize 白闪，代价最小）
-set "FLAGS=--enable-features=windows11-mica-titlebar"
-rem 第 2 个开关（消白闪但帧率会掉，测完记得改回来）：
-rem set "FLAGS=--use-angle=d3d9"
-rem 第 3 个（更彻底，整体合成变慢）：
-rem set "FLAGS=--disable-gpu-compositing"
-rem 都不加（恢复原状）：
-rem set "FLAGS="
+set "PICK=%~1"
+set "FLAGS="
+if "%PICK%"=="1" set "FLAGS=--enable-features=windows11-mica-titlebar"
+if "%PICK%"=="2" set "FLAGS=--use-angle=d3d9"
+if "%PICK%"=="3" set "FLAGS=--disable-gpu-compositing"
+if "%PICK%"=="4" set "FLAGS=--disable-direct-composition"
 
 where node >nul 2>nul
 if errorlevel 1 (
@@ -31,5 +33,9 @@ if errorlevel 1 (
 )
 
 :launch
-echo 启动参数：%FLAGS%
+if "%FLAGS%"=="" (
+  echo 启动参数：无
+) else (
+  echo 启动参数：%FLAGS%
+)
 start "" "%APP%" %FLAGS%

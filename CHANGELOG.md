@@ -6,6 +6,13 @@
 
 ## [Unreleased]
 
+## [0.6.3] - 2026-11-22
+
+> 启动器改成编号选开关：`launch-with-patch.cmd 1|2|3|4`
+
+### Changed
+
+- 工具: 四个 GPU/合成层开关编号化，另外补上 `--disable-direct-composition`
 ## [0.6.2] - 2026-11-22
 
 > 启动器支持命令行开关，用来试 GPU/合成层的 resize 白闪

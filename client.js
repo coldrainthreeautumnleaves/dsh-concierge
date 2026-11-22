@@ -4268,7 +4268,9 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
             !aboutData || !Array.isArray(aboutData.changelog) || aboutData.changelog.length === 0
               ? h('div', { className: 'uc-empty' }, t('changelogEmpty'))
               : aboutData.changelog.map((entry, index) => {
-                  if (entry.group) {
+                  // 宿主那份解析器只有重启后才生效，所以这里不依赖它给的 group 标记：
+                  // 只要标题不是 x.y.z，就按主题分组渲染。
+                  if (entry.group || !/^\d+\.\d+\.\d+$/.test(String(entry.version || ''))) {
                     return h('div', { className: 'uc-log-entry', key: `g${index}` },
                       h('div', { className: 'uc-log-group' }, entry.version),
                       entry.items.length

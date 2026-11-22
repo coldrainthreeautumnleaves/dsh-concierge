@@ -8,6 +8,8 @@ rem   launch-with-patch.cmd 3      → --disable-gpu-compositing       （软件
 rem   launch-with-patch.cmd 4      → --disable-direct-composition    （绕开 DirectComposition）
 rem   launch-with-patch.cmd 5      → --default-background-color=ffccd8ee（内容区同色，AARRGGBB）
 rem   launch-with-patch.cmd 6      → --default-background-color=00000000（完全透明）
+rem   launch-with-patch.cmd 7      → --disable-frame-rate-limit --disable-gpu-vsync（放开帧率）
+rem   launch-with-patch.cmd 8      → --enable-gpu-rasterization --num-raster-threads=4
 rem
 rem 每次只用一个，方便定位是哪个起作用。
 setlocal
@@ -23,6 +25,10 @@ if "%PICK%"=="4" set "FLAGS=--disable-direct-composition"
 rem AARRGGBB：alpha 在前。ffccd8ee = 不透明的 #ccd8ee
 if "%PICK%"=="5" set "FLAGS=--default-background-color=ffccd8ee"
 if "%PICK%"=="6" set "FLAGS=--default-background-color=00000000"
+rem 放开帧率限制：让合成器不等垂直同步，尽快提交新帧（代价：可能撕裂、GPU 占用高）
+if "%PICK%"=="7" set "FLAGS=--disable-frame-rate-limit --disable-gpu-vsync"
+rem 光栅化提速：更多光栅线程 + GPU 光栅
+if "%PICK%"=="8" set "FLAGS=--enable-gpu-rasterization --num-raster-threads=4"
 
 where node >nul 2>nul
 if errorlevel 1 (

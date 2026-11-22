@@ -6,6 +6,13 @@
 
 ## [Unreleased]
 
+## [0.6.6] - 2026-11-22
+
+> 启动器增加帧率 / 光栅化开关，用来压缩缩放延迟
+
+### Added
+
+- 工具: 开关 7 = `--disable-frame-rate-limit --disable-gpu-vsync`，开关 8 = `--enable-gpu-rasterization --num-raster-threads=4`
 ## [0.6.5] - 2026-11-22
 
 > 启动器增加默认底色开关（AARRGGBB），继续排查 resize 白闪

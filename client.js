@@ -394,6 +394,13 @@ html[data-dsh-glass="1"] [class*="_centerCol"]:has([data-conversation-region="ch
     rgba(var(--dsh-tint-rgb), 0) 100%
   ) !important;
 }
+/* 设置页（插件 / 插件市场 / 维护中心）反过来：页头是透明的（露壁纸、发蓝），
+   内容区自己上了色（发白），交界处就是一条硬台阶。这里让整列统一铺 bg-base，
+   子元素继续保持透明——上下变成同一块底，台阶消失。
+   参考 unsloth #17403：玻璃下不要再叠页头渐隐，否则必然出横带。 */
+html[data-dsh-glass="1"] [class*="_centerCol"]:not(:has([data-conversation-region="chat"])) {
+  background: var(--dsw-alias-bg-base) !important;
+}
 /* 应用在中心列左边画了 .5px 的 border-left，在标签行下面画了 border-bottom——
    底色清零之后这两条线就是仅剩的分界，一并去掉。 */
 html[data-dsh-glass="1"] [class*="_centerCol"] {

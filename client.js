@@ -203,6 +203,12 @@ html[data-dsh-glass="1"] #dsh-concierge-glass {
 html[data-dsh-edge="1"] {
   --dsh-edge: 10px;
   --dsh-edge-radius: 16px;
+  /* 切口那条 1px 内描边的颜色：取壁纸基色。clip-path 的抗锯齿会跟窗口表面
+     混色，在边界上留一条发白的细线；这条描边盖在切口内侧，把它压掉。 */
+  --dsh-edge-line: #eef3fa;
+}
+html[data-dsh-edge="1"][data-dsh-glass-scheme="dark"] {
+  --dsh-edge-line: #0e1116;
 }
 html[data-dsh-edge="1"],
 html[data-dsh-edge="1"] body,
@@ -212,6 +218,20 @@ html[data-dsh-edge="1"] #dsh-concierge-glass,
 html[data-dsh-edge="1"] #dsh-concierge-frost {
   clip-path: inset(var(--dsh-edge) round var(--dsh-edge-radius));
 }
+/* 切口内侧压一条 1px 的壁纸色描边。clip-path 的抗锯齿像素会和窗口表面混色，
+   在边界上留一条发白的细线；这条描边就贴在切口内侧，把那条线盖住。
+   它画在 #root 里面，被同一个切口裁着，所以和内容共用一条边界，不会再出现
+   两条各自定位的边。 */
+html[data-dsh-edge="1"] #root::after {
+  content: '';
+  position: fixed;
+  inset: var(--dsh-edge);
+  border-radius: var(--dsh-edge-radius);
+  box-shadow: inset 0 0 0 1px var(--dsh-edge-line);
+  pointer-events: none;
+  z-index: 2147483000;
+}
+html[data-dsh-edge-debug="1"] #root::after { display: none; }
 /* 让窗口浮起来。阴影必须由**没被裁剪**的元素来画：挂在 #root 上会和内容一起
    被裁掉，所以放在 body 的伪元素上，几何和上面那个切口完全对齐。
 

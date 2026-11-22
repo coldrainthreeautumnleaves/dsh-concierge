@@ -260,13 +260,12 @@ html[data-dsh-glass="1"] [class*="_centerCol"] {
    的遮挡剔除——它必须先把底下的壁纸画出来再盖上去。不透明之后这块走纯色 quad
    快路径，底下那层壁纸也能被剔掉。玻璃感留给面积小的侧边栏和顶栏。
    颜色取壁纸同色系的实色，仍然是「雾面」而不是纯白。 */
-html[data-dsh-glass="1"] [data-conversation-region="chat"],
-html[data-dsh-glass="1"] [class*="_centerCol"] {
-  background: linear-gradient(180deg, #e9eff9 0%, #e2eaf6 100%);
-}
-html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] [data-conversation-region="chat"],
-html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] [class*="_centerCol"] {
-  background: linear-gradient(180deg, #121822 0%, #0f151d 100%);
+/* 玻璃皮肤这里**不铺底色**：会话区保持半透明，壁纸从下面透出来，这才是那套
+   调过的观感。0.1.72 为了帧率把它做成了实色，代价是玻璃感没了——现在两条路
+   分开：想要观感用「玻璃」，想要帧率用「原生材质」。 */
+html[data-dsh-glass="1"]:not([data-dsh-native="1"]) [data-conversation-region="chat"],
+html[data-dsh-glass="1"]:not([data-dsh-native="1"]) [class*="_centerCol"] {
+  background: transparent;
 }
 /* 原生材质模式（窗口底色透明、由 DWM 画 Acrylic/Mica）：页面不能再画壁纸，也不能
    留不透明底色，否则材质整个被盖住。所有面只留半透明色层。
@@ -289,12 +288,27 @@ html[data-dsh-glass="1"][data-dsh-native="1"][data-dsh-glass-scheme="dark"] [dat
 html[data-dsh-glass="1"][data-dsh-native="1"][data-dsh-glass-scheme="dark"] [class*="_centerCol"] {
   background: rgba(15, 21, 30, 0.5) !important;
 }
-/* 面板已经不透明，模糊没有东西可糊，整层去掉——留着只是白花一次合成。 */
+/* 玻璃皮肤恢复「会话区磨砂」：透明底 + 独立一层的 backdrop-filter，这就是之前
+   调过的那套观感。原生材质皮肤不挂（那边由 DWM 画）。 */
 html[data-dsh-glass="1"] [data-conversation-region="chat"] {
   isolation: isolate;
 }
-html[data-dsh-glass="1"] [data-conversation-region="chat"]::before {
+html[data-dsh-glass="1"]:not([data-dsh-native="1"]) [data-conversation-region="chat"]::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  will-change: transform;
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+}
+/* 轻玻璃：这一档就是「不糊，只半透明」，会话区那层也撤掉。 */
+html[data-dsh-glass="1"][data-dsh-glass-light="1"] [data-conversation-region="chat"]::before {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   content: none;
+  will-change: auto;
 }
 /* 视频壁纸每帧都是新画面：会话区那块模糊背后一直在变，等于每帧重算整屏。
    静态壁纸才缓存得住，所以视频模式下这块不模糊——壁纸本身在动，面板半透明

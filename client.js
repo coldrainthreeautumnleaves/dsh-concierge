@@ -214,7 +214,10 @@ html[data-dsh-edge="1"] #dsh-concierge-frost {
 }
 /* 让窗口浮起来。阴影必须由**没被裁剪**的元素来画：挂在 #root 上会和内容一起
    被裁掉，所以放在 body 的伪元素上，几何和上面那个切口完全对齐。
-   外阴影落进亚克力那圈，内阴影是一条 1px 高光，给玻璃一个边缘。 */
+
+   这里**只画外阴影，不画描边**。描边曾经也画在这个伪元素上，结果窗口边界有了
+   两条各自定位的边（伪元素 10px 一条、裁剪 10px 一条），抗锯齿一叠就出现一条缝。
+   边界只留一条：内容自己的切口。 */
 html[data-dsh-edge="1"] body::before {
   content: '';
   position: fixed;
@@ -222,16 +225,14 @@ html[data-dsh-edge="1"] body::before {
   border-radius: var(--dsh-edge-radius);
   box-shadow:
     0 18px 48px rgba(0, 0, 0, 0.30),
-    0 2px 8px rgba(0, 0, 0, 0.16),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.34);
+    0 2px 8px rgba(0, 0, 0, 0.16);
   pointer-events: none;
   z-index: 2147483000;
 }
 html[data-dsh-edge="1"][data-dsh-glass-scheme="dark"] body::before {
   box-shadow:
     0 18px 48px rgba(0, 0, 0, 0.52),
-    0 2px 8px rgba(0, 0, 0, 0.34),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+    0 2px 8px rgba(0, 0, 0, 0.34);
 }
 /* The wallpaper stays SHARP. Frost comes from each panel blurring what is
    behind it (backdrop-filter); pre-blurring the wallpaper leaves nothing to

@@ -285,6 +285,16 @@ html[data-dsh-glass="1"] [class*="_centerCol"] {
 html[data-dsh-glass="1"] [class*="_centerCol"] > * {
   background: transparent !important;
 }
+/* 会话标题栏（标题 + 图标 + 对话/轨迹/统计 标签行）只压一点点色，把壁纸的蓝→紫
+   渐变压住，保证文字可读；但它和下面的内容区之间不能出现新的边界，所以底部 16px
+   用一条很短的 alpha 渐变收到 0。这里排除掉包含会话区的那个子元素，避免连累内容区。 */
+html[data-dsh-glass="1"] [class*="_centerCol"] > *:not(:has([data-conversation-region="chat"])) {
+  background: linear-gradient(
+    to bottom,
+    rgba(var(--dsh-tint-rgb), 0.16) calc(100% - 16px),
+    rgba(var(--dsh-tint-rgb), 0) 100%
+  ) !important;
+}
 /* 应用在中心列左边画了 .5px 的 border-left，在标签行下面画了 border-bottom——
    底色清零之后这两条线就是仅剩的分界，一并去掉。 */
 html[data-dsh-glass="1"] [class*="_centerCol"] {
@@ -866,6 +876,26 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       ]
       for (const [name, selector] of targets) {
         let el = document.querySelector(selector)
+        if (name === 'center' && el) {
+          for (const child of el.children) {
+            const cs = getComputedStyle(child)
+            const cr = child.getBoundingClientRect()
+            out.push({
+              name: 'child',
+              d: 0,
+              tag: child.tagName.toLowerCase(),
+              cls: String(child.className || '').slice(0, 60),
+              bg: cs.backgroundColor,
+              opacity: cs.opacity,
+              filter: cs.filter === 'none' ? '' : cs.filter.slice(0, 30),
+              blend: '',
+              x: Math.round(cr.left),
+              w: Math.round(cr.width),
+              h: Math.round(cr.height),
+              region: child.getAttribute('data-conversation-region') || '',
+            })
+          }
+        }
         if (name === 'center' && el && el.parentElement) {
           for (const sibling of el.parentElement.children) {
             if (sibling === el) continue

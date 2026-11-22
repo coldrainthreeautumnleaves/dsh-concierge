@@ -2451,6 +2451,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       typerEnabledHint: '流式文字逐字显示',
       tabUpdate: '更新',
       pendingTitle: '待更新',
+      updateSettings: '更新设置',
       tabPlugins: '插件',
       tabLook: '外观',
       tabPerf: '性能',
@@ -2721,6 +2722,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       typerEnabledHint: 'Reveal streaming text gradually',
       tabUpdate: 'Update',
       pendingTitle: 'Pending updates',
+      updateSettings: 'Update settings',
       tabPlugins: 'Plugins',
       tabLook: 'Appearance',
       tabPerf: 'Performance',
@@ -4086,6 +4088,9 @@ html:not([data-dsh-glass="1"]) .uc-root {
 
         tab === 'update'
           ? h('section', { className: 'uc-card' },
+              h('div', { className: 'uc-card-head' },
+                h('div', { className: 'uc-card-title' }, t('updateSettings')),
+              ),
               h('div', { className: 'uc-perf' },
                 settingRow(t('auto'), t('autoHint'), switchControl(autoUpdate, toggleAutoUpdate)),
               ),

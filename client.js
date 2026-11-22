@@ -237,6 +237,13 @@ html[data-dsh-resize-degrade="1"][data-dsh-resizing="1"][data-dsh-glass-scheme="
 html[data-dsh-resize-degrade="1"][data-dsh-resizing="1"] #dsh-concierge-frost {
   display: none !important;
 }
+/* 拖动期间给会话区切断重排传播：contain: layout paint 让这一块只重绘自己，
+   不把尺寸变化往上冒泡到整棵树。内容不消失（不是 content-visibility: hidden），
+   只是布局和绘制的范围被限制在盒子里。 */
+html[data-dsh-resize-degrade="1"][data-dsh-resizing="1"] [data-conversation-region="chat"],
+html[data-dsh-resize-degrade="1"][data-dsh-resizing="1"] [data-slot="conversation.chat.flow"] {
+  contain: layout paint;
+}
 
 html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-glass > div:first-child {
   background-image:

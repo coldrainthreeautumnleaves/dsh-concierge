@@ -234,6 +234,17 @@ html[data-dsh-edge="1"][data-dsh-glass-scheme="dark"] body::before {
     0 18px 48px rgba(0, 0, 0, 0.52),
     0 2px 8px rgba(0, 0, 0, 0.34);
 }
+/* 留边调试。外圈（窗口最外 10px）品红、内容区绿，边界在哪里、有没有缝、
+   四边是否一致，一眼就能看出来。投影一起关掉，免得暗边干扰判断。
+   这个开关故意留在代码里：以后调边距、圆角、投影都能拿它量。 */
+html[data-dsh-edge-debug="1"] { background: #ff00ff !important; }
+html[data-dsh-edge-debug="1"] body { background: transparent !important; }
+html[data-dsh-edge-debug="1"] body::before { box-shadow: none; }
+html[data-dsh-edge-debug="1"] #root { background: #00ff00 !important; }
+html[data-dsh-edge-debug="1"] #dsh-concierge-glass > div:first-child {
+  background-image: linear-gradient(#00ff00, #00ff00) !important;
+  filter: none !important;
+}
 /* The wallpaper stays SHARP. Frost comes from each panel blurring what is
    behind it (backdrop-filter); pre-blurring the wallpaper leaves nothing to
    blur, so panels read as tinted boxes instead of glass. */
@@ -1441,6 +1452,9 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       // 真透明留边：窗口本身是 #00000000 + acrylic，页面四周留一圈不画东西，
       // 露出来的是 DWM 画的桌面壁纸模糊（真毛玻璃），而不是页面自己的假透明。
       edgeGlass: false,
+      // 留边调试：外圈涂品红、内容涂绿，用来看缝在哪一层、有多宽。
+      // 留着不删——以后调边距、圆角、投影都用得上。
+      edgeDebug: false,
       // 背景：预设渐变 / 图片 / 视频（Wallpaper Engine 导出的 mp4/webm 走视频）
       wall: { mode: 'preset', src: '' },
       // 存档版本：配色方案改版时用来做一次性迁移
@@ -1666,6 +1680,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         if (typeof parsed.simpleWallpaper === 'boolean') look.simpleWallpaper = parsed.simpleWallpaper
         if (typeof parsed.resizeDegrade === 'boolean') look.resizeDegrade = parsed.resizeDegrade
         if (typeof parsed.edgeGlass === 'boolean') look.edgeGlass = parsed.edgeGlass
+        if (typeof parsed.edgeDebug === 'boolean') look.edgeDebug = parsed.edgeDebug
         // 0.7.3 重做了玻璃配色：透明度映射和颗粒基准都换了。旧存档里的滑杆值
         // （排查时常见透明度 100、颗粒 7%）在新配色下会明显不对，一次性回落到新默认。
         if ((parsed.lookRev || 0) < LOOK_REV) {
@@ -1793,6 +1808,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
           simpleWallpaper: look.simpleWallpaper,
           resizeDegrade: look.resizeDegrade,
           edgeGlass: look.edgeGlass,
+          edgeDebug: look.edgeDebug,
           lookRev: LOOK_REV,
         }))
       } catch {
@@ -1925,6 +1941,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         delete root.dataset.dshNative
         delete root.dataset.dshGlassScheme
         delete root.dataset.dshEdge
+        delete root.dataset.dshEdgeDebug
         applyGrainImage()
       }
       if (!look.enabled || !lookCtx) {
@@ -1961,6 +1978,8 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         root.dataset.dshResizeDegrade = look.resizeDegrade ? '1' : '0'
         if (look.edgeGlass) root.dataset.dshEdge = '1'
         else delete root.dataset.dshEdge
+        if (look.edgeGlass && look.edgeDebug) root.dataset.dshEdgeDebug = '1'
+        else delete root.dataset.dshEdgeDebug
         installResizeDegrade()
         applyGrainImage()
         applyFrostLayer()
@@ -2331,6 +2350,8 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       lookResizeDegradeHint: '拖窗口期间把壁纸换成纯色，松手 150ms 后恢复，减少缩放时的填充条',
       lookEdgeGlass: '真透明留边（试验）',
       lookEdgeGlassHint: '四周留 10px 露出窗口的 Acrylic：透出桌面壁纸的模糊。需要 Windows 11 且开启透明效果',
+      lookEdgeDebug: '留边调试（品红 / 绿）',
+      lookEdgeDebugHint: '外圈涂品红、内容涂绿，用来看边界在哪一层、有没有缝；调完记得关',
       lookNative: '原生材质',
       lookNativeHint: '窗口透明，由 Windows 画 Acrylic；需先给 app.asar 打补丁',
       lookWall: '背景',
@@ -2604,6 +2625,8 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       lookResizeDegradeHint: 'Paints the wallpaper flat while the window is being dragged, restores 150ms after',
       lookEdgeGlass: 'Real transparency margin (experimental)',
       lookEdgeGlassHint: 'Leaves 10px around the window showing the Acrylic backdrop: the blurred desktop wallpaper. Needs Windows 11 with transparency effects on',
+      lookEdgeDebug: 'Edge debug (magenta / green)',
+      lookEdgeDebugHint: 'Paints the ring magenta and the content green so you can see which layer the seam belongs to; turn it off afterwards',
       lookNative: 'Native material',
       lookNativeHint: 'Transparent window, Acrylic drawn by Windows (needs the asar patch)',
       lookWall: 'Background',
@@ -4295,6 +4318,14 @@ html:not([data-dsh-glass="1"]) .uc-root {
                 lookSnapshot.skin === 'glass'
                   ? settingRow(t('lookEdgeGlass'), t('lookEdgeGlassHint'), switchControl(lookSnapshot.edgeGlass, () => {
                       look.edgeGlass = !look.edgeGlass
+                      saveLookPrefs()
+                      applyLook()
+                      lookUpdate()
+                    }))
+                  : null,
+                lookSnapshot.skin === 'glass' && lookSnapshot.edgeGlass
+                  ? settingRow(t('lookEdgeDebug'), t('lookEdgeDebugHint'), switchControl(lookSnapshot.edgeDebug, () => {
+                      look.edgeDebug = !look.edgeDebug
                       saveLookPrefs()
                       applyLook()
                       lookUpdate()

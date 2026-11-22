@@ -352,10 +352,11 @@ html[data-dsh-glass="1"] [data-windows-titlebar] [class*="_frame"] {
 }
 /* 标题栏那 40px 是 frame 的 ::before（应用拿它做拖拽区），默认铺一层
    --dsw-specific-sidebar-fill。它和下面各列是两种材质，交界处会横出一条线，
-   正好压在页面标题上。这里让它彻底透明，上下都露出同一块画布。 */
+   正好压在页面标题上。完全透明也不行——那 40px 会露出窗口后面的桌面，接缝
+   只是换了颜色。正确做法是让它和列用同一个底：bg-base。 */
 html[data-dsh-glass="1"] [data-windows-titlebar] [class*="_frame"]::before,
 html[data-dsh-skin="native"] [data-windows-titlebar] [class*="_frame"]::before {
-  background: transparent !important;
+  background: var(--dsw-alias-bg-base) !important;
 }
 /* 底部那一行（grid-column: 1/-1，横贯整窗）自带 --dsw-alias-bg-base 的浅底。
    窗口缩放时这一行的行高会滞后，它被拉高就铺出一条横贯整窗的浅色带——

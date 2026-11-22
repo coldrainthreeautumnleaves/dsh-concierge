@@ -2884,6 +2884,10 @@ html:not([data-dsh-glass="1"]) .uc-root {
 .uc-stat-value { font-size: var(--uc-fs-title); font-weight: 650; font-variant-numeric: tabular-nums; }
 .uc-stat-value-hot { color: var(--dsw-alias-state-warn-primary); }
 .uc-stat-label { margin-top: 4px; font-size: var(--uc-fs-small); color: var(--dsw-alias-label-secondary); }
+/* 三个数字合成一张卡：格子里不再各自画底和投影，只留中间的竖分隔线。 */
+.uc-stats-card { gap: 0; }
+.uc-stats-card .uc-stat { background: transparent; border: 0; box-shadow: none; border-radius: 0; }
+.uc-stats-card .uc-stat + .uc-stat { border-left: 1px solid var(--uc-sep); }
 
 .uc-card { border-radius: var(--uc-r-card); background: var(--uc-surface-1); border: 1px solid var(--dsw-alias-border-l1); overflow: hidden; box-shadow: var(--dsw-shadow-lv1), inset 0 1px 0 var(--uc-highlight); animation: uc-fade .15s ease; }
 .uc-card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--uc-sep); flex-wrap: wrap; }
@@ -2964,10 +2968,10 @@ html:not([data-dsh-glass="1"]) .uc-root {
 .uc-progress::after { content: ''; position: absolute; top: 0; bottom: 0; width: 35%; border-radius: 999px; background: var(--uc-accent); animation: uc-progress-slide 1.1s ease-in-out infinite; }
 @keyframes uc-progress-slide { 0% { left: -35%; } 100% { left: 100%; } }
 
-.uc-tabs { display: inline-flex; gap: 4px; padding: 4px; border-radius: 999px; background: var(--uc-surface-2); width: fit-content; max-width: 100%; overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; }
-.uc-tab { appearance: none; border: none; background: transparent; padding: 8px 16px; border-radius: 999px; font-size: var(--uc-fs-body); color: var(--dsw-alias-label-secondary); cursor: pointer; transition: color .15s ease, background .15s ease; }
-.uc-tab:hover { color: var(--dsw-alias-label-primary); }
-.uc-tab[data-active="true"] { background: var(--uc-surface-1); color: var(--uc-accent); font-weight: 600; box-shadow: var(--uc-shadow); }
+.uc-tabs { display: inline-flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--uc-surface-2); border: 1px solid var(--dsw-alias-border-l1); width: fit-content; max-width: 100%; overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; }
+.uc-tab { appearance: none; border: none; background: transparent; padding: 7px 14px; border-radius: 999px; font-size: var(--uc-fs-body); color: var(--dsw-alias-label-secondary); cursor: pointer; transition: color .15s ease, background .15s ease; }
+.uc-tab:hover { color: var(--dsw-alias-label-primary); background: var(--uc-hover); }
+.uc-tab[data-active="true"] { background: var(--uc-surface-1); color: var(--uc-accent); font-weight: 600; box-shadow: var(--dsw-shadow-lv1); }
 
 .uc-sources { display: flex; flex-direction: column; padding: 8px 0; }
 .uc-source { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 16px; }
@@ -4098,18 +4102,20 @@ html:not([data-dsh-glass="1"]) .uc-root {
           : null,
 
         data && tab === 'update'
-          ? h('div', { className: 'uc-stats' },
-              h('div', { className: 'uc-stat' },
-                h('div', { className: 'uc-stat-value' }, String(rows.length)),
-                h('div', { className: 'uc-stat-label' }, t('statPlugins')),
-              ),
-              h('div', { className: 'uc-stat' },
-                h('div', { className: updatable > 0 ? 'uc-stat-value uc-stat-value-hot' : 'uc-stat-value' }, String(updatable)),
-                h('div', { className: 'uc-stat-label' }, t('statUpdates')),
-              ),
-              h('div', { className: 'uc-stat' },
-                h('div', { className: 'uc-stat-value', style: { fontSize: '15px', paddingTop: '4px' } }, relativeTime(data.checkedAt, t)),
-                h('div', { className: 'uc-stat-label' }, t('statChecked')),
+          ? h('section', { className: 'uc-card' },
+              h('div', { className: 'uc-stats uc-stats-card' },
+                h('div', { className: 'uc-stat' },
+                  h('div', { className: 'uc-stat-value' }, String(rows.length)),
+                  h('div', { className: 'uc-stat-label' }, t('statPlugins')),
+                ),
+                h('div', { className: 'uc-stat' },
+                  h('div', { className: updatable > 0 ? 'uc-stat-value uc-stat-value-hot' : 'uc-stat-value' }, String(updatable)),
+                  h('div', { className: 'uc-stat-label' }, t('statUpdates')),
+                ),
+                h('div', { className: 'uc-stat' },
+                  h('div', { className: 'uc-stat-value', style: { fontSize: '15px', paddingTop: '4px' } }, relativeTime(data.checkedAt, t)),
+                  h('div', { className: 'uc-stat-label' }, t('statChecked')),
+                ),
               ),
             )
           : null,

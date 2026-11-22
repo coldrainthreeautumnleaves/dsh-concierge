@@ -202,22 +202,24 @@ html[data-dsh-glass="1"] #dsh-concierge-glass {
   pointer-events: none;
   overflow: hidden;
 }
-/* 真透明留边。窗口本身是 backgroundColor #00000000 + backgroundMaterial acrylic，
+/* 无边框窗口。窗口本身是 backgroundColor #00000000 + backgroundMaterial acrylic，
    DWM 一直在窗口后面画桌面壁纸的模糊——只是被页面铺满的不透明底盖住了。
 
    做法按 Electron 官方「自定义窗口样式」的配方：**内容自己内缩，外圈留空**。
    不用 clip-path——它的 inset 是相对元素自己的参考盒算的，元素盒子不在窗口原点
-   时整个切口会跟着偏移（之前「一上一下」就是这么来的）。
+   时整个切口会跟着偏移。
 
    内缩用 body 的透明 border：border 参与布局，所以菜单栏、#root 这些 body 的
-   子节点会一起向内缩 10px；overflow: hidden 把绘制裁在 padding box 上，外圈
-   那 10px 什么都不画，露出亚克力。border-radius 让裁出来的角是圆的。
-   几何只在这里定义一次，边距和圆角要调就改这两个值。 */
+   子节点会一起向内缩；overflow: hidden 把绘制裁在 padding box 上。
+   现在 --dsh-edge 和 --dsh-edge-radius 都是 0：内容铺满窗口、方角、没有透明角。
+   两个值只在这里定义一次，要留边或圆角就改它们。 */
 html[data-dsh-edge="1"] {
-  /* 0 = 内容铺满窗口，只保留圆角和无边框。想要「留一圈露出桌面」就把它调大
+  /* 0 = 内容铺满窗口，只保留无边框。想要「留一圈露出桌面」就把它调大
      （10px 是之前试过的值），但那样窗口边缘会多出一条 10px 的亚克力带。 */
   --dsh-edge: 0px;
-  --dsh-edge-radius: 16px;
+  /* 0 = 方角。圆角会让四角没有页面像素，窗口又是透明的，于是四个角透出桌面；
+     不想要透明角就保持 0。 */
+  --dsh-edge-radius: 0px;
   /* 顶部 40px 是 Windows 的 WCO 遮罩，颜色来自这个 token。玻璃皮肤给的是
      alpha 0.004——几乎透明但不是零，它会在顶部盖一层极淡的白，和左右下三边
      形成一条线。留边模式下必须完全透明。
@@ -241,17 +243,6 @@ html[data-dsh-edge="1"] #dsh-concierge-glass {
   inset: var(--dsh-edge);
   border-radius: var(--dsh-edge-radius);
   overflow: hidden;
-}
-/* 留边调试：外圈品红、内容绿。body 的绿只画到 padding box，正好是内容区，
-   所以「品红 ↔ 绿」的交界就是内容边界，缝在哪一层一眼可见。 */
-html[data-dsh-edge-debug="1"] { background: #ff00ff !important; }
-html[data-dsh-edge-debug="1"] body {
-  background-color: #00ff00 !important;
-  background-clip: padding-box !important;
-}
-html[data-dsh-edge-debug="1"] #dsh-concierge-glass > div:first-child {
-  background-image: linear-gradient(#00ff00, #00ff00) !important;
-  filter: none !important;
 }
 /* The wallpaper stays SHARP. Frost comes from each panel blurring what is
    behind it (backdrop-filter); pre-blurring the wallpaper leaves nothing to
@@ -1463,9 +1454,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       // 真透明留边：窗口本身是 #00000000 + acrylic，页面四周留一圈不画东西，
       // 露出来的是 DWM 画的桌面壁纸模糊（真毛玻璃），而不是页面自己的假透明。
       edgeGlass: false,
-      // 留边调试：外圈涂品红、内容涂绿，用来看缝在哪一层、有多宽。
-      // 留着不删——以后调边距、圆角、投影都用得上。
-      edgeDebug: false,
       // 背景：预设渐变 / 图片 / 视频（Wallpaper Engine 导出的 mp4/webm 走视频）
       wall: { mode: 'preset', src: '' },
       // 存档版本：配色方案改版时用来做一次性迁移
@@ -1691,7 +1679,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         if (typeof parsed.simpleWallpaper === 'boolean') look.simpleWallpaper = parsed.simpleWallpaper
         if (typeof parsed.resizeDegrade === 'boolean') look.resizeDegrade = parsed.resizeDegrade
         if (typeof parsed.edgeGlass === 'boolean') look.edgeGlass = parsed.edgeGlass
-        if (typeof parsed.edgeDebug === 'boolean') look.edgeDebug = parsed.edgeDebug
         // 0.7.3 重做了玻璃配色：透明度映射和颗粒基准都换了。旧存档里的滑杆值
         // （排查时常见透明度 100、颗粒 7%）在新配色下会明显不对，一次性回落到新默认。
         if ((parsed.lookRev || 0) < LOOK_REV) {
@@ -1819,7 +1806,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
           simpleWallpaper: look.simpleWallpaper,
           resizeDegrade: look.resizeDegrade,
           edgeGlass: look.edgeGlass,
-          edgeDebug: look.edgeDebug,
           lookRev: LOOK_REV,
         }))
       } catch {
@@ -1955,7 +1941,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         delete root.dataset.dshNative
         delete root.dataset.dshGlassScheme
         delete root.dataset.dshEdge
-        delete root.dataset.dshEdgeDebug
         delete root.dataset.dshSkin
         applyGrainImage()
       }
@@ -1996,8 +1981,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         root.dataset.dshResizeDegrade = look.resizeDegrade ? '1' : '0'
         if (look.edgeGlass) root.dataset.dshEdge = '1'
         else delete root.dataset.dshEdge
-        if (look.edgeGlass && look.edgeDebug) root.dataset.dshEdgeDebug = '1'
-        else delete root.dataset.dshEdgeDebug
         // WCO 遮罩的颜色由 preload 的探针读 token、经 IPC 送出；探针只监听 head 和
         // body 的 style，而切换留边只改了 html 的 data 属性，不会触发它重发。
         // 这里轻推一下 body 的 style，让探针重新读一次（值没变时它自己会 dedupe）。
@@ -2372,10 +2355,8 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       lookSimpleWallpaperHint: '砍掉壁纸的三层径向光斑，换窗口缩放时更轻的重绘；关掉恢复原样',
       lookResizeDegrade: '拖动时降级',
       lookResizeDegradeHint: '拖窗口期间把壁纸换成纯色，松手 150ms 后恢复，减少缩放时的填充条',
-      lookEdgeGlass: '无边框圆角（真透明）',
-      lookEdgeGlassHint: '去掉窗口那圈 1px 边框，内容铺满窗口、四角圆角；窗口本身透明，圆角处透出桌面',
-      lookEdgeDebug: '留边调试（品红 / 绿）',
-      lookEdgeDebugHint: '外圈涂品红、内容涂绿，用来看边界在哪一层、有没有缝；调完记得关',
+      lookEdgeGlass: '无边框窗口',
+      lookEdgeGlassHint: '去掉窗口那圈 1px 边框，内容铺满窗口。方角，四角不会透出桌面',
       lookNative: '原生材质',
       lookNativeHint: '窗口透明，由 Windows 画 Acrylic；需先给 app.asar 打补丁',
       lookWall: '背景',
@@ -2647,10 +2628,8 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       lookSimpleWallpaperHint: 'Drops the three radial light spots so resizing repaints less; turn off to restore',
       lookResizeDegrade: 'Degrade while resizing',
       lookResizeDegradeHint: 'Paints the wallpaper flat while the window is being dragged, restores 150ms after',
-      lookEdgeGlass: 'Borderless rounded window',
-      lookEdgeGlassHint: 'Drops the 1px window frame and lets the content fill the window with rounded corners; the window itself is transparent, so the corners show the desktop',
-      lookEdgeDebug: 'Edge debug (magenta / green)',
-      lookEdgeDebugHint: 'Paints the ring magenta and the content green so you can see which layer the seam belongs to; turn it off afterwards',
+      lookEdgeGlass: 'Borderless window',
+      lookEdgeGlassHint: 'Drops the 1px window frame so the content fills the window. Square corners, so nothing shows through',
       lookNative: 'Native material',
       lookNativeHint: 'Transparent window, Acrylic drawn by Windows (needs the asar patch)',
       lookWall: 'Background',
@@ -4342,14 +4321,6 @@ html:not([data-dsh-glass="1"]) .uc-root {
                 lookSnapshot.skin === 'glass'
                   ? settingRow(t('lookEdgeGlass'), t('lookEdgeGlassHint'), switchControl(lookSnapshot.edgeGlass, () => {
                       look.edgeGlass = !look.edgeGlass
-                      saveLookPrefs()
-                      applyLook()
-                      lookUpdate()
-                    }))
-                  : null,
-                lookSnapshot.skin === 'glass' && lookSnapshot.edgeGlass
-                  ? settingRow(t('lookEdgeDebug'), t('lookEdgeDebugHint'), switchControl(lookSnapshot.edgeDebug, () => {
-                      look.edgeDebug = !look.edgeDebug
                       saveLookPrefs()
                       applyLook()
                       lookUpdate()

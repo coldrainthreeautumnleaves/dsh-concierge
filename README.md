@@ -75,6 +75,20 @@ dsh plugin --profile <profile> add github:coldrainthreeautumnleaves/dsh-concierg
 
 `.vbs` 是静默版：双击全程无命令窗口。脚本都要求应用已退出，不需要管理员权限。
 
+## 窗口回退色补丁（可选）
+
+主窗口挂的是 `backgroundMaterial: "acrylic"`。缩放窗口时，新露出的那一帧还没被 DWM 重新采样，Windows 会先画 acrylic 的回退色——默认偏冷，于是拖窗口时底部会闪一条浅色带。
+
+`scripts/patch-window-fallback.mjs` 把 `backgroundColor` 换成壁纸同色系的 `#e8f0fa`，回退色和壁纸接近就看不出那条带了。补丁只做**等长替换**（`#00000000` → `#e8f0faff`），不动 asar 头，安全。
+
+```bash
+node scripts/patch-window-fallback.mjs --check   # 看状态
+node scripts/patch-window-fallback.mjs           # 打补丁（自动备份到 app.asar.bak）
+node scripts/patch-window-fallback.mjs --revert  # 用备份还原
+```
+
+**应用每次更新后要重跑一次**（更新会覆盖 `app.asar`）。写入失败多半是应用还在运行锁着文件，退出 DSH 再跑。
+
 ## GitHub Token
 
 工具页可以填一个 GitHub token：不带时 GitHub API 每小时 60 次（按 IP），带了是 5000 次（按账号）。存在 `~/.dsh/update-center/settings.json`，只读公开仓库的 token 就够；环境变量 `GITHUB_TOKEN` / `GH_TOKEN` 优先。

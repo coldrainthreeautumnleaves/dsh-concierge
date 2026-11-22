@@ -6,6 +6,13 @@
 
 ## [Unreleased]
 
+## [0.5.4] - 2026-11-22
+
+> 新增窗口回退色补丁：拖窗口时不再闪浅色带
+
+### Added
+
+- 工具: `scripts/patch-window-fallback.mjs`，把主窗口的 acrylic 回退色换成壁纸同色系，带 `--check` / `--revert`
 ## [0.5.3] - 2026-11-22
 
 > 窗口缩放时底部不再露出浅色带

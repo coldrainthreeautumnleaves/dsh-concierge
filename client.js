@@ -321,6 +321,23 @@ html[data-dsh-glass="1"] [data-shell-overlay="true"] [data-slot] > * {
   backdrop-filter: blur(14px) saturate(150%);
   -webkit-backdrop-filter: blur(14px) saturate(150%);
 }
+/* 轻玻璃 = 无模糊模式：除了顶部那条 40px 的原生遮罩，所有 backdrop-filter 都关掉，
+   只留半透明。这一档是用来分开两件事的——「模糊吃帧」还是「半透明吃帧」。
+   同一时刻只该有一个模糊面在动的地方，就是输入卡；它走 --dsw-menu-backdrop-filter，
+   在 glassTokens 里一起关掉。 */
+html[data-dsh-glass="1"][data-dsh-glass-light="1"] [role="dialog"],
+html[data-dsh-glass="1"][data-dsh-glass-light="1"] [role="alertdialog"],
+html[data-dsh-glass="1"][data-dsh-glass-light="1"] [role="menu"],
+html[data-dsh-glass="1"][data-dsh-glass-light="1"] [role="listbox"],
+html[data-dsh-glass="1"][data-dsh-glass-light="1"] [role="tooltip"],
+html[data-dsh-glass="1"][data-dsh-glass-light="1"] [data-shell-overlay="true"] [data-slot] > *,
+html[data-dsh-glass="1"][data-dsh-glass-light="1"] [class*="_menu"],
+html[data-dsh-glass="1"][data-dsh-glass-light="1"] [class*="_portal_"],
+html[data-dsh-glass="1"][data-dsh-glass-light="1"] .uc-card,
+html[data-dsh-glass="1"][data-dsh-glass-light="1"] .uc-banner {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
 html[data-dsh-glass="1"] [role="dialog"],
 html[data-dsh-glass="1"] [role="menu"],
 html[data-dsh-glass="1"] [role="listbox"],
@@ -961,8 +978,11 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         '--dsw-alias-interactive-bg-hover': fill(0.24, 0.28),
         // 菜单 / 输入卡 / 弹层都吃这个 token。原来是 20px：这些面里输入卡是压在
         // 聊天记录上的，背后每帧都在变，模糊半径越大每帧越贵；12px 在浅色壁纸上
-        // 已经够糊开色块。
-        '--dsw-menu-backdrop-filter': pair('blur(12px) saturate(150%)', 'blur(12px) saturate(150%)'),
+        // 已经够糊开色块。轻玻璃模式下整个关掉——那一档就是「不糊，只半透明」，
+        // 用来分开「模糊吃帧」和「半透明吃帧」这两件事。
+        '--dsw-menu-backdrop-filter': look.lightGlass
+          ? pair('none', 'none')
+          : pair('blur(12px) saturate(150%)', 'blur(12px) saturate(150%)'),
         '--dsw-alias-border-l1': pair('rgba(255, 255, 255, 0.6)', 'rgba(255, 255, 255, 0.12)'),
         '--dsw-alias-border-l2': pair('rgba(120, 130, 150, 0.18)', 'rgba(255, 255, 255, 0.18)'),
         '--dsw-alias-label-primary': pair('#1a1d23', '#e8ebf1'),
@@ -1620,7 +1640,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       lookGrain: '颗粒',
       lookTransparency: '透明度',
       lookLightGlass: '轻玻璃',
-      lookLightGlassHint: '会话区不再整块模糊，菜单和弹窗仍是毛玻璃；流式输出更顺',
+      lookLightGlassHint: '不模糊，只半透明：菜单、弹窗、输入卡全部关掉 backdrop-filter，最省帧',
       lookSquareWindow: '窗口直角',
       lookSquareWindowHint: '去掉窗口外框的系统圆角（DWM 画的），只影响这个窗口',
       lookWall: '背景',
@@ -1865,7 +1885,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       lookGrain: 'Grain',
       lookTransparency: 'Transparency',
       lookLightGlass: 'Light glass',
-      lookLightGlassHint: 'No blur on the chat region; menus and dialogs stay frosted',
+      lookLightGlassHint: 'No blur anywhere — only translucency. Cheapest on the compositor.',
       lookSquareWindow: 'Square window',
       lookSquareWindowHint: 'Drops the Windows 11 corner rounding on this window frame',
       lookWall: 'Background',

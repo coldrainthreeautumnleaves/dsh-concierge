@@ -1609,36 +1609,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
 
     // 每套皮肤是一组官方 token 覆盖，浅色/深色各一份。
     const LOOK_SKINS = {
-      soft: {
-        tokens: {
-          '--dsw-specific-sidebar-fill': { light: '#f4f6fb', dark: '#161a21' },
-          '--dsw-alias-bg-base': { light: '#fbfcfe', dark: '#0e1116' },
-          '--dsw-alias-bg-layer-1': { light: '#ffffff', dark: '#171b22' },
-          '--dsw-alias-bg-layer-2': { light: '#f1f3f8', dark: '#20252e' },
-          '--dsw-alias-border-l1': { light: '#e6e9f0', dark: '#2a3039' },
-          '--dsw-alias-border-l2': { light: '#d9dee8', dark: '#343b46' },
-          '--dsw-alias-label-primary': { light: '#1a1d23', dark: '#e8ebf1' },
-          '--dsw-alias-label-secondary': { light: '#6b7280', dark: '#9aa3b2' },
-          '--dsw-radius-md': { light: '12px', dark: '12px' },
-          '--dsw-radius-lg': { light: '16px', dark: '16px' },
-          '--dsw-radius-panel': { light: '16px', dark: '16px' },
-        },
-      },
-      ink: {
-        tokens: {
-          '--dsw-specific-sidebar-fill': { light: '#eef0f4', dark: '#0f1216' },
-          '--dsw-alias-bg-base': { light: '#f7f8fa', dark: '#0b0d10' },
-          '--dsw-alias-bg-layer-1': { light: '#ffffff', dark: '#14171c' },
-          '--dsw-alias-bg-layer-2': { light: '#eceef2', dark: '#1b1f26' },
-          '--dsw-alias-border-l1': { light: '#dfe3e9', dark: '#262b33' },
-          '--dsw-alias-border-l2': { light: '#cfd5de', dark: '#333a44' },
-          '--dsw-alias-label-primary': { light: '#111418', dark: '#eef1f5' },
-          '--dsw-alias-label-secondary': { light: '#5f6772', dark: '#98a1ad' },
-          '--dsw-radius-md': { light: '10px', dark: '10px' },
-          '--dsw-radius-lg': { light: '14px', dark: '14px' },
-          '--dsw-radius-panel': { light: '14px', dark: '14px' },
-        },
-      },
       glass: { tokens: glassTokens() },
       // 原生：只把「页面画布」对齐到玻璃那套的中性底色，其余全部走官方 token。
       // 卡片仍是官方白，所以整体还是纯白界面，只是画布不再用偏暖的 #fbfcfe——
@@ -1646,21 +1616,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       native: {
         tokens: {
           '--dsw-alias-bg-base': { light: '#eef3fa', dark: '#0e1116' },
-        },
-      },
-      ocean: {
-        tokens: {
-          '--dsw-specific-sidebar-fill': { light: '#eaf3fb', dark: '#0d1822' },
-          '--dsw-alias-bg-base': { light: '#f7fbff', dark: '#0a1218' },
-          '--dsw-alias-bg-layer-1': { light: '#ffffff', dark: '#101c26' },
-          '--dsw-alias-bg-layer-2': { light: '#e9f2fa', dark: '#15242f' },
-          '--dsw-alias-border-l1': { light: '#dceaf5', dark: '#1e3140' },
-          '--dsw-alias-border-l2': { light: '#c9dcea', dark: '#294256' },
-          '--dsw-alias-label-primary': { light: '#12222e', dark: '#e6f1f8' },
-          '--dsw-alias-label-secondary': { light: '#5b7286', dark: '#93aebf' },
-          '--dsw-radius-md': { light: '12px', dark: '12px' },
-          '--dsw-radius-lg': { light: '16px', dark: '16px' },
-          '--dsw-radius-panel': { light: '16px', dark: '16px' },
         },
       },
     }
@@ -2393,9 +2348,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       lookCodeFont: '代码字体',
       lookCodeFontDefault: '默认',
       lookSkin: '皮肤',
-      lookSkinSoft: '柔和',
-      lookSkinInk: '墨色',
-      lookSkinOcean: '海洋',
       lookSkinGlass: '玻璃',
       lookSkinNative: '原生（纯白）',
       lookGrain: '颗粒',
@@ -2666,9 +2618,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       lookCodeFont: 'Code font',
       lookCodeFontDefault: 'Default',
       lookSkin: 'Skin',
-      lookSkinSoft: 'Soft',
-      lookSkinInk: 'Ink',
-      lookSkinOcean: 'Ocean',
       lookSkinGlass: 'Glass',
       lookSkinNative: 'Native (plain white)',
       lookGrain: 'Grain',

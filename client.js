@@ -1551,20 +1551,21 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         '--dsw-alias-toast-bg': pair('rgba(22, 26, 34, 0.82)', 'rgba(30, 34, 42, 0.86)'),
         '--dsw-alias-tooltip-bg': pair('rgba(22, 26, 34, 0.86)', 'rgba(34, 38, 46, 0.88)'),
         '--dsw-alias-tooltip-key-bg': pair('rgba(255, 255, 255, 0.16)', 'rgba(255, 255, 255, 0.14)'),
-        '--dsw-specific-input-major': fill(0.42, 0.46),
-        // 这两个默认都是 #f5f6f7（近白）：selector 是输入卡左下角那个「+」圆形按钮，
-        // tip 是输入卡下面那条状态栏。状态栏必须和输入卡**同色**，否则两块之间会
-        // 出现一条硬边界，看着像贴了另一块材质；「+」按钮要比卡片亮一点，才看得出
-        // 它是个控件。
-        '--dsw-specific-selector': fill(0.44, 0.5),
-        '--dsw-specific-tip': fill(0.86, 0.84),
+        // 输入卡、左下角「+」按钮、卡片下面那条状态栏。
+        // 状态栏必须和输入卡**同色**，否则两块之间会出现一条硬边界，看着像贴了
+        // 另一块材质；「+」按钮要比卡片亮一点，才看得出它是个控件。
+        // 基准跟面板那一档对齐（layer-1 的 0.76）：之前输入卡是 0.42、状态栏是
+        // 0.86，一个太透一个太实，两者之间那条缝就是「聊天框和别处不一致」的来源。
+        '--dsw-specific-input-major': fill(0.76, 0.78),
+        '--dsw-specific-selector': fill(0.82, 0.84),
+        '--dsw-specific-tip': fill(0.76, 0.78),
         // 代码块 / 行内代码 / 标签徽章的底默认是 #f9fafb、#f5f6f7 这类近白实色，
         // 在玻璃上同样是一块块死白。跟着色温走，但保留一点层次：块比行内略实。
         '--dsw-alias-markdown-code-block': fill(0.55, 0.5),
         '--dsw-alias-markdown-code-block-banner': fill(0.64, 0.56),
         '--dsw-alias-markdown-inline-code': fill(0.55, 0.5),
         '--dsw-alias-markdown-tag': fill(0.6, 0.5),
-        '--dsw-specific-login-input': fill(0.42, 0.46),
+        '--dsw-specific-login-input': fill(0.76, 0.78),
         // 标题栏那条是 Windows 原生 WCO 画的，颜色来自 preload 探针读的这个 token。
         // 关键是 alpha 要「几乎 0 但不是 0」：完全 0 会被 Electron 当成没设，回退成
         // 窗口底色（#53004）；而 alpha 只要 < 1，WCO 的图层就不是不透明，#38693 之后

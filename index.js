@@ -742,18 +742,12 @@ const WINDOW_CORNER_SCRIPT = (square, borderless, watch) => [
   `$corner = ${square ? 1 : 2}`,
   // 0xFFFFFFFE / 0xFFFFFFFF 超过 int 上限，用负的等价值（unchecked (int)）。
   `$border = ${borderless ? -2 : -1}`,
-  // 窗口材质：无边框模式下关掉 Acrylic（38 = 1 = None）。应用创建窗口时给的是
-  // backgroundMaterial: "acrylic"，页面一旦有透明区域，那层亚克力就会在窗口后面
-  // 显形，看起来像贴了一块板。关掉之后透明处直接是桌面。
-  `$backdrop = ${borderless ? 1 : 3}`,
   'function Apply-DshDwm {',
   '  $v = $corner',
   '  $hr1 = [DshDwmWindow]::DwmSetWindowAttribute($w, 33, [ref]$v, 4)',
   '  $b = $border',
   '  $hr2 = [DshDwmWindow]::DwmSetWindowAttribute($w, 34, [ref]$b, 4)',
-  '  $k = $backdrop',
-  '  $hr3 = [DshDwmWindow]::DwmSetWindowAttribute($w, 38, [ref]$k, 4)',
-  "  Write-Output ('hr=' + $hr1 + ' border=' + $hr2 + ' backdrop=' + $hr3)",
+  "  Write-Output ('hr=' + $hr1 + ' border=' + $hr2)",
   '}',
   'Apply-DshDwm',
   `$watch = ${watch}`,
@@ -765,8 +759,6 @@ const WINDOW_CORNER_SCRIPT = (square, borderless, watch) => [
   '    [void][DshDwmWindow]::DwmSetWindowAttribute($w, 33, [ref]$v, 4)',
   '    $b = $border',
   '    [void][DshDwmWindow]::DwmSetWindowAttribute($w, 34, [ref]$b, 4)',
-  '    $k = $backdrop',
-  '    [void][DshDwmWindow]::DwmSetWindowAttribute($w, 38, [ref]$k, 4)',
   '  }',
   '}',
 ].join('\n')

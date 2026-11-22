@@ -896,9 +896,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       lightGlass: false,
       // 窗口外框直角：走宿主侧的 DWM 调用，和构造参数无关。
       squareWindow: true,
-      // 原生材质：窗口透明、由 Windows 自己画 Acrylic/Mica，页面不画壁纸。
-      // 默认关——只有打过 app.asar 补丁的安装才该打开，否则窗口会变成全透。
-      nativeMaterial: false,
       // 背景：预设渐变 / 图片 / 视频（Wallpaper Engine 导出的 mp4/webm 走视频）
       wall: { mode: 'preset', src: '' },
     }
@@ -1042,6 +1039,9 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         },
       },
       glass: { tokens: glassTokens() },
+      // 原生材质：同一套玻璃 token，区别只在「谁画模糊」——玻璃是页面自己糊，
+      // 原生材质是把窗口底色交给 DWM（Acrylic/Mica）。需要 app.asar 补丁。
+      native: { tokens: glassTokens() },
       ocean: {
         tokens: {
           '--dsw-specific-sidebar-fill': { light: '#eaf3fb', dark: '#0d1822' },
@@ -1081,7 +1081,8 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         }
         if (typeof parsed.lightGlass === 'boolean') look.lightGlass = parsed.lightGlass
         if (typeof parsed.squareWindow === 'boolean') look.squareWindow = parsed.squareWindow
-        if (typeof parsed.nativeMaterial === 'boolean') look.nativeMaterial = parsed.nativeMaterial
+        // 旧版本把原生材质做成玻璃皮肤下的一个开关，现在它是一套独立皮肤。
+        if (parsed.nativeMaterial === true && look.skin === 'glass') look.skin = 'native'
         if (parsed.wall && typeof parsed.wall === 'object') {
           const mode = typeof parsed.wall.mode === 'string' && LOOK_WALL_MODES.includes(parsed.wall.mode) ? parsed.wall.mode : 'preset'
           const src = typeof parsed.wall.src === 'string' ? parsed.wall.src : ''
@@ -1155,7 +1156,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
           grain: look.grain,
           lightGlass: look.lightGlass,
           squareWindow: look.squareWindow,
-          nativeMaterial: look.nativeMaterial,
         }))
       } catch {
         /* storage unavailable */
@@ -1223,7 +1223,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
 
     function applyWindowCorners(force = false) {
       if (typeof fetch !== 'function') return
-      if (!look.enabled || look.skin !== 'glass') return
+      if (!look.enabled || !isGlassSkin()) return
       if (!force && appliedSquareWindow === look.squareWindow) return
       appliedSquareWindow = look.squareWindow
       fetch(`${API}/window-corners`, {
@@ -1236,6 +1236,13 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
           if (!body || body.ok !== true) appliedSquareWindow = null
         })
         .catch(() => { appliedSquareWindow = null })
+    }
+
+    // 「原生材质」和「玻璃」是同一套 token、同一套 CSS，区别只在谁画模糊：
+    // 玻璃让页面自己 backdrop-filter，原生材质把窗口底色交给 DWM。
+    function isGlassSkin(skin) {
+      const value = skin || look.skin
+      return value === 'glass' || value === 'native'
     }
 
     function applyLook() {
@@ -1254,6 +1261,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       const clearGlassLayer = () => {
         if (!root) return
         delete root.dataset.dshGlass
+        delete root.dataset.dshNative
         delete root.dataset.dshGlassLight
         delete root.dataset.dshGlassScheme
         delete root.dataset.dshGlassWall
@@ -1273,7 +1281,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       applyThemePreference()
       applyFontStep()
       applyCodeFont()
-      const skin = look.skin === 'glass' ? { tokens: glassTokens() } : LOOK_SKINS[look.skin]
+      const skin = isGlassSkin() ? { tokens: glassTokens() } : LOOK_SKINS[look.skin]
       if (!skin) {
         clearGlassLayer()
         return
@@ -1286,12 +1294,12 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       } catch {
         lookDispose = null
       }
-      // 玻璃皮肤额外挂一层壁纸 + backdrop-filter（纯 CSS，不进官方样式）
-      if (look.skin === 'glass' && root) {
+      // 玻璃系皮肤（玻璃 / 原生材质）额外挂一层壁纸 + backdrop-filter
+      if (isGlassSkin() && root) {
         root.dataset.dshGlass = '1'
-        // 原生材质模式：窗口已经由 DWM 画 Acrylic/Mica（需要 app.asar 补丁把窗口
-        // 底色改成透明），页面就不能再自己画壁纸，否则把材质整个盖住。
-        if (look.nativeMaterial) root.dataset.dshNative = '1'
+        // 原生材质：窗口底色透明，由 DWM 画 Acrylic/Mica，页面不能再自己画壁纸，
+        // 否则把材质整个盖住。需要 app.asar 补丁。
+        if (look.skin === 'native') root.dataset.dshNative = '1'
         else delete root.dataset.dshNative
         // 轻玻璃：只关会话区那一条 blur，浮层不动（规则在 LOOK_CSS 里）。
         if (look.lightGlass) root.dataset.dshGlassLight = '1'
@@ -1311,7 +1319,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
     function syncGlassScheme() {
       if (typeof document === 'undefined') return
       const root = document.documentElement
-      if (look.skin !== 'glass' || !look.enabled) {
+      if (!isGlassSkin() || !look.enabled) {
         delete root.dataset.dshGlassScheme
         return
       }
@@ -1660,6 +1668,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       lookSkinInk: '墨色',
       lookSkinOcean: '海洋',
       lookSkinGlass: '玻璃',
+      lookSkinNative: '原生材质（Acrylic）',
       lookGrain: '颗粒',
       lookTransparency: '透明度',
       lookLightGlass: '轻玻璃',
@@ -1907,6 +1916,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       lookSkinInk: 'Ink',
       lookSkinOcean: 'Ocean',
       lookSkinGlass: 'Glass',
+      lookSkinNative: 'Native material (Acrylic)',
       lookGrain: 'Grain',
       lookTransparency: 'Transparency',
       lookLightGlass: 'Light glass',
@@ -3360,6 +3370,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
                     h('option', { value: 'ink' }, t('lookSkinInk')),
                     h('option', { value: 'ocean' }, t('lookSkinOcean')),
                     h('option', { value: 'glass' }, t('lookSkinGlass')),
+                    h('option', { value: 'native' }, t('lookSkinNative')),
                   )),
                 lookSnapshot.skin === 'glass'
                   ? settingRow(t('lookGrain'), null,
@@ -3434,7 +3445,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
                     h('option', { value: 'jetbrains' }, 'JetBrains Mono'),
                     h('option', { value: 'fira' }, 'Fira Code'),
                   )),
-                lookSnapshot.skin === 'glass'
+                isGlassSkin(lookSnapshot.skin)
                   ? settingRow(t('lookTransparency'), null,
                       h('div', { className: 'uc-typer' },
                         h('input', {
@@ -3462,19 +3473,11 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
                       lookUpdate()
                     }))
                   : null,
-                lookSnapshot.skin === 'glass'
+                isGlassSkin(lookSnapshot.skin)
                   ? settingRow(t('lookSquareWindow'), t('lookSquareWindowHint'), switchControl(lookSnapshot.squareWindow, () => {
                       look.squareWindow = !look.squareWindow
                       saveLookPrefs()
                       applyWindowCorners(true)
-                      lookUpdate()
-                    }))
-                  : null,
-                lookSnapshot.skin === 'glass'
-                  ? settingRow(t('lookNative'), t('lookNativeHint'), switchControl(lookSnapshot.nativeMaterial, () => {
-                      look.nativeMaterial = !look.nativeMaterial
-                      saveLookPrefs()
-                      applyLook()
                       lookUpdate()
                     }))
                   : null,

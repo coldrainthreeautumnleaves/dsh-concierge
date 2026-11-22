@@ -387,17 +387,51 @@ html[data-dsh-glass="1"][data-dsh-glass-light="1"] .uc-banner {
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
-/* 「盖在内容上」的浮层（设置面板、弹窗、全屏覆盖）必须给足不透明底：它们背后就是
-   正在显示的对话，半透明会让两套文字叠在一起，变成重影。这类面板宁可牺牲一点
-   玻璃感，也要保证只有一层字。 */
-html[data-dsh-glass="1"] [role="dialog"],
-html[data-dsh-glass="1"] [role="alertdialog"],
-html[data-dsh-glass="1"] [data-shell-overlay="true"] [data-slot] > * {
+/* 「盖在内容上」的浮层必须给足不透明底：它们背后就是正在显示的对话/侧边栏，半透明
+   会让两套文字叠在一起变成重影。这类面板宁可牺牲一点玻璃感，也要保证只有一层字。
+   光认 role="dialog" 不够——实际会透的是菜单、悬浮卡、提示卡这些 popover 容器，
+   所以按「容器特征」一起收：role 属性 + 外壳覆盖层 + 常见浮层类名后缀。 */
+html[data-dsh-glass="1"] :is(
+  [role="dialog"],
+  [role="alertdialog"],
+  [role="menu"],
+  [role="listbox"],
+  [role="tooltip"],
+  [data-shell-overlay="true"] [data-slot] > *,
+  [class*="_panel"],
+  [class*="_popover"],
+  [class*="_hovercard"],
+  [class*="_menu"],
+  [class*="_portal_"] > *,
+  [data-composer-dock] > *,
+  [data-composer-dock] [class*="_root"],
+  .uc-card,
+  .uc-banner,
+  .uc-help-menu
+) {
   background-color: rgba(var(--dsh-tint-rgb), 0.96) !important;
+  /* 底已经不透明，模糊没有东西可糊 */
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
-html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] [role="dialog"],
-html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] [role="alertdialog"],
-html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] [data-shell-overlay="true"] [data-slot] > * {
+html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] :is(
+  [role="dialog"],
+  [role="alertdialog"],
+  [role="menu"],
+  [role="listbox"],
+  [role="tooltip"],
+  [data-shell-overlay="true"] [data-slot] > *,
+  [class*="_panel"],
+  [class*="_popover"],
+  [class*="_hovercard"],
+  [class*="_menu"],
+  [class*="_portal_"] > *,
+  [data-composer-dock] > *,
+  [data-composer-dock] [class*="_root"],
+  .uc-card,
+  .uc-banner,
+  .uc-help-menu
+) {
   background-color: rgba(16, 20, 28, 0.96) !important;
 }
 html[data-dsh-glass="1"] [role="dialog"],

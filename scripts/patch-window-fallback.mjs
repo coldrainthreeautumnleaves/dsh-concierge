@@ -1,14 +1,15 @@
 #!/usr/bin/env node
 /**
- * 给 DSH 主窗口的 acrylic 配一个「壁纸近似色」回退底。
+ * 给 DSH 主窗口换掉 acrylic 材质，并把窗口底色设成壁纸近似色。
  *
- * 为什么需要：窗口挂的是 `backgroundMaterial: "acrylic"`，缩放时新露出的那一帧
- * 还没被 DWM 重新采样，Windows 会先画 acrylic 的回退色——默认偏冷的浅色，于是
- * 拖窗口时底部会闪一条横贯整窗的浅色带。把 `backgroundColor` 换成壁纸同色系的
- * 值，回退色就和壁纸接近，看不出来了。
+ * 为什么：玻璃皮肤的观感是「预模糊壁纸层 + 不透明内容」画出来的，窗口后面的
+ * DWM 亚克力根本看不见——它不贡献任何视觉，只贡献 Windows 上那串 bug
+ * （electron#39959：透明无边框窗口下 backgroundMaterial 在缩放前不生效，
+ * 拖窗口时非客户区重绘，露出一条和壁纸不搭的浅色带）。
  *
- * 关键约束：asar 头里存着每个文件的偏移和大小，所以这里**只做等长替换**
- * （`#00000000` → `#e8f0faff`，都是 9 个字符），不动文件长度，不重写头。
+ * 两条补丁都是**等长替换**，不动 asar 头：
+ *   1. `#00000000` → `#e8f0faff`          窗口底色 = 壁纸同色系（不透明）
+ *   2. `"acrylic"` → `"none"   `          关掉 DWM 材质，让底色真正参与绘制
  *
  * 用法：
  *   node scripts/patch-window-fallback.mjs --check     # 看当前状态
@@ -16,14 +17,24 @@
  *   node scripts/patch-window-fallback.mjs --revert    # 用备份还原
  *   node scripts/patch-window-fallback.mjs --asar <path>
  *
- * 应用更新后重跑一次即可。打补丁期间应用可以开着，写不进去就退出应用再跑。
+ * 应用更新后重跑一次。写不进去就退出 DSH 再跑。
  */
 import fs from 'node:fs'
 import path from 'node:path'
 import os from 'node:os'
 
-const FROM = 'backgroundColor:"#00000000",backgroundMaterial:"acrylic"'
-const TO = 'backgroundColor:"#e8f0faff",backgroundMaterial:"acrylic"'
+const PATCHES = [
+  {
+    name: '窗口底色',
+    from: 'backgroundColor:"#00000000",backgroundMaterial',
+    to: 'backgroundColor:"#e8f0faff",backgroundMaterial',
+  },
+  {
+    name: '关掉 acrylic',
+    from: 'backgroundMaterial:"acrylic"',
+    to: 'backgroundMaterial:"none"   ',
+  },
+]
 
 const args = process.argv.slice(2)
 const flag = (name) => args.includes(name)
@@ -42,28 +53,37 @@ if (!fs.existsSync(asarPath)) {
   console.error(`找不到 app.asar：${asarPath}`)
   process.exit(1)
 }
-
 const backupPath = `${asarPath}.bak`
 
-function countOccurrences(buffer, needle) {
-  const hay = buffer.toString('latin1')
-  const pin = Buffer.from(needle, 'latin1').toString('latin1')
-  let count = 0
-  let i = -1
-  while ((i = hay.indexOf(pin, i + 1)) !== -1) count += 1
-  return count
+for (const patch of PATCHES) {
+  if (patch.from.length !== patch.to.length) {
+    console.error(`补丁「${patch.name}」长度不等（${patch.from.length} vs ${patch.to.length}），会破坏 asar 头。`)
+    process.exit(1)
+  }
 }
 
 const buffer = fs.readFileSync(asarPath)
-const patched = countOccurrences(buffer, TO)
-const original = countOccurrences(buffer, FROM)
+const text = buffer.toString('latin1')
+const count = (needle) => {
+  let n = 0
+  let i = -1
+  while ((i = text.indexOf(needle, i + 1)) !== -1) n += 1
+  return n
+}
+
+const status = PATCHES.map((patch) => ({
+  ...patch,
+  applied: count(patch.to) > 0,
+  pending: count(patch.from),
+}))
 
 if (flag('--check')) {
-  console.log(`asar:      ${asarPath}`)
-  console.log(`已打补丁:  ${patched === 1 ? '是' : '否'}（目标串 ${patched} 处）`)
-  console.log(`原始串:    ${original} 处`)
-  console.log(`备份:      ${fs.existsSync(backupPath) ? backupPath : '（无）'}`)
-  process.exit(patched === 1 ? 0 : 2)
+  console.log(`asar:   ${asarPath}`)
+  for (const item of status) {
+    console.log(`${item.applied ? '✓' : '·'} ${item.name}: ${item.applied ? '已打' : `未打（可替换 ${item.pending} 处）`}`)
+  }
+  console.log(`备份:   ${fs.existsSync(backupPath) ? backupPath : '（无）'}`)
+  process.exit(status.every((item) => item.applied) ? 0 : 2)
 }
 
 if (flag('--revert')) {
@@ -76,13 +96,16 @@ if (flag('--revert')) {
   process.exit(0)
 }
 
-if (patched === 1) {
-  console.log('已经打过补丁，无需重复操作。')
+const todo = status.filter((item) => !item.applied)
+if (todo.length === 0) {
+  console.log('两条补丁都已生效，无需操作。')
   process.exit(0)
 }
-if (original !== 1) {
-  console.error(`目标串应出现 1 次，实际 ${original} 次——应用版本可能变了，先确认再改。`)
-  process.exit(1)
+for (const item of todo) {
+  if (item.pending !== 1) {
+    console.error(`「${item.name}」的目标串应出现 1 次，实际 ${item.pending} 次——应用版本可能变了，先确认再改。`)
+    process.exit(1)
+  }
 }
 
 if (!fs.existsSync(backupPath)) {
@@ -90,17 +113,19 @@ if (!fs.existsSync(backupPath)) {
   console.log(`已备份到 ${backupPath}`)
 }
 
-const next = Buffer.from(buffer.toString('latin1').replace(FROM, TO), 'latin1')
-if (next.length !== buffer.length) {
+let next = text
+for (const item of todo) next = next.replace(item.from, item.to)
+const nextBuffer = Buffer.from(next, 'latin1')
+if (nextBuffer.length !== buffer.length) {
   console.error('替换后长度变了，拒绝写入（会破坏 asar 头）。')
   process.exit(1)
 }
 try {
-  fs.writeFileSync(asarPath, next)
+  fs.writeFileSync(asarPath, nextBuffer)
 } catch (error) {
   console.error(`写入失败：${error.message}`)
   console.error('多半是应用正在运行锁住了文件——先退出 DSH，再跑一次。')
   process.exit(1)
 }
-console.log('已写入：acrylic 回退色改为 #e8f0fa（不透明，等价 #e8f0faff）')
-console.log('重启 DSH 生效。')
+console.log(`已写入：${todo.map((item) => item.name).join('、')}`)
+console.log('重启 DSH 生效（主进程参数，Ctrl+R 不够）。')

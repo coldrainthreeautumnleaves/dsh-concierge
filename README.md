@@ -75,11 +75,16 @@ dsh plugin --profile <profile> add github:coldrainthreeautumnleaves/dsh-concierg
 
 `.vbs` 是静默版：双击全程无命令窗口。脚本都要求应用已退出，不需要管理员权限。
 
-## 窗口回退色补丁（可选）
+## 窗口材质补丁（可选）
 
-主窗口挂的是 `backgroundMaterial: "acrylic"`。缩放窗口时，新露出的那一帧还没被 DWM 重新采样，Windows 会先画 acrylic 的回退色——默认偏冷，于是拖窗口时底部会闪一条浅色带。
+主窗口默认挂 `backgroundMaterial: "acrylic"`。玻璃皮肤的观感是「预模糊壁纸层 + 不透明内容」画出来的，窗口后面的 DWM 亚克力**根本看不见**——它不贡献视觉，只贡献 Windows 上那串 bug（[electron#39959](https://github.com/electron/electron/issues/39959)：透明无边框窗口下 `backgroundMaterial` 在缩放前不生效，拖窗口时非客户区重绘，露出一条和壁纸不搭的浅色带）。
 
-`scripts/patch-window-fallback.mjs` 把 `backgroundColor` 换成壁纸同色系的 `#e8f0fa`，回退色和壁纸接近就看不出那条带了。补丁只做**等长替换**（`#00000000` → `#e8f0faff`），不动 asar 头，安全。
+`scripts/patch-window-fallback.mjs` 做两件事：
+
+1. 窗口底色 `#00000000` → `#e8f0faff`（壁纸同色系，不透明）；
+2. `backgroundMaterial: "acrylic"` → `"none"`，关掉 DWM 材质，让底色真正参与绘制。
+
+两条都是**等长替换**，不动 asar 头。
 
 ```bash
 node scripts/patch-window-fallback.mjs --check   # 看状态
@@ -88,6 +93,8 @@ node scripts/patch-window-fallback.mjs --revert  # 用备份还原
 ```
 
 **应用每次更新后要重跑一次**（更新会覆盖 `app.asar`）。写入失败多半是应用还在运行锁着文件，退出 DSH 再跑。
+
+> 如果你用**原生材质**（窗口透明 + DWM Acrylic），**不要打这个补丁**——原生材质正需要 `transparent` + `acrylic`，打上会把材质关掉。两套皮肤二选一。
 
 ## GitHub Token
 

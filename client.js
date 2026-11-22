@@ -1,4 +1,4 @@
-﻿/**
+/**
  * dsh-concierge — Client half.
  * A dashboard-style settings page plus a top notification strip.
  */
@@ -562,7 +562,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
     const probeEvents = []
     let probeReportTimer = 0
     let probeSentAt = 0
-    let probeSentBlurs = false
+    let probeBlurList = null
 
     function collectBlurringElements() {
       if (typeof document === 'undefined') return []
@@ -601,12 +601,10 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         skin: look.skin,
         enabled: look.enabled,
       }
-      // 第一次上报顺带把「页面上还有哪些元素在模糊」列出来——一次加载只做一遍，
-      // 用来确认 backdrop-filter 到底还剩在谁身上。
-      if (!probeSentBlurs) {
-        probeSentBlurs = true
-        payload.blurs = collectBlurringElements()
-      }
+      // 「页面上还有哪些元素在模糊」只在第一次算，但**每次上报都带上**——报告文件
+      // 是覆盖写的，只发一次等于被后面的报告冲掉，等于没发。
+      if (probeBlurList === null) probeBlurList = collectBlurringElements()
+      payload.blurs = probeBlurList
       fetch(`${API}/perf-report`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -781,7 +779,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       requestAnimationFrame(tick)
       // 加载 4 秒后补一份诊断：即使没有长帧、没有流式，也能拿到「谁还在模糊」的清单。
       setTimeout(() => {
-        if (!probeSentBlurs) probeSend()
+        if (probeBlurList === null) probeSend()
       }, 4000)
       setInterval(() => {
         let rows = 0
@@ -1106,6 +1104,8 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
           look.transparency = Math.max(0, Math.min(100, Math.round(parsed.transparency)))
         }
         if (typeof parsed.squareWindow === 'boolean') look.squareWindow = parsed.squareWindow
+        // 0.1.87 删掉了「关掉浮层模糊」：旧存档里那条键顺手清掉，别一直躺着。
+        if (Object.prototype.hasOwnProperty.call(parsed, 'lightGlass')) saveLookPrefs()
         // 旧版本把原生材质做成玻璃皮肤下的一个开关，现在它是一套独立皮肤。
         if (parsed.nativeMaterial === true && look.skin === 'glass') look.skin = 'native'
         if (parsed.wall && typeof parsed.wall === 'object') {

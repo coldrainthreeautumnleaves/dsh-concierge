@@ -1,4 +1,4 @@
-/**
+﻿/**
  * dsh-concierge — Client half.
  * A dashboard-style settings page plus a top notification strip.
  */
@@ -570,6 +570,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
     let probeBlurList = null
     let probeComposerTree = null
     let probeWhiteBoxes = null
+    let probeBand = null
 
     function collectBlurringElements() {
       if (typeof document === 'undefined') return []
@@ -680,6 +681,55 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       return found
     }
 
+    // 按「输入卡下方那一条」的屏幕区间扫一遍：不管元素是谁、挂在哪，只要矩形和
+    // 这条带子相交就 dump 出来，带三级父链。用来抓那种「外层已经透了、里面还有一块
+    // 白底」的情况。
+    function collectBand() {
+      if (typeof document === 'undefined') return []
+      const dock = document.querySelector('[data-composer-dock]')
+      if (!dock) return []
+      const box = dock.getBoundingClientRect()
+      const top = box.top - 14
+      const bottom = box.bottom + 14
+      const rows = []
+      const pseudo = (el, name) => {
+        const ps = getComputedStyle(el, name)
+        const bg = ps.backgroundColor
+        const img = ps.backgroundImage && ps.backgroundImage !== 'none' ? ps.backgroundImage : ''
+        const opaque = bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent'
+        if (!opaque && !img) return ''
+        return `${name} bg=${bg}${img ? ` img=${img.slice(0, 36)}` : ''}`
+      }
+      for (const el of document.querySelectorAll('body *')) {
+        if (rows.length >= 30) break
+        const rect = el.getBoundingClientRect()
+        if (rect.width < 4 || rect.height < 4) continue
+        if (rect.bottom < top || rect.top > bottom) continue
+        const style = getComputedStyle(el)
+        const chain = []
+        let parent = el.parentElement
+        for (let i = 0; i < 3 && parent; i++) {
+          chain.push(String(parent.className || parent.tagName || '').slice(0, 36))
+          parent = parent.parentElement
+        }
+        rows.push({
+          tag: el.tagName.toLowerCase(),
+          cls: String(el.className || '').slice(0, 60),
+          bg: style.backgroundColor,
+          img: style.backgroundImage && style.backgroundImage !== 'none' ? style.backgroundImage.slice(0, 44) : '',
+          shadow: style.boxShadow && style.boxShadow !== 'none' ? style.boxShadow.slice(0, 44) : '',
+          x: Math.round(rect.left),
+          y: Math.round(rect.top),
+          w: Math.round(rect.width),
+          h: Math.round(rect.height),
+          before: pseudo(el, '::before'),
+          after: pseudo(el, '::after'),
+          chain,
+        })
+      }
+      return rows
+    }
+
     function probeLongFrame(elapsed) {
       if (!(elapsed >= 40)) return
       probeLongFrames.push({ at: Date.now(), ms: Math.round(elapsed) })
@@ -707,6 +757,8 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       payload.composer = probeComposerTree
       if (probeWhiteBoxes === null) probeWhiteBoxes = collectWhiteBoxes()
       payload.whites = probeWhiteBoxes
+      if (probeBand === null) probeBand = collectBand()
+      payload.band = probeBand
       fetch(`${API}/perf-report`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },

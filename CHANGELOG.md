@@ -6,6 +6,15 @@
 
 ## [Unreleased]
 
+## [0.13.5] - 2026-11-22
+
+> 插件路由补上 DSH 自己的访问检查
+
+### Security
+
+- 工具: 所有 `/dsh-concierge/*` 路由先过 `ctx.connection.requestRejection()`（Connection 的 Host/Origin 校验 + 浏览器凭据），再走原来的同源校验。之前只有 `Origin` / `Host` 判断，插件市场的扫描把这条标成了「HTTP routes have no DSH access check」
+- 兼容: 宿主没有 `connection` 服务时直接跳过，不影响极简 profile
+
 ## [0.13.4] - 2026-11-22
 
 > 设置页页头和搜索行不再自己刷底色

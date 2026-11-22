@@ -114,7 +114,7 @@ Four numbers: FPS (5-second average, shown as "current / screen refresh" — the
 - **Force lite**: always stay in lite mode.
 - **Skip offscreen rows**: enabled only above 40 rendered rows; each row gets `content-visibility: auto` with its **measured height** in `contain-intrinsic-size: auto <height>px` (not a fixed placeholder), applied from idle time in small slices so the scan itself does not jank; turn it off if scrolling ever misbehaves.
 
-While a reply is streaming (`[data-phase="active"]`), the conversation's `backdrop-filter` is dropped until the stream ends.
+The conversation area no longer uses `backdrop-filter` at all: it sits on a static pre-blurred copy of the wallpaper (`#dsh-concierge-frost`), which is rasterised once and then only composited. Streaming therefore costs no extra blur work, and there is no runtime toggle to drop.
 
 
 ## Typewriter

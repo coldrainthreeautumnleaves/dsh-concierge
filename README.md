@@ -24,7 +24,7 @@ DeepSeek Harness 的维护中心：更新应用与插件、管理已装插件、
 - **GitHub 来源**：添加任意仓库并持续检测最新 release；未装的可以装，已装的可以重装；安装时把 HEAD 固定成完整 commit。
 - **从 npm 安装**：填包名或 `包名@版本`。
 - **GitHub Token**：状态标签 + 掩码显示 + 申请链接，额度从 60 次/小时提到 5000 次。
-- **外观**：主题（跟随系统/浅色/深色）、皮肤（柔和/墨色/海洋/玻璃）、品牌色、字号、代码字体；玻璃皮肤另有透明度、颗粒、轻玻璃开关、背景（预设渐变 / 图片 / 视频）。玻璃皮肤覆盖全部表面：41 个背景 token 半透明 + 壁纸层统一模糊，浮层（弹窗/菜单/提示）额外加 `backdrop-filter`，另有颗粒滑杆（0–20%）补磨砂沙感。「轻玻璃」打开后会话区整块不模糊、只留浮层，流式输出时不再整块重糊。全部走官方主题服务：`setTheme` / `overrideTokens` / `adjustFontSizes` / `setFontFamily`，不注 CSS、不改官方 DOM。走官方主题 API（`theme.overrideTokens`），每个 token 给浅色/深色两份，换主题自动跟随，不注 CSS、不改官方 DOM，DSH 升级也不失效。默认关闭。
+- **外观**：主题（跟随系统/浅色/深色）、皮肤（**玻璃** / **原生（纯白）**）、品牌色、字号、代码字体；玻璃皮肤另有透明度、颗粒（0–20%）、简化壁纸、拖动时降级、真透明留边和背景（预设渐变 / 图片 / 视频）。玻璃皮肤覆盖全部表面：背景/层级/卡片/菜单等 40+ 个背景 token 半透明 + 静态预模糊壁纸层，浮层（弹窗/菜单/提示）用实底、不挂 `backdrop-filter`。全部走官方主题服务 `theme.overrideTokens`，每个 token 给浅色/深色两份，换主题自动跟随，不注 CSS、不改官方 DOM，DSH 升级也不失效。默认关闭。
 - **目录与配置**：打开插件目录 / 配置 / 安全模式目录。
 - **自动安全模式**开关。
 
@@ -77,14 +77,12 @@ dsh plugin --profile <profile> add github:coldrainthreeautumnleaves/dsh-concierg
 
 ## 窗口材质补丁（可选）
 
-窗口缩放时 Chromium **不重绘视图**，新露出的区域直接用窗口底色填——那个「白条」不在页面里，CSS 改不到。这是 Chromium 的既定行为（electron#10801、#44689、#1391，维护者结论是 *"How Chromium Works"*），唯一解法是把 `BrowserWindow` 的 `backgroundColor` 设成应用背景色。
+**修白条已经不需要它了。** 缩放 / 全屏白条的根因是根层透明让整帧被判定成「非不透明」，Chromium 不能拉伸上一帧；0.7.0 起由 CSS 修好，不改 asar。完整排查过程见 `docs/RESIZE-BAND.md`。
 
-`scripts/patch-window-fallback.mjs` 做两件事：
+补丁保留下来是为了改窗口本身的两项（都是等长替换，不动 asar 头）：
 
-1. 窗口底色 → `#ccd8eeff`（内容区**实测合成色** RGB(204,216,238)；用 tint 会太浅，露出来仍然像白条）；
-2. `backgroundMaterial: "acrylic"` → `"none"`，关掉 DWM 材质——玻璃皮肤的观感由预模糊壁纸层画，亚克力在后面根本看不见，只贡献 Windows 上的 bug（electron#39959）。
-
-两条都是**等长替换**，不动 asar 头。
+1. **窗口底色**：默认 `#00000000`（透明）。改成实色可以强制窗口不透明；
+2. **窗口材质**：默认 `acrylic`——DWM 在窗口后面画桌面壁纸的模糊，`真透明留边` 露出的就是它。改成 `none` 之后窗口后面是**清晰的桌面**，留边那一圈也会从「毛玻璃」变成「清玻璃」。
 
 ```bash
 node scripts/patch-window-fallback.mjs --check   # 看状态
@@ -94,7 +92,7 @@ node scripts/patch-window-fallback.mjs --revert  # 用备份还原
 
 **应用每次更新后要重跑一次**（更新会覆盖 `app.asar`）。写入失败多半是应用还在运行锁着文件，退出 DSH 再跑。
 
-> 如果你用**原生材质**（窗口透明 + DWM Acrylic），**不要打这个补丁**——原生材质正需要 `transparent` + `acrylic`，打上会把材质关掉。两套皮肤二选一。
+> 用 `真透明留边` 时先想清楚要哪种材质：`acrylic` = 毛玻璃（默认，也是 Windows 11 的常规观感），`none` = 桌面原样透出来。两者只能选一个，而且改材质要重启 DSH 才生效。
 
 ## GitHub Token
 

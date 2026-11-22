@@ -600,10 +600,13 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
 
     // 宿主在启动过程中还会往 head 里追加样式表，追加在后面的同权重规则会赢。
     // 每次应用外观时把这张表挪到 head 末尾，保证玻璃/留边的规则始终压在上面。
+    // 只有它后面确实还有别的节点时才挪：重复插入同一个 <style> 会让浏览器把整张
+    // 表重新解析一遍，拖透明度滑杆时 applyLook 是连续触发的，那会变成整页重算。
     function promoteLookCss() {
       if (typeof document === 'undefined') return
       const style = document.getElementById('dsh-concierge-look-css')
-      if (style && style.parentNode === document.head) document.head.appendChild(style)
+      if (!style || style.parentNode !== document.head) return
+      if (style.nextElementSibling !== null) document.head.appendChild(style)
     }
 
     // 本地路径走宿主的 /wallpaper 路由（页面是 dsh-app:// 文档，读不了 file://），

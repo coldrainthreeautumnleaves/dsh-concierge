@@ -483,11 +483,12 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       else delete root.dataset.dshStream
     }
 
-    // 诊断：把「流式开始/结束」前后的长帧记下来，发给宿主落盘。用来回答
-    // 「结束那一刻掉到 60」到底是模糊挂回去的一次大重绘，还是应用自己在收尾。
+    // 诊断：把长帧记下来发给宿主落盘。除了流式开始/结束，只要出现 ≥40ms 的
+    // 长帧，每 10 秒也补发一次——不然平时卡一下根本留不下证据。
     const probeLongFrames = []
     const probeEvents = []
     let probeReportTimer = 0
+    let probeSentAt = 0
 
     function probeLongFrame(elapsed) {
       if (!(elapsed >= 40)) return
@@ -495,31 +496,52 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       if (probeLongFrames.length > 40) probeLongFrames.shift()
     }
 
+    function probeSend() {
+      if (typeof fetch !== 'function') return
+      probeSentAt = Date.now()
+      const payload = {
+        at: new Date().toISOString(),
+        events: probeEvents.slice(),
+        longFrames: probeLongFrames.slice(),
+        longTasks: typeof longTaskLog !== 'undefined' ? longTaskLog.slice(-20) : [],
+        fps: perf.samples.slice(-8),
+        streaming: perf.streaming,
+        glassAuto: perf.glassAuto,
+        lightGlass: look.lightGlass,
+        skin: look.skin,
+        enabled: look.enabled,
+      }
+      fetch(`${API}/perf-report`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(payload),
+      }).catch(() => {})
+    }
+
+    function scheduleProbeSend(delay) {
+      if (probeReportTimer) clearTimeout(probeReportTimer)
+      probeReportTimer = setTimeout(() => {
+        probeReportTimer = 0
+        probeSend()
+      }, delay)
+    }
+
     function probeEvent(kind) {
       probeEvents.push({ at: Date.now(), kind })
       if (probeEvents.length > 20) probeEvents.shift()
-      if (probeReportTimer) clearTimeout(probeReportTimer)
       // 2.5 秒后再发：这样事件之后那几帧也收进来了。
-      probeReportTimer = setTimeout(() => {
-        probeReportTimer = 0
-        if (typeof fetch !== 'function') return
-        const payload = {
-          at: new Date().toISOString(),
-          events: probeEvents.slice(),
-          longFrames: probeLongFrames.slice(),
-          fps: perf.samples.slice(-8),
-          streaming: perf.streaming,
-          glassAuto: perf.glassAuto,
-          lightGlass: look.lightGlass,
-          skin: look.skin,
-          enabled: look.enabled,
-        }
-        fetch(`${API}/perf-report`, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify(payload),
-        }).catch(() => {})
-      }, 2500)
+      scheduleProbeSend(2500)
+    }
+
+    // 每 10 秒最多补发一次：这十秒里出现过 ≥40ms 的长帧就发，平时不发。
+    function probePeriodic() {
+      if (probeReportTimer) return
+      if (!probeLongFrames.length) return
+      const now = Date.now()
+      if (now - probeSentAt < 10000) return
+      const fresh = probeLongFrames.some((frame) => frame.at > probeSentAt)
+      if (!fresh) return
+      scheduleProbeSend(1200)
     }
 
     function applyPerfMode() {
@@ -629,6 +651,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
           const fps = Math.round((frames * 1000) / elapsed)
           frames = 0
           last = now
+          probePeriodic()
           if (perf.refreshOverride === 0 && fps > perf.refresh) {
             const next = snapRefresh(fps)
             if (next > perf.refresh) perfUpdate({ refresh: next })

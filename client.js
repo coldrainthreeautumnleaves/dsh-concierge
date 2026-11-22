@@ -228,12 +228,13 @@ html[data-dsh-glass="1"] #dsh-concierge-top {
   inset: 0 0 auto;
   height: var(--dsh-windows-titlebar-height, 40px);
   pointer-events: none;
-  backdrop-filter: blur(12px) saturate(150%);
-  -webkit-backdrop-filter: blur(12px) saturate(150%);
-  background: rgba(var(--dsh-tint-rgb), 0.42);
+  /* 原来是 backdrop-filter。它是全界面最后一处「每帧重新采样」的模糊，而它背后
+     只是应用自己的工具栏（静止的），换来的观感提升很小——直接去掉，靠提高一点
+     不透明度补回来。 */
+  background: rgba(var(--dsh-tint-rgb), 0.58);
 }
 html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-top {
-  background: rgba(21, 27, 43, 0.48);
+  background: rgba(21, 27, 43, 0.6);
 }
 html[data-dsh-glass="1"][data-fullscreen] #dsh-concierge-top { display: none; }
 /* 侧边栏：从「压回实色」改成半透明，和聊天区一样透出壁纸。这里**不加**
@@ -307,6 +308,8 @@ html[data-dsh-glass="1"]:not([data-dsh-native="1"]) #dsh-concierge-frost {
   overflow: hidden;
   z-index: -1;
   pointer-events: none;
+  /* 把布局/绘制范围锁在这块矩形里：外面的变化不会让它重绘 */
+  contain: strict;
 }
 #dsh-concierge-frost > div {
   position: absolute;
@@ -337,41 +340,9 @@ html[data-dsh-glass="1"] [data-conversation-region="chat"] {
 html[data-dsh-glass="1"] [data-conversation-region="chat"]::before {
   content: none;
 }
-/* 轻玻璃：这一档就是「不糊，只半透明」，会话区那层也撤掉。 */
-html[data-dsh-glass="1"][data-dsh-glass-light="1"] [data-conversation-region="chat"]::before {
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-  content: none;
-  will-change: auto;
-}
-/* 视频壁纸每帧都是新画面：会话区那块模糊背后一直在变，等于每帧重算整屏。
-   静态壁纸才缓存得住，所以视频模式下这块不模糊——壁纸本身在动，面板半透明
-   已经够玻璃感。 */
-html[data-dsh-glass="1"][data-dsh-glass-wall="video"] [data-conversation-region="chat"]::before {
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-  /* 关掉就整层撤掉：留着它等于一直挂着一块 3.2M 像素的合成层，每帧照样参与混合 */
-  content: none;
-  will-change: auto;
-}
-/* 玻璃自动降级：帧率掉下来时由性能监控临时关掉会话区模糊（不动用户的「轻玻璃」
-   设置），回升后自己还原。 */
-html[data-dsh-glass="1"][data-dsh-glass-auto="1"] [data-conversation-region="chat"]::before {
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-  content: none;
-  will-change: auto;
-}
-/* 流式输出期间自动摘掉会话区那块大模糊。实测（2560×1600 / Iris Xe / 120Hz）：
-   这块开着流式 90fps，摘掉 117fps——每来一段文字它都跟着重算，约 2.8ms/帧。
-   data-dsh-stream 由性能监控维护（停止输出 5 秒后自动恢复），所以只有输出那几秒
-   是「半透明、不糊」的，不影响平时的玻璃观感。 */
-html[data-dsh-glass="1"][data-dsh-stream="1"] [data-conversation-region="chat"]::before {
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-  content: none;
-  will-change: auto;
-}
+/* 会话区那层模糊已经从 backdrop-filter 换成预模糊层（#dsh-concierge-frost），
+   所以「轻玻璃 / 视频壁纸 / 自动降级 / 流式」这四条原本用来临时撤掉模糊的规则
+   全部失效——留着它们只会让人以为还有第二条模糊在跑，直接删掉。 */
 /* 输入框那一圈不再自己模糊：它里面还压着输入卡自己的 backdrop-filter（走
    --dsw-menu-backdrop-filter），两层叠在「每帧都在动的聊天记录」上——这是全
    界面唯一 blur 背后一直在变的地方。留卡片那一层就够看。 */

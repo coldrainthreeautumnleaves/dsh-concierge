@@ -159,10 +159,17 @@ html[data-dsh-noanim="1"] [data-animating] {
    代价是窗口缩放时新露出的区域先画成这块颜色——就是那条横贯整窗的浅色带
    （实测 RGB(239,242,251)，和 #f0f3fc 的 (240,243,252) 是同一块）。
    透明之后那块露出的是壁纸层/窗口底色，不再是白板。 */
-html[data-dsh-glass="1"] { background-color: transparent !important; }
-html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] { background-color: transparent !important; }
+html[data-dsh-glass="1"] { background-color: #dbe4f3 !important; }
+html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] { background-color: #10151d !important; }
 html[data-dsh-glass="1"] body,
 html[data-dsh-glass="1"] #root { background: transparent !important; }
+/* 根层必须不透明。Chromium 只在「整帧判定为不透明」时才允许在窗口尺寸跳变时拉伸上一帧；
+   非不透明的帧只能等下一次提交，那一两帧就露出窗口表面色。全屏切换是一次性大跳，
+   所以特别明显。这个底色必须和壁纸基色一致，否则壁纸没铺满的地方会露出异色。 */
+html[data-dsh-glass="1"] body { background-color: #dbe4f3 !important; }
+html[data-dsh-glass="1"] #root { background-color: #dbe4f3 !important; }
+html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] body { background-color: #10151d !important; }
+html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #root { background-color: #10151d !important; }
 /* The frost lives on the wallpaper itself: one blurred layer covers every
    translucent surface, instead of paying a backdrop-filter per panel (each one
    reads the pixels behind it and runs a blur kernel, so the cost scales with
@@ -204,9 +211,7 @@ html[data-dsh-glass="1"] #dsh-concierge-glass {
   background-size: 140px 140px, auto, auto, auto, auto;
   background-repeat: repeat, no-repeat, no-repeat, no-repeat, no-repeat;
 }
-/* B7：把壁纸提升成独立合成层。窗口 resize 时 Chromium 缩放这一层，
-   而不是在新尺寸上重新栅格化那四个径向渐变——填充带的宽度会明显收窄。 */
-#dsh-concierge-glass > div:first-child { will-change: transform; }
+
 
 /* B6：简化壁纸。四个径向渐变是 resize 重绘的大头，砍掉之后只留一条线性渐变
    加颗粒，观感少了三层光斑，色温不变。默认开，外观页可以关回去。 */

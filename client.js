@@ -219,10 +219,13 @@ html[data-dsh-edge="1"][data-dsh-glass-scheme="dark"] {
 html[data-dsh-edge="1"],
 html[data-dsh-edge="1"] body,
 html[data-dsh-edge="1"] #root { background: transparent !important; }
-/* 裁剪挂在 body 上，不是 #root。应用把菜单栏（「应用 / 编辑」那条）画在 #root
-   外面，裁 #root 的话它整条留在切口外，顶部就露出一大条亚克力，看起来像玻璃和
-   界面「一上一下」。body 是所有这些的父节点，裁它才能把菜单栏一起圈进切口。 */
-html[data-dsh-edge="1"] body {
+/* 裁剪必须挂在 html 上。
+   clip-path 的 inset 是相对**元素自己的参考盒**算的（默认 border-box），不是相对
+   视口。应用把菜单栏画在 #root 外面，裁 #root 时整个切口跟着 #root 的盒子一起
+   下移——顶部就露出一大条亚克力，看起来像玻璃和界面「一上一下」。body 也一样，
+   它的盒子可能被内容撑开。只有根元素 html 的 border-box 恒等于视口，裁它才是
+   真正的「离窗口边缘 10px」。 */
+html[data-dsh-edge="1"] {
   clip-path: inset(var(--dsh-edge) round var(--dsh-edge-radius));
 }
 /* 切口内侧压一条 1px 的壁纸色描边。clip-path 的抗锯齿像素会和窗口表面混色，
@@ -239,35 +242,14 @@ html[data-dsh-edge="1"] #root::after {
   z-index: 2147483000;
 }
 html[data-dsh-edge-debug="1"] #root::after { display: none; }
-/* 让窗口浮起来。阴影必须由**没被裁剪**的元素来画：body 现在被切口裁着，
-   挂在它上面阴影会一起被切掉，所以改挂 html::before——它是 body 的父层，
-   在切口之外，几何仍然用同一组变量对齐。
-
-   这里**只画外阴影，不画描边**。描边曾经也画在这个伪元素上，结果窗口边界有了
-   两条各自定位的边（伪元素 10px 一条、裁剪 10px 一条），抗锯齿一叠就出现一条缝。
-   边界只留一条：内容自己的切口。 */
-html[data-dsh-edge="1"]::before {
-  content: '';
-  position: fixed;
-  inset: var(--dsh-edge);
-  border-radius: var(--dsh-edge-radius);
-  box-shadow:
-    0 18px 48px rgba(0, 0, 0, 0.30),
-    0 2px 8px rgba(0, 0, 0, 0.16);
-  pointer-events: none;
-  z-index: 2147483000;
-}
-html[data-dsh-edge="1"][data-dsh-glass-scheme="dark"]::before {
-  box-shadow:
-    0 18px 48px rgba(0, 0, 0, 0.52),
-    0 2px 8px rgba(0, 0, 0, 0.34);
-}
+/* 外投影去掉了。裁剪挂在 html 上之后，页面上任何元素都在切口里面，投影也会被
+   一起裁掉——CSS 画不出「落在切口外面」的阴影。窗口自己的投影由 DWM 负责
+   （亚克力窗口默认有），所以这里只保留切口内侧那条 1px 高光。 */
 /* 留边调试。外圈（窗口最外 10px）品红、内容区绿，边界在哪里、有没有缝、
    四边是否一致，一眼就能看出来。投影一起关掉，免得暗边干扰判断。
    这个开关故意留在代码里：以后调边距、圆角、投影都能拿它量。 */
 html[data-dsh-edge-debug="1"] { background: #ff00ff !important; }
 html[data-dsh-edge-debug="1"] body { background: #00ff00 !important; }
-html[data-dsh-edge-debug="1"]::before { box-shadow: none; }
 html[data-dsh-edge-debug="1"] #root { background: transparent !important; }
 html[data-dsh-edge-debug="1"] #dsh-concierge-glass > div:first-child {
   background-image: linear-gradient(#00ff00, #00ff00) !important;

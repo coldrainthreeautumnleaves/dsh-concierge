@@ -1616,6 +1616,10 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       native: {
         tokens: {
           '--dsw-alias-bg-base': LOOK_CANVAS,
+          // 侧边栏和标题栏用的是这个 token（不是 bg-base）。只改 bg-base 的话，
+          // 侧边栏会留在官方的 #f9fafb，和聊天区的 #eef3fa 并排就是两种近白，
+          // 一眼能看出偏暖/偏冷。这里一起归到画布色。
+          '--dsw-specific-sidebar-fill': LOOK_CANVAS,
         },
       },
     }

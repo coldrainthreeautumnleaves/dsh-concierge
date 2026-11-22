@@ -821,7 +821,9 @@ async function readChangelog() {
     for (const line of text.split(/\r?\n/)) {
       const heading = /^##\s+(.+?)\s*$/.exec(line)
       if (heading) {
-        current = { version: heading[1].trim(), items: [] }
+        const title = heading[1].trim()
+        // 只有 x.y.z 形式的标题算版本；其余是主题分组标题，渲染成分隔线。
+        current = { version: title, items: [], group: !/^\d+\.\d+\.\d+$/.test(title) }
         entries.push(current)
         continue
       }

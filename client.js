@@ -1,4 +1,4 @@
-﻿/**
+/**
  * dsh-concierge — Client half.
  * A dashboard-style settings page plus a top notification strip.
  */
@@ -2449,6 +2449,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
 .uc-log-chevron { color: var(--dsw-alias-label-secondary); font-size: 10px; transition: transform .15s ease; }
 .uc-log-chevron[data-open="1"] { transform: rotate(90deg); }
 .uc-log-version { font-size: 12.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.uc-log-group { margin: 16px 0 4px; font-size: 11.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--dsw-alias-label-tertiary); }
 .uc-log-count { margin-left: auto; font-size: 11px; color: var(--dsw-alias-label-secondary); }
 .uc-log-items { margin: 0 0 10px; padding: 0 8px 0 26px; display: flex; flex-direction: column; gap: 5px; font-size: 11.5px; line-height: 1.6; color: var(--dsw-alias-label-secondary); }
 .uc-hintbox { margin: 2px 0 0; padding: 10px 12px; border: 1px solid var(--dsw-alias-border-l1); border-left: 3px solid var(--uc-accent); border-radius: 10px; background: var(--dsw-alias-bg-layer-1); }
@@ -4267,6 +4268,14 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
             !aboutData || !Array.isArray(aboutData.changelog) || aboutData.changelog.length === 0
               ? h('div', { className: 'uc-empty' }, t('changelogEmpty'))
               : aboutData.changelog.map((entry, index) => {
+                  if (entry.group) {
+                    return h('div', { className: 'uc-log-entry', key: `g${index}` },
+                      h('div', { className: 'uc-log-group' }, entry.version),
+                      entry.items.length
+                        ? h('ul', { className: 'uc-log-items' }, entry.items.map((item, itemIndex) => h('li', { key: itemIndex }, item)))
+                        : null,
+                    )
+                  }
                   const open = openVersions[entry.version] !== undefined ? openVersions[entry.version] : index === 0
                   return h('div', { className: 'uc-log-entry', key: entry.version },
                     h('button', {

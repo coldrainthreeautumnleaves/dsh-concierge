@@ -283,12 +283,17 @@ html[data-dsh-glass="1"]:not([data-dsh-glass-light="1"]) [data-conversation-regi
 html[data-dsh-glass="1"][data-dsh-glass-wall="video"] [data-conversation-region="chat"]::before {
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
+  /* 关掉就整层撤掉：留着它等于一直挂着一块 3.2M 像素的合成层，每帧照样参与混合 */
+  content: none;
+  will-change: auto;
 }
 /* 玻璃自动降级：帧率掉下来时由性能监控临时关掉会话区模糊（不动用户的「轻玻璃」
    设置），回升后自己还原。 */
 html[data-dsh-glass="1"][data-dsh-glass-auto="1"] [data-conversation-region="chat"]::before {
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
+  content: none;
+  will-change: auto;
 }
 /* 流式输出期间自动摘掉会话区那块大模糊。实测（2560×1600 / Iris Xe / 120Hz）：
    这块开着流式 90fps，摘掉 117fps——每来一段文字它都跟着重算，约 2.8ms/帧。
@@ -297,6 +302,8 @@ html[data-dsh-glass="1"][data-dsh-glass-auto="1"] [data-conversation-region="cha
 html[data-dsh-glass="1"][data-dsh-stream="1"] [data-conversation-region="chat"]::before {
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
+  content: none;
+  will-change: auto;
 }
 /* 输入框那一圈不再自己模糊：它里面还压着输入卡自己的 backdrop-filter（走
    --dsw-menu-backdrop-filter），两层叠在「每帧都在动的聊天记录」上——这是全
@@ -976,13 +983,12 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         '--dsw-alias-turn-trigger-bg': fill(0.34, 0.38),
         '--dsw-alias-turn-trigger-bg-hover': fill(0.46, 0.5),
         '--dsw-alias-interactive-bg-hover': fill(0.24, 0.28),
-        // 菜单 / 输入卡 / 弹层都吃这个 token。原来是 20px：这些面里输入卡是压在
-        // 聊天记录上的，背后每帧都在变，模糊半径越大每帧越贵；12px 在浅色壁纸上
-        // 已经够糊开色块。轻玻璃模式下整个关掉——那一档就是「不糊，只半透明」，
-        // 用来分开「模糊吃帧」和「半透明吃帧」这两件事。
-        '--dsw-menu-backdrop-filter': look.lightGlass
-          ? pair('none', 'none')
-          : pair('blur(12px) saturate(150%)', 'blur(12px) saturate(150%)'),
+        // 菜单 / 输入卡 / 弹层都吃这个 token。实测结论：这块模糊背后是「每帧都在动
+        // 的聊天记录」——输入卡就压在聊天区上面，滚动和流式时它每帧都要重新采样。
+        // 它是全界面唯一一处「背景会动」的模糊，也是外观一开就掉帧的主因，所以直接
+        // 关掉：卡片和菜单只留半透明底色，视觉上仍是玻璃，但不再每帧采样。
+        // 设置面板那种浮层走的是 [role="dialog"] 那条规则，背后是静止的，保留模糊。
+        '--dsw-menu-backdrop-filter': pair('none', 'none'),
         '--dsw-alias-border-l1': pair('rgba(255, 255, 255, 0.6)', 'rgba(255, 255, 255, 0.12)'),
         '--dsw-alias-border-l2': pair('rgba(120, 130, 150, 0.18)', 'rgba(255, 255, 255, 0.18)'),
         '--dsw-alias-label-primary': pair('#1a1d23', '#e8ebf1'),

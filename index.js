@@ -277,7 +277,7 @@ export function apply(ctx) {
     () => ctx.webServer.register({
       kind: 'exact',
       path: `${ROUTE}/update`,
-      handler: (request, response) => handleUpdate(ctx, state, request, response),
+      handler: withGuard((request, response) => handleUpdate(ctx, state, request, response)),
     }),
     'dsh-concierge: update route',
   )
@@ -286,7 +286,7 @@ export function apply(ctx) {
     () => ctx.webServer.register({
       kind: 'exact',
       path: `${ROUTE}/install`,
-      handler: (request, response) => handleInstall(ctx, state, request, response),
+      handler: withGuard((request, response) => handleInstall(ctx, state, request, response)),
     }),
     'dsh-concierge: install route',
   )
@@ -295,7 +295,7 @@ export function apply(ctx) {
     () => ctx.webServer.register({
       kind: 'exact',
       path: `${ROUTE}/restart`,
-      handler: (request, response) => handleRestart(ctx, request, response),
+      handler: withGuard((request, response) => handleRestart(ctx, request, response)),
     }),
     'dsh-concierge: restart route',
   )
@@ -304,7 +304,7 @@ export function apply(ctx) {
     () => ctx.webServer.register({
       kind: 'exact',
       path: `${ROUTE}/toggle`,
-      handler: (request, response) => handleToggle(ctx, request, response),
+      handler: withGuard((request, response) => handleToggle(ctx, request, response)),
     }),
     'dsh-concierge: toggle route',
   )
@@ -313,7 +313,7 @@ export function apply(ctx) {
     () => ctx.webServer.register({
       kind: 'exact',
       path: `${ROUTE}/open`,
-      handler: (request, response) => handleOpen(ctx, request, response),
+      handler: withGuard((request, response) => handleOpen(ctx, request, response)),
     }),
     'dsh-concierge: open route',
   )
@@ -322,7 +322,7 @@ export function apply(ctx) {
     () => ctx.webServer.register({
       kind: 'exact',
       path: `${ROUTE}/install-git`,
-      handler: (request, response) => handleInstallGit(ctx, state, request, response),
+      handler: withGuard((request, response) => handleInstallGit(ctx, state, request, response)),
     }),
     'dsh-concierge: install git route',
   )
@@ -331,7 +331,7 @@ export function apply(ctx) {
     () => ctx.webServer.register({
       kind: 'exact',
       path: `${ROUTE}/sources`,
-      handler: (request, response) => handleSources(state, request, response),
+      handler: withGuard((request, response) => handleSources(state, request, response)),
     }),
     'dsh-concierge: sources route',
   )
@@ -340,7 +340,7 @@ export function apply(ctx) {
     () => ctx.webServer.register({
       kind: 'exact',
       path: `${ROUTE}/guide`,
-      handler: (request, response) => handleGuide(request, response),
+      handler: withGuard((request, response) => handleGuide(request, response)),
     }),
     'dsh-concierge: guide route',
   )
@@ -349,7 +349,7 @@ export function apply(ctx) {
     () => ctx.webServer.register({
       kind: 'exact',
       path: `${ROUTE}/uninstall`,
-      handler: (request, response) => handleUninstall(ctx, state, request, response),
+      handler: withGuard((request, response) => handleUninstall(ctx, state, request, response)),
     }),
     'dsh-concierge: uninstall route',
   )
@@ -358,7 +358,7 @@ export function apply(ctx) {
     () => ctx.webServer.register({
       kind: 'exact',
       path: `${ROUTE}/install-npm`,
-      handler: (request, response) => handleInstallNpm(ctx, state, request, response),
+      handler: withGuard((request, response) => handleInstallNpm(ctx, state, request, response)),
     }),
     'dsh-concierge: install npm route',
   )
@@ -367,7 +367,7 @@ export function apply(ctx) {
     () => ctx.webServer.register({
       kind: 'exact',
       path: `${ROUTE}/settings`,
-      handler: (request, response) => handleSettings(request, response),
+      handler: withGuard((request, response) => handleSettings(request, response)),
     }),
     'dsh-concierge: settings route',
   )
@@ -376,7 +376,7 @@ export function apply(ctx) {
     () => ctx.webServer.register({
       kind: 'exact',
       path: `${ROUTE}/about`,
-      handler: (request, response) => handleAbout(request, response),
+      handler: withGuard((request, response) => handleAbout(request, response)),
     }),
     'dsh-concierge: about route',
   )
@@ -387,7 +387,7 @@ export function apply(ctx) {
     () => ctx.webServer.register({
       kind: 'exact',
       path: `${ROUTE}/wallpaper`,
-      handler: (request, response) => handleWallpaper(request, response),
+      handler: withGuard((request, response) => handleWallpaper(request, response)),
     }),
     'dsh-concierge: wallpaper route',
   )
@@ -396,7 +396,7 @@ export function apply(ctx) {
     () => ctx.webServer.register({
       kind: 'exact',
       path: `${ROUTE}/startup-boost`,
-      handler: (request, response) => handleStartupBoost(request, response),
+      handler: withGuard((request, response) => handleStartupBoost(request, response)),
     }),
     'dsh-concierge: startup boost route',
   )
@@ -405,7 +405,7 @@ export function apply(ctx) {
     () => ctx.webServer.register({
       kind: 'exact',
       path: `${ROUTE}/window-corners`,
-      handler: (request, response) => handleWindowCorners(request, response),
+      handler: withGuard((request, response) => handleWindowCorners(request, response)),
     }),
     'dsh-concierge: window corners route',
   )
@@ -414,7 +414,7 @@ export function apply(ctx) {
     () => ctx.webServer.register({
       kind: 'exact',
       path: `${ROUTE}/perf-report`,
-      handler: (request, response) => handlePerfReport(request, response),
+      handler: withGuard((request, response) => handlePerfReport(request, response)),
     }),
     'dsh-concierge: perf report route',
   )
@@ -1631,6 +1631,37 @@ function sendNodeJson(response, value, status) {
   response.setHeader('content-type', 'application/json; charset=utf-8')
   response.setHeader('cache-control', 'no-store')
   response.end(body)
+}
+
+// 这些路由挂在 DSH 自己的 web 服务器上（`responder.handler(req, res)` 只传两个
+// 参数，拿不到 resource 路由那种 peer/principal），所以浏览器里任何一个页面都能
+// 往 127.0.0.1:<端口>/dsh-concierge/* 发请求。应用自己的 IPC 通道校验了
+// dsh-app://app/ 来源，这一层没有，于是补一个调用方校验：
+//   - 同源（Origin 的 host 与请求的 Host 一致，浏览器里直接打开 DSH 网页就是这种）
+//   - 应用内页面（dsh-app://app）
+//   - 没有 Origin 的请求（同源 GET、curl、插件自己的 fetch）
+// 跨站请求一律 403。`sec-fetch-site: cross-site` 是浏览器自己标的，先看它。
+function callerAllowed(request) {
+  const headers = request && request.headers ? request.headers : {}
+  if (String(headers['sec-fetch-site'] || '') === 'cross-site') return false
+  const origin = headers.origin
+  if (!origin || origin === 'null') return true
+  if (origin.startsWith('dsh-app://')) return true
+  try {
+    return new URL(origin).host === String(headers.host || '')
+  } catch {
+    return false
+  }
+}
+
+function withGuard(handler) {
+  return (request, response) => {
+    if (!callerAllowed(request)) {
+      sendNodeJson(response, { ok: false, error: 'forbidden' }, 403)
+      return undefined
+    }
+    return handler(request, response)
+  }
 }
 
 async function handle(ctx, state, request, peer) {

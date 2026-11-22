@@ -2375,6 +2375,8 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
   --uc-shadow: 0 1px 2px rgba(0, 0, 0, .07);
   --uc-surface-1: color-mix(in srgb, var(--dsw-alias-bg-layer-1) 97%, var(--uc-accent));
   --uc-surface-2: color-mix(in srgb, var(--dsw-alias-bg-layer-2) 97%, var(--uc-accent));
+  --uc-hover: color-mix(in srgb, var(--uc-surface-1) 95%, var(--dsw-alias-label-on-color));
+  --uc-press: color-mix(in srgb, var(--uc-surface-2) 92%, var(--dsw-alias-label-primary));
   --uc-pad: 16px;
   display: flex; flex-direction: column; gap: 16px; padding: 8px 0 32px;
   max-width: 720px; color: var(--dsw-alias-label-primary);
@@ -2417,10 +2419,11 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
 .uc-chip-err { color: var(--dsw-alias-state-error-primary); }
 
 .uc-btn { appearance: none; border: none; background: var(--uc-surface-2); color: var(--dsw-alias-label-primary); border-radius: var(--uc-r-control); padding: 8px 12px; font-size: var(--uc-fs-body); line-height: 1.25; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; transition: background .15s ease, color .15s ease; }
-.uc-btn:hover:not(:disabled) { background: var(--uc-surface-1); }
+.uc-btn { transition: background-color .12s ease, color .12s ease; }
+.uc-btn:hover:not(:disabled) { background: var(--uc-press); }
 .uc-btn:disabled { opacity: .55; cursor: default; }
 .uc-btn-accent { background: var(--uc-accent); color: var(--dsw-alias-label-on-color); font-weight: 600; }
-.uc-btn-accent:hover:not(:disabled) { background: var(--uc-accent); filter: brightness(1.05); }
+.uc-btn-accent:hover:not(:disabled) { background: color-mix(in srgb, var(--uc-accent) 92%, var(--dsw-alias-label-primary)); filter: none; }
 .uc-btn-ghost { background: transparent; color: var(--dsw-alias-label-secondary); padding: 8px; }
 .uc-btn-ghost:hover:not(:disabled) { color: var(--dsw-alias-state-error-primary); background: transparent; }
 .uc-btn-danger { color: var(--dsw-alias-state-error-primary) !important; background: transparent !important; }
@@ -2453,12 +2456,14 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
 .uc-versions-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: var(--uc-fs-small); color: var(--dsw-alias-label-secondary); margin-bottom: 8px; }
 .uc-versions-list { display: flex; flex-direction: column; gap: 4px; max-height: 192px; overflow: auto; }
 .uc-version { display: flex; align-items: center; gap: 8px; padding: 4px 8px; border-radius: var(--uc-r-control); font-size: var(--uc-fs-small); }
-.uc-version:hover { background: var(--uc-surface-1); }
+.uc-version { transition: background-color .12s ease; }
+.uc-version:hover { background: var(--uc-hover); }
 .uc-version-num { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: var(--uc-fs-small); min-width: 88px; }
 .uc-version-spacer { flex: 1; }
 
 .uc-row { display: flex; align-items: center; gap: 12px; padding: 12px 16px; }
-.uc-row:hover { background: var(--uc-surface-2); }
+.uc-row { transition: background-color .12s ease; }
+.uc-row:hover { background: var(--uc-hover); }
 .uc-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--dsw-alias-state-idle-primary); }
 .uc-dot-warn { background: var(--dsw-alias-state-warn-primary); }
 .uc-dot-err { background: var(--dsw-alias-state-error-primary); }
@@ -2509,7 +2514,8 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
 
 .uc-sources { display: flex; flex-direction: column; padding: 8px 0; }
 .uc-source { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 16px; }
-.uc-source:hover { background: var(--uc-surface-2); }
+.uc-source { transition: background-color .12s ease; }
+.uc-source:hover { background: var(--uc-hover); }
 .uc-source-main { min-width: 0; }
 .uc-source-repo { font-size: var(--uc-fs-body); color: var(--dsw-alias-brand-primary); text-decoration: none; }
 .uc-source-repo:hover { text-decoration: underline; }
@@ -2530,7 +2536,9 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
 .uc-log { display: flex; flex-direction: column; padding: 8px 16px 16px; }
 .uc-log-entry { padding: 8px 0; }
 .uc-log-head { appearance: none; width: 100%; border: none; background: transparent; display: flex; align-items: center; gap: 8px; padding: 8px 0; border-radius: var(--uc-r-control); cursor: pointer; color: var(--dsw-alias-label-primary); text-align: left; font: inherit; }
-.uc-log-head:hover { color: var(--dsw-alias-brand-primary); }
+.uc-log-head { transition: background-color .12s ease, color .12s ease; }
+.uc-log-head:hover { background: var(--uc-hover); color: var(--dsw-alias-label-primary); }
+.uc-log-head:hover .uc-log-chevron { color: var(--dsw-alias-label-primary); }
 .uc-log-chevron { color: var(--dsw-alias-label-secondary); font-size: var(--uc-fs-small); transition: transform .15s ease; }
 .uc-log-chevron[data-open="1"] { transform: rotate(90deg); }
 .uc-log-version { font-size: var(--uc-fs-body); font-weight: 600; font-variant-numeric: tabular-nums; }
@@ -2586,7 +2594,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
 .uc-toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .uc-chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .uc-chip-toggle { appearance: none; border: none; background: var(--uc-surface-2); color: var(--dsw-alias-label-secondary); border-radius: 999px; padding: 8px 12px; font-size: var(--uc-fs-small); line-height: 1.25; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: color .15s ease, background .15s ease; }
-.uc-chip-toggle:hover { color: var(--dsw-alias-label-primary); }
+.uc-chip-toggle:hover { color: var(--dsw-alias-label-primary); background: var(--uc-hover); }
 .uc-chip-toggle-on { background: var(--uc-surface-1); color: var(--dsw-alias-brand-primary); box-shadow: var(--uc-shadow); }
 .uc-chip-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; opacity: .35; }
 .uc-chip-toggle-on .uc-chip-dot { opacity: 1; }
@@ -3691,20 +3699,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
             )
           : null,
 
-        tab === 'perf'
-          ? h('section', { className: 'uc-card' },
-              h('div', { className: 'uc-card-head' },
-                h('div', { className: 'uc-card-title' }, t('safetyTitle')),
-              ),
-              h('div', { className: 'uc-perf' },
-                settingRow(t('safeModeAuto'), t('safeModeAutoHint'), switchControl(
-                  Boolean(tokenState && tokenState.safeModeAuto),
-                  toggleSafeModeAuto,
-                )),
-              ),
-            )
-          : null,
-
         tab === 'look'
           ? h('section', { className: 'uc-card' },
               h('div', { className: 'uc-card-head' },
@@ -4185,28 +4179,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
 
         tab === 'perf' ? h('section', { className: 'uc-card' },
           h('div', { className: 'uc-card-head' },
-            h('div', { className: 'uc-card-title' }, t('boostTitle')),
-          ),
-          h('div', { className: 'uc-perf' },
-            settingRow(t('boostSwitch'), t('boostHint'), switchControl(
-              Boolean(boostState && boostState.enabled),
-              toggleBoost,
-            )),
-            h('p', { className: 'uc-perf-hint' },
-              boostBusy
-                ? t('boostWaiting')
-                : boostTimeout
-                  ? t('boostTimeout')
-                  : !boostState
-                    ? t('boostUnknown')
-                    : boostState.enabled
-                      ? t('boostOn', { time: boostState.at ? new Date(boostState.at).toLocaleString() : '' })
-                      : t('boostOff')),
-          ),
-        ) : null,
-
-        tab === 'perf' ? h('section', { className: 'uc-card' },
-          h('div', { className: 'uc-card-head' },
             h('div', { className: 'uc-card-title' }, t('perfTitle')),
           ),
           h('div', { className: 'uc-perf' },
@@ -4302,6 +4274,42 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
             ),
           ),
         ) : null,
+        tab === 'perf' ? h('section', { className: 'uc-card' },
+          h('div', { className: 'uc-card-head' },
+            h('div', { className: 'uc-card-title' }, t('boostTitle')),
+          ),
+          h('div', { className: 'uc-perf' },
+            settingRow(t('boostSwitch'), t('boostHint'), switchControl(
+              Boolean(boostState && boostState.enabled),
+              toggleBoost,
+            )),
+            h('p', { className: 'uc-perf-hint' },
+              boostBusy
+                ? t('boostWaiting')
+                : boostTimeout
+                  ? t('boostTimeout')
+                  : !boostState
+                    ? t('boostUnknown')
+                    : boostState.enabled
+                      ? t('boostOn', { time: boostState.at ? new Date(boostState.at).toLocaleString() : '' })
+                      : t('boostOff')),
+          ),
+        ) : null,
+
+        tab === 'perf'
+          ? h('section', { className: 'uc-card' },
+              h('div', { className: 'uc-card-head' },
+                h('div', { className: 'uc-card-title' }, t('safetyTitle')),
+              ),
+              h('div', { className: 'uc-perf' },
+                settingRow(t('safeModeAuto'), t('safeModeAutoHint'), switchControl(
+                  Boolean(tokenState && tokenState.safeModeAuto),
+                  toggleSafeModeAuto,
+                )),
+              ),
+            )
+          : null,
+
 
         tab === 'look' ? h('section', { className: 'uc-card' },
           h('div', { className: 'uc-card-head' },
@@ -4758,7 +4766,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
 .uc-help-menu { position: fixed; padding: 6px; border: 1px solid var(--dsw-alias-border-l2); border-radius: 12px; background: var(--dsw-alias-bg-overlay); box-shadow: 0 16px 40px rgba(0,0,0,.28), 0 2px 6px rgba(0,0,0,.1); display: flex; flex-direction: column; gap: 2px; z-index: 1000; animation: uc-pop .16s ease-out; }
 @keyframes uc-pop { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 .uc-help-item { appearance: none; border: none; background: transparent; color: var(--dsw-alias-label-primary); text-align: left; padding: 8px 10px; border-radius: 8px; font-size: 12px; cursor: pointer; display: flex; align-items: flex-start; gap: 10px; }
-.uc-help-item:hover:not(:disabled) { background: var(--uc-surface-2); }
+.uc-help-item:hover:not(:disabled) { background: var(--uc-hover); }
 .uc-help-item:disabled { opacity: .5; cursor: default; }
 .uc-help-icon { flex: none; width: 16px; height: 16px; margin-top: 1px; color: var(--dsw-alias-label-secondary); }
 .uc-help-item:hover:not(:disabled) .uc-help-icon { color: var(--dsw-alias-label-primary); }

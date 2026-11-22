@@ -2049,7 +2049,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       changelogTitle: '更新日志',
       changelogHint: '点版本号展开或收起',
       changelogCount: '{n} 条',
-      changelogFullLink: '查看完整更新日志',
       changelogHint: '最近 3 版 · 完整日志见仓库',
       logAdded: '新增',
       logChanged: '变更',
@@ -2320,7 +2319,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       changelogTitle: 'Changelog',
       changelogHint: 'Click a version to expand or collapse',
       changelogCount: '{n} changes',
-      changelogFullLink: 'View the full changelog',
       changelogHint: 'Last 3 releases · full log in the repository',
       logAdded: 'Added',
       logChanged: 'Changed',
@@ -2510,7 +2508,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
 .uc-log-group { margin: 16px 0 4px; font-size: 11.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--dsw-alias-label-tertiary); }
 .uc-log-more { margin: 6px 0 2px 18px; padding: 2px 0; border: 0; background: none; color: var(--dsw-alias-label-secondary); font: inherit; font-size: 12px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
 .uc-design { padding: 4px 18px 10px; }
-.uc-log-date { margin-left: 8px; font-size: 11.5px; color: var(--dsw-alias-label-tertiary); font-variant-numeric: tabular-nums; }
+.uc-log-date { margin-left: 8px; font-size: 11.5px; color: var(--dsw-alias-label-tertiary); font-variant-numeric: tabular-nums; }
 .uc-log-summary { padding: 8px 0 8px 4px; border-bottom: 1px solid var(--dsw-alias-border-l2); }
 .uc-log-summary:last-of-type { border-bottom: 0; }
 .uc-log-summary-head { display: flex; align-items: baseline; gap: 8px; }
@@ -2869,6 +2867,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       const [aboutData, setAboutData] = React.useState(null)
       const [openVersions, setOpenVersions] = React.useState({})
       const [openGuide, setOpenGuide] = React.useState(false)
+      const [openLogAll, setOpenLogAll] = React.useState(false)
       const [rollbackName, setRollbackName] = React.useState(null)
       const [rollbackData, setRollbackData] = React.useState(null)
       const [rollbackLoading, setRollbackLoading] = React.useState(false)
@@ -4398,7 +4397,8 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
             !aboutData || !Array.isArray(aboutData.changelog) || aboutData.changelog.length === 0
               ? h('div', { className: 'uc-empty' }, t('changelogEmpty'))
               : (() => {
-                  // 设置页只放最近 3 条：版本 + 日期 + 一句头条，不展开细节。
+                  // 默认只显示最近 3 条（版本 + 日期 + 一句头条）；「展开全部」就在设置页里铺开。
+                  const SECTION_KEYS = { Added: 'logAdded', Changed: 'logChanged', Fixed: 'logFixed', Removed: 'logRemoved' }
                   const normalized = aboutData.changelog
                     .map((entry) => {
                       let version = String(entry.version || '')
@@ -4408,27 +4408,48 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
                         version = m[1].trim()
                         if (!date && m[2]) date = m[2].trim()
                       }
-                      return { version, date, headline: entry.headline || "" }
+                      const sections = Array.isArray(entry.sections) && entry.sections.length
+                        ? entry.sections
+                        : Array.isArray(entry.items) && entry.items.length
+                          ? [{ title: '', items: entry.items }]
+                          : []
+                      return { version, date, headline: entry.headline || "", sections }
                     })
                     .filter((entry) => entry.version && entry.version !== "Unreleased")
-                    .slice(0, 3)
                   if (normalized.length === 0) return h('div', { className: 'uc-empty' }, t('changelogEmpty'))
-                  return normalized.map((entry) =>
-                    h('div', { className: 'uc-log-summary', key: entry.version },
-                      h('div', { className: 'uc-log-summary-head' },
-                        h('span', { className: 'uc-log-version' }, `v${entry.version}`),
-                        entry.date ? h('span', { className: 'uc-log-date' }, entry.date) : null,
+                  const visible = openLogAll ? normalized : normalized.slice(0, 3)
+                  return [
+                    ...visible.map((entry) =>
+                      h('div', { className: 'uc-log-summary', key: entry.version },
+                        h('div', { className: 'uc-log-summary-head' },
+                          h('span', { className: 'uc-log-version' }, `v${entry.version}`),
+                          entry.date ? h('span', { className: 'uc-log-date' }, entry.date) : null,
+                        ),
+                        entry.headline ? h('div', { className: 'uc-log-headline' }, entry.headline) : null,
+                        openLogAll
+                          ? h('div', { className: 'uc-log-sections' },
+                              entry.sections.map((section, sectionIndex) =>
+                                h('div', { key: sectionIndex, className: 'uc-log-section' },
+                                  section.title
+                                    ? h('div', { className: 'uc-log-group' }, SECTION_KEYS[section.title] ? t(SECTION_KEYS[section.title]) : section.title)
+                                    : null,
+                                  h('ul', { className: 'uc-log-items' }, section.items.map((item, itemIndex) => h('li', { key: itemIndex }, item))),
+                                ),
+                              ),
+                            )
+                          : null,
                       ),
-                      entry.headline ? h('div', { className: 'uc-log-headline' }, entry.headline) : null,
                     ),
-                  )
+                    normalized.length > 3
+                      ? h('button', {
+                          type: 'button',
+                          className: 'uc-log-more',
+                          onClick: () => setOpenLogAll(!openLogAll),
+                        },
+                          openLogAll ? t('changelogCollapse') : t('changelogExpandAll', { n: normalized.length }))
+                      : null,
+                  ]
                 })(),
-            h('a', {
-              className: 'uc-log-full',
-              href: 'https://github.com/coldrainthreeautumnleaves/dsh-concierge/blob/main/CHANGELOG.md',
-              target: '_blank',
-              rel: 'noreferrer',
-            }, t('changelogFullLink')),
           ),
         ) : null,
         h('footer', { className: 'uc-foot' },

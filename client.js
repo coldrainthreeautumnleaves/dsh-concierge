@@ -980,7 +980,23 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         }
         return { x, y, hit: chain[0], chain }
       })
-      resizeSamples.push({ at: Date.now(), tag, vw, vh, docH, hits })
+      // 只在尺寸真的变了的时候记：数组只留 40 条，拖完之后那一段会把它冲掉，
+      // 所以必须留下「中途」的帧。
+      const key = `${vw}x${vh}/${docH}`
+      if (resizeSamples.length && resizeSamples[resizeSamples.length - 1].key === key) return
+      const frame = document.querySelector('#root > div > [class*="_frame"]')
+      const frameRect = frame ? frame.getBoundingClientRect() : null
+      resizeSamples.push({
+        at: Date.now(),
+        tag,
+        key,
+        vw,
+        vh,
+        docH,
+        frameH: frameRect ? Math.round(frameRect.height) : null,
+        frameBottom: frameRect ? Math.round(frameRect.bottom) : null,
+        hits,
+      })
       if (resizeSamples.length > 40) resizeSamples.shift()
     }
 

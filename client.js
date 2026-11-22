@@ -2800,10 +2800,11 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
   display: flex; flex-direction: column; gap: 16px;
   margin: 12px; padding: 16px 16px 24px;
   border-radius: var(--uc-r-card);
-  /* 玻璃下这块面板要比卡片**更透**。原来这里是 0.88，而卡片用的是 layer-1
-     （约 0.72）——面板比卡片还实，卡片压在面板上就成了「比底更暗的一块」，
-     层级是反的。改成 0.55，和应用的 bg-base（0.58）同一档：面板让壁纸透出来，
-     卡片再亮一档浮在上面。原生皮肤有自己的覆盖，不受影响。 */
+  /* 玻璃下这块面板要比卡片**更透、也更沉**。原来这里是 0.88，而卡片用的是
+     layer-1（约 0.72）——面板比卡片还实，卡片压上去就成了「比底更暗的一块」。
+     但只把 alpha 降到 0.55 还不够：对话框本身是白的，白叠白之后面板和卡片实测
+     只差 1 个色阶（#F6F9FB vs #F7F9FB），层级还是看不出来。所以这里改成一层
+     很淡的中性压暗（浅色 6% 黑 / 深色 5% 白），面板退到 #F1F2F4，卡片再亮一档。 */
   background: rgba(var(--dsh-tint-rgb, 248, 250, 252), 0.55);
   box-shadow: inset 0 1px 0 var(--uc-highlight);
   color: var(--dsw-alias-label-primary);
@@ -2820,6 +2821,16 @@ html:not([data-dsh-glass="1"]) .uc-root {
   --uc-surface-1: var(--dsw-alias-bg-layer-1);
   --uc-surface-2: var(--dsw-alias-bg-layer-2);
   background: var(--dsw-alias-bg-layer-2);
+}
+/* 玻璃：面板压暗一点、卡片提亮一点，层级才看得出来。
+   只靠 alpha 不行——对话框本身是白的，白叠白之后实测面板 #F6F9FB、卡片 #F7F9FB，
+   只差 1 个色阶。压一层 6% 的中性色，面板落到 #F1F2F4，卡片（0.86 白）重新浮起来。 */
+html[data-dsh-glass="1"] .uc-root {
+  background: rgba(15, 23, 42, 0.06);
+  --uc-surface-1: color-mix(in srgb, rgba(var(--dsh-tint-rgb), 0.86) 97%, var(--uc-accent));
+}
+html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-root {
+  background: rgba(255, 255, 255, 0.05);
 }
 .uc-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; min-width: 0; }
 .uc-kicker { font-size: var(--uc-fs-small); letter-spacing: .08em; text-transform: uppercase; color: var(--dsw-alias-label-secondary); margin-bottom: 8px; }

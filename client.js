@@ -600,6 +600,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
     let probeBlurList = null
     let probeComposerTree = null
     let probeShell = null
+    let probeColumns = null
     let probeWhiteBoxes = null
     let probeBand = null
 
@@ -840,6 +841,36 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       return rows
     }
 
+    // 侧边栏 vs 内容列：各自的计算底色 + 往上五层祖先，用来定位「哪一层不一样」。
+    function collectColumns() {
+      if (typeof document === 'undefined') return []
+      const out = []
+      const targets = [
+        ['sidebar', '[class*="_sidebarCol"]'],
+        ['center', '[class*="_centerCol"]'],
+      ]
+      for (const [name, selector] of targets) {
+        let el = document.querySelector(selector)
+        let depth = 0
+        while (el && depth < 5) {
+          const style = getComputedStyle(el)
+          out.push({
+            name,
+            d: depth,
+            tag: el.tagName.toLowerCase(),
+            cls: String(el.className || '').slice(0, 60),
+            bg: style.backgroundColor,
+            opacity: style.opacity,
+            filter: style.filter === 'none' ? '' : style.filter.slice(0, 40),
+            blend: style.mixBlendMode === 'normal' ? '' : style.mixBlendMode,
+          })
+          el = el.parentElement
+          depth += 1
+        }
+      }
+      return out
+    }
+
     function probeLongFrame(elapsed) {
       if (!(elapsed >= 40)) return
       probeLongFrames.push({ at: Date.now(), ms: Math.round(elapsed) })
@@ -867,6 +898,8 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       payload.composer = probeComposerTree
       if (probeShell === null) probeShell = collectShell()
       payload.shell = probeShell
+      if (probeColumns === null) probeColumns = collectColumns()
+      payload.columns = probeColumns
       if (probeWhiteBoxes === null) probeWhiteBoxes = collectWhiteBoxes()
       payload.whites = probeWhiteBoxes
       if (probeBand === null) probeBand = collectBand()

@@ -2047,9 +2047,8 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       aboutIntro: '维护中心（dsh-concierge）是 DeepSeek Harness 的插件：检查应用与插件更新、管理已装插件、盯聊天性能。',
       aboutRepo: 'GitHub 仓库',
       changelogTitle: '更新日志',
-      changelogHint: '点版本号展开或收起',
       changelogCount: '{n} 条',
-      changelogHint: '最近 3 版 · 完整日志见仓库',
+      changelogHint: '最近 3 版 · 可展开全部',
       logAdded: '新增',
       logChanged: '变更',
       logFixed: '修复',
@@ -2072,8 +2071,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       aboutDesignPerf4: '启动加速（Defender 排除项）、聊天性能开关、刷新率',
       aboutDesignAboutTitle: '关于',
       aboutDesignAbout1: '版本信息、仓库链接、更新日志',
-      aboutDesignTitle: '功能介绍与结论',
-      aboutDesignHint: '点开查看',
       changelogCollapse: '收起',
       changelogExpandAll: '展开全部 {n} 版',
       changelogEmpty: '还没有更新日志',
@@ -2317,9 +2314,8 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       aboutIntro: 'Maintenance center (dsh-concierge) is a DeepSeek Harness plugin: it checks app and plugin updates, manages installed plugins and watches chat performance.',
       aboutRepo: 'GitHub repository',
       changelogTitle: 'Changelog',
-      changelogHint: 'Click a version to expand or collapse',
       changelogCount: '{n} changes',
-      changelogHint: 'Last 3 releases · full log in the repository',
+      changelogHint: 'Last 3 releases · expand for all',
       logAdded: 'Added',
       logChanged: 'Changed',
       logFixed: 'Fixed',
@@ -2342,8 +2338,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       aboutDesignPerf4: 'Startup boost (Defender exclusions), chat switches, refresh rate',
       aboutDesignAboutTitle: 'About',
       aboutDesignAbout1: 'Version, repository link, changelog',
-      aboutDesignTitle: 'About the design',
-      aboutDesignHint: 'Click to expand',
       changelogCollapse: 'Collapse',
       changelogExpandAll: 'Show all {n} versions',
       changelogEmpty: 'No changelog yet',
@@ -2515,7 +2509,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
 .uc-log-headline { margin-top: 3px; font-size: 12.5px; line-height: 1.55; color: var(--dsw-alias-label-secondary); }
 .uc-log-sections { padding: 2px 0 4px 18px; }
 .uc-log-section + .uc-log-section { margin-top: 8px; }
-.uc-log-full { display: inline-block; margin: 10px 0 2px 18px; font-size: 12px; color: var(--dsw-alias-label-secondary); text-decoration: underline; text-underline-offset: 3px; }
 .uc-design-group { margin-top: 10px; }
 .uc-log-count { margin-left: auto; font-size: 11px; color: var(--dsw-alias-label-secondary); }
 .uc-log-items { margin: 0 0 10px; padding: 0 8px 0 26px; display: flex; flex-direction: column; gap: 5px; font-size: 11.5px; line-height: 1.6; color: var(--dsw-alias-label-secondary); }

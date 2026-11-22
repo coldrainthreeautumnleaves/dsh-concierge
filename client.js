@@ -2424,11 +2424,11 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
   color: var(--dsw-alias-label-primary);
   font-size: var(--uc-fs-body); line-height: 1.5;
 }
-.uc-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.uc-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; min-width: 0; }
 .uc-kicker { font-size: var(--uc-fs-small); letter-spacing: .08em; text-transform: uppercase; color: var(--dsw-alias-label-secondary); margin-bottom: 8px; }
-.uc-title { margin: 0 0 4px; font-size: var(--uc-fs-page); font-weight: 650; letter-spacing: -.01em; }
+.uc-title { margin: 0 0 4px; font-size: var(--uc-fs-page); font-weight: 650; letter-spacing: -.01em; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .uc-sub { margin: 0; color: var(--dsw-alias-label-secondary); font-size: var(--uc-fs-body); }
-.uc-head-actions { display: flex; align-items: center; gap: 8px; }
+.uc-head-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; margin-left: auto; }
 
 .uc-switch { display: inline-flex; align-items: center; gap: 8px; font-size: var(--uc-fs-small); color: var(--dsw-alias-label-secondary); cursor: pointer; user-select: none; }
 .uc-switch input { position: absolute; opacity: 0; width: 0; height: 0; }
@@ -2571,7 +2571,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
 .uc-progress::after { content: ''; position: absolute; top: 0; bottom: 0; width: 35%; border-radius: 999px; background: var(--uc-accent); animation: uc-progress-slide 1.1s ease-in-out infinite; }
 @keyframes uc-progress-slide { 0% { left: -35%; } 100% { left: 100%; } }
 
-.uc-tabs { display: inline-flex; gap: 4px; padding: 4px; border-radius: 999px; background: var(--uc-surface-2); width: fit-content; }
+.uc-tabs { display: inline-flex; gap: 4px; padding: 4px; border-radius: 999px; background: var(--uc-surface-2); width: fit-content; max-width: 100%; overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; }
 .uc-tab { appearance: none; border: none; background: transparent; padding: 8px 16px; border-radius: 999px; font-size: var(--uc-fs-body); color: var(--dsw-alias-label-secondary); cursor: pointer; transition: color .15s ease, background .15s ease; }
 .uc-tab:hover { color: var(--dsw-alias-label-primary); }
 .uc-tab[data-active="true"] { background: var(--uc-surface-1); color: var(--uc-accent); font-weight: 600; box-shadow: var(--uc-shadow); }

@@ -6,6 +6,14 @@
 
 ## [Unreleased]
 
+## [0.10.5] - 2026-11-22
+
+> 玻璃皮肤下输入卡和会话区同色
+
+### Changed
+
+- 外观: 底栏作用域里把 `--dsw-specific-menu` 设为透明、`--dsw-elevation-panel` 设为 `none`。输入卡的底色不是 `input-major`，而是卡片自己的 `::before` 用 menu token 画的（和菜单共用同一个值），直接改 token 会把菜单一起变透；限定在 `_bottomRow` 里改，卡片就和会话区同色了，菜单不受影响
+
 ## [0.10.4] - 2026-11-22
 
 > 玻璃皮肤下输入卡和状态栏终于同色

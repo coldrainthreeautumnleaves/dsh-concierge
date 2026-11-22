@@ -381,9 +381,16 @@ html[data-dsh-glass="1"] [data-windows-titlebar] [class*="_frame"] {
 }
 /* 底部那一行（grid-column: 1/-1，横贯整窗）自带 --dsw-alias-bg-base 的浅底。
    窗口缩放时这一行的行高会滞后，它被拉高就铺出一条横贯整窗的浅色带——
-   也就是录屏里那条「露底」。让它透明之后，任何滞后露出来的都是壁纸，不是浅色块。 */
+   也就是录屏里那条「露底」。让它透明之后，任何滞后露出来的都是壁纸，不是浅色块。
+
+   输入卡本身不是用 input-major 画的：应用给卡片挂了一个 ::before，底色取
+   --dsw-specific-menu（和菜单共用同一个 token）。直接改 token 会把菜单一起变透，
+   所以在底栏这个作用域里把它改成透明——卡片就和会话区同色了，菜单不受影响。
+   卡片的投影一起收掉，否则底没了、阴影还在，看着像一块悬空的边。 */
 html[data-dsh-glass="1"] [class*="_bottomRow"] {
   background: transparent !important;
+  --dsw-specific-menu: rgba(0, 0, 0, 0);
+  --dsw-elevation-panel: none;
 }
 html[data-dsh-glass="1"] [class*="_centerCol"] {
   border-radius: 0 !important;

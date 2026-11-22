@@ -401,6 +401,18 @@ html[data-dsh-glass="1"] [class*="_centerCol"]:has([data-conversation-region="ch
 html[data-dsh-glass="1"] [class*="_centerCol"]:not(:has([data-conversation-region="chat"])) {
   background: var(--dsw-alias-bg-base) !important;
 }
+/* 设置页的页头（_pageHead）挂着一个「渐隐」伪元素，用来在滚动时把标题压下去。
+   它和内容区是两个材质，交界处就是那条硬台阶——探针抓不到伪元素，但元素链在
+   90px 和 230px 处的底色完全一样，只剩这一种可能。玻璃下把它清掉。 */
+html[data-dsh-glass="1"] [class*="_pageHead"]::before,
+html[data-dsh-glass="1"] [class*="_pageHead"]::after,
+html[data-dsh-glass="1"] [class*="_page"]::before,
+html[data-dsh-glass="1"] [class*="_page"]::after,
+html[data-dsh-glass="1"] [class*="_pageBody"]::before,
+html[data-dsh-glass="1"] [class*="_pageBody"]::after {
+  background: none !important;
+  background-image: none !important;
+}
 /* 应用在中心列左边画了 .5px 的 border-left，在标签行下面画了 border-bottom——
    底色清零之后这两条线就是仅剩的分界，一并去掉。 */
 html[data-dsh-glass="1"] [class*="_centerCol"] {
@@ -1153,7 +1165,16 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         const x = Math.round(window.innerWidth * 0.5)
         const chain = document.elementsFromPoint(x, y).slice(0, 6).map((el) => {
           const cs = getComputedStyle(el)
-          return `${el.tagName.toLowerCase()}.${String(el.className || '').split(' ')[0].slice(0, 40)}|bg=${cs.backgroundColor}|img=${cs.backgroundImage === 'none' ? '-' : 'yes'}`
+          const pseudo = ['::before', '::after'].map((name) => {
+            const ps = getComputedStyle(el, name)
+            const bg = ps.backgroundColor
+            const img = ps.backgroundImage
+            const hasBg = bg && bg !== 'rgba(0, 0, 0, 0)'
+            const hasImg = img && img !== 'none'
+            if (!hasBg && !hasImg) return ''
+            return `${name} bg=${bg} img=${hasImg ? img.slice(0, 50) : '-'}`
+          }).filter(Boolean).join(' ')
+          return `${el.tagName.toLowerCase()}.${String(el.className || '').split(' ')[0].slice(0, 40)}|bg=${cs.backgroundColor}|img=${cs.backgroundImage === 'none' ? '-' : 'yes'}${pseudo ? '|' + pseudo : ''}`
         })
         return { x, y, chain }
       })

@@ -1952,12 +1952,12 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       lookSquareWindow: '窗口直角',
       lookSquareWindowHint: '去掉窗口外框的系统圆角（DWM 画的），只影响这个窗口',
       lookNative: '原生材质',
-      lookNativeHint: '窗口透明、由 Windows 画 Acrylic/Mica；需要先给 app.asar 打补丁，否则窗口会变全透',
+      lookNativeHint: '窗口透明，由 Windows 画 Acrylic；需先给 app.asar 打补丁',
       lookWall: '背景',
       lookWallPreset: '预设渐变',
       lookWallImage: '图片',
       lookWallVideo: '视频',
-      lookWallVideoHint: '视频每帧都在动，会话区的模糊会逐帧重算，所以视频模式下自动关掉它',
+      lookWallVideoHint: '视频模式下自动关掉会话区模糊',
       lookWallPlaceholder: '图片或视频的完整路径 / URL（支持 Wallpaper Engine 导出的 mp4、webm）',
       lookWallApply: '应用背景',
       lookBrand: '品牌色',
@@ -1966,7 +1966,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       lookBrandViolet: '紫',
       lookBrandGreen: '绿',
       lookBrandAmber: '橙',
-      lookHint: '默认关闭。透明度、颗粒、轻玻璃只在玻璃皮肤下出现；本地背景走插件自己的路由，不读 file://。',
+      lookHint: '默认关闭；这些设置只在玻璃皮肤下生效',
       foldersTitle: '目录与配置',
       safeModeAuto: '自动安全模式',
       safeModeAutoHint: '启动失败时自动进安全模式',
@@ -2016,7 +2016,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       tokenSave: '保存',
       tokenClear: '清除',
       tokenSaved: 'Token 已保存',
-      tokenHint: '不配每小时 60 次，配了 5000 次；只读公开仓库就够。',
+      tokenHint: '不配 60 次/时，配了 5000 次/时',
       tokenDocWhy: '为什么要配：GitHub 对匿名请求按 IP 限流，每小时 60 次；带 token 是每小时 5000 次（按账号）。几条来源就能把匿名额度用完。',
       tokenDocHow: '怎么申请：打开下面的页面，',
       tokenLinkFine: '细粒度 token（推荐）',
@@ -2024,7 +2024,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       tokenDocHow2: 'Repository access 选 Public repositories (read-only)，权限一个都不勾（经典 token 的 Scopes 也不勾）。生成后只显示一次，当场复制。',
       tokenDocWhere: '插件从哪里读：环境变量 GITHUB_TOKEN → GH_TOKEN → 本机 ~/.dsh/update-center/settings.json，环境变量优先。保存后立即生效。',
       tokenFromEnv: '已从环境变量读取 GITHUB_TOKEN，这里的输入会被环境变量覆盖。',
-      safeModeHint: '快捷方式指向 safe-launch.cmd；恢复用 restore-mode.cmd。',
+      safeModeHint: '快捷方式指向 safe-launch.cmd',
       openSafeFolder: '打开目录',
       guideButton: '步骤',
       guideTitle: '安装步骤',
@@ -2037,10 +2037,11 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       perfOffscreenHint: '跳过屏幕外行的渲染',
       typerEnabledHint: '流式文字逐字显示',
       tabUpdate: '更新',
+      pendingTitle: '待更新',
       tabPlugins: '插件',
-      tabAdd: '工具',
+      tabLook: '外观',
       tabPerf: '性能',
-      tabTyper: '打字机',
+
       tabAbout: '关于',
       aboutTitle: '关于',
       aboutIntro: '维护中心（dsh-concierge）是 DeepSeek Harness 的插件：检查应用与插件更新、管理已装插件、盯聊天性能。',
@@ -2194,12 +2195,12 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       lookSquareWindow: 'Square window',
       lookSquareWindowHint: 'Drops the Windows 11 corner rounding on this window frame',
       lookNative: 'Native material',
-      lookNativeHint: 'Transparent window, Windows draws Acrylic/Mica (needs the app.asar patch)',
+      lookNativeHint: 'Transparent window, Acrylic drawn by Windows (needs the asar patch)',
       lookWall: 'Background',
       lookWallPreset: 'Preset gradient',
       lookWallImage: 'Image',
       lookWallVideo: 'Video',
-      lookWallVideoHint: 'A video changes every frame, so the chat blur would re-run each frame; it stays off in video mode',
+      lookWallVideoHint: 'Chat blur stays off in video mode',
       lookWallPlaceholder: 'Full path or URL of an image/video (mp4, webm exported from Wallpaper Engine work)',
       lookWallApply: 'Apply background',
       lookBrand: 'Brand color',
@@ -2208,7 +2209,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       lookBrandViolet: 'Violet',
       lookBrandGreen: 'Green',
       lookBrandAmber: 'Amber',
-      lookHint: 'Off by default. Transparency and grain only apply to the Glass skin; local backgrounds are streamed through the plugin route.',
+      lookHint: 'Off by default; these settings apply to the Glass skin only',
       foldersTitle: 'Folders',
       safeModeAuto: 'Automatic safe mode',
       safeModeAutoHint: 'Safe mode if a start fails',
@@ -2258,7 +2259,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       tokenSave: 'Save',
       tokenClear: 'Clear',
       tokenSaved: 'Token saved',
-      tokenHint: '60/h without, 5,000/h with; public read-only is enough',
+      tokenHint: '60/h without, 5,000/h with',
       tokenDocWhy: 'Why: GitHub rate-limits anonymous requests to 60/hour per IP; with a token it is 5,000/hour per account. A few sources exhaust the anonymous budget.',
       tokenDocHow: 'How to get one: open one of these,',
       tokenLinkFine: 'Fine-grained token (recommended)',
@@ -2266,7 +2267,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       tokenDocHow2: 'Repository access → Public repositories (read-only), no permissions (classic: no scopes). It is shown only once, copy it then.',
       tokenDocWhere: 'Where it is read from: GITHUB_TOKEN → GH_TOKEN → ~/.dsh/update-center/settings.json; the environment wins. Saving applies immediately.',
       tokenFromEnv: 'GITHUB_TOKEN is set in the environment; it overrides this field.',
-      safeModeHint: 'Shortcut → safe-launch.cmd; restore-mode.cmd restores',
+      safeModeHint: 'Shortcut → safe-launch.cmd',
       openSafeFolder: 'Open folder',
       guideButton: 'Steps',
       guideTitle: 'Install steps',
@@ -2279,10 +2280,11 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       perfOffscreenHint: 'Skip offscreen rows',
       typerEnabledHint: 'Reveal streaming text gradually',
       tabUpdate: 'Update',
+      pendingTitle: 'Pending updates',
       tabPlugins: 'Plugins',
-      tabAdd: 'Tools',
+      tabLook: 'Appearance',
       tabPerf: 'Performance',
-      tabTyper: 'Typewriter',
+
       tabAbout: 'About',
       aboutTitle: 'About',
       aboutIntro: 'Maintenance center (dsh-concierge) is a DeepSeek Harness plugin: it checks app and plugin updates, manages installed plugins and watches chat performance.',
@@ -3408,9 +3410,8 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         h('div', { className: 'uc-tabs', role: 'tablist' },
           tabButton('update', t('tabUpdate')),
           tabButton('plugins', t('tabPlugins')),
-          tabButton('add', t('tabAdd')),
+          tabButton('look', t('tabLook')),
           tabButton('perf', t('tabPerf')),
-          tabButton('typer', t('tabTyper')),
           tabButton('about', t('tabAbout')),
         ),
 
@@ -3586,7 +3587,38 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
           }, restarting ? t('restartingApp') : t('restartApp')),
         ) : null,
 
-        tab === 'add'
+        // 「更新」页只列有更新的那几行；全量列表在「插件」页。
+        data && tab === 'update' && updatable > 0
+          ? h('section', { className: 'uc-card' },
+              h('div', { className: 'uc-card-head' },
+                h('div', { className: 'uc-card-title' }, t('pendingTitle')),
+                h('span', { className: 'uc-about-license' }, String(updatable)),
+              ),
+              h('div', { className: 'uc-rows' },
+                rows.filter((row) => row.updateAvailable).map((row) =>
+                  h('div', { key: row.name, className: 'uc-row' },
+                    h('div', { className: 'uc-row-main' },
+                      h('div', { className: 'uc-row-name' }, localizedText(row.title, active) || row.name),
+                      h('div', { className: 'uc-row-pkg' }, row.name),
+                    ),
+                    h('div', { className: 'uc-vers' },
+                      h('span', null, row.version),
+                      h('span', null, '→'),
+                      h('span', { className: 'uc-vers-new' }, row.latest),
+                    ),
+                    h('button', {
+                      type: 'button',
+                      className: 'uc-btn uc-btn-accent',
+                      disabled: busy !== null,
+                      onClick: () => updateOne(row),
+                    }, busy === row.name ? t('updating') : t('update')),
+                  ),
+                ),
+              ),
+            )
+          : null,
+
+        tab === 'perf'
           ? h('section', { className: 'uc-card' },
               h('div', { className: 'uc-card-head' },
                 h('div', { className: 'uc-card-title' }, t('safetyTitle')),
@@ -3600,7 +3632,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
             )
           : null,
 
-        tab === 'add'
+        tab === 'look'
           ? h('section', { className: 'uc-card' },
               h('div', { className: 'uc-card-head' },
                 h('div', { className: 'uc-card-title' }, t('lookTitle')),
@@ -3789,199 +3821,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
             )
           : null,
 
-        data && tab === 'add'
-          ? h('section', { className: 'uc-card' },
-              h('div', { className: 'uc-card-head' },
-                h('div', { className: 'uc-card-title' }, t('sourcesTitle')),
-              ),
-              h('div', { className: 'uc-install' },
-                h('input', {
-                  type: 'text',
-                  value: gitUrl,
-                  placeholder: t('sourcePlaceholder'),
-                  onChange: (event) => setGitUrl(event.target.value),
-                  onKeyDown: (event) => {
-                    if (event.key === 'Enter') addSource()
-                  },
-                }),
-                h('button', {
-                  type: 'button',
-                  className: 'uc-btn uc-btn-accent',
-                  disabled: addingSource || gitUrl.trim() === '',
-                  onClick: addSource,
-                }, addingSource ? t('adding') : t('addSource')),
-              ),
-              Array.isArray(data.sources) && data.sources.length > 0
-                ? h('div', { className: 'uc-sources' },
-                    data.sources.map((item) => [
-                      h('div', { key: item.repo, className: 'uc-source' },
-                      h('div', { className: 'uc-source-main' },
-                        h('a', {
-                          className: 'uc-source-repo',
-                          href: item.url,
-                          target: '_blank',
-                          rel: 'noreferrer',
-                        }, item.repo),
-                        h('div', { className: 'uc-source-meta' },
-                          item.latest ? `${t('sourceLatest')} ${item.latest}` : t('sourceNoRelease'),
-                          item.installed ? ` · ${t('sourceInstalled')} ${item.installedVersion}` : ` · ${t('sourceNotInstalled')}`,
-                          item.updateAvailable ? h('span', { className: 'uc-tag uc-tag-hot' }, t('sourceHasUpdate')) : null,
-                          item.error ? h('span', { className: 'uc-tag' }, item.error) : null,
-                        ),
-                      ),
-                      h('div', { className: 'uc-source-actions' },
-                        h('button', {
-                          type: 'button',
-                          className: 'uc-btn uc-btn-ghost',
-                          disabled: sourceBusy !== null,
-                          onClick: () => installSource(item),
-                        }, sourceBusy === item.repo ? t('installing') : item.installed ? t('sourceReinstall') : t('sourceInstall')),
-                        h('button', {
-                          type: 'button',
-                          className: 'uc-btn uc-btn-ghost',
-                          onClick: () => loadGuide(item.repo),
-                        }, t('guideButton')),
-                        h('button', {
-                          type: 'button',
-                          className: 'uc-btn uc-btn-ghost',
-                          onClick: () => removeSource(item.repo),
-                        }, t('sourceRemove')),
-                      ),
-                    ),
-                    guideRepo === item.repo
-                      ? h('div', { key: `${item.repo}-guide`, className: 'uc-guide' },
-                          guideLoading ? h('div', { className: 'uc-muted' }, t('guideLoading')) : null,
-                          !guideLoading && guideData && guideData.ok && Array.isArray(guideData.steps) && guideData.steps.length > 0
-                            ? h('div', null,
-                                h('div', { className: 'uc-guide-title' }, t('guideTitle')),
-                                h('ol', { className: 'uc-guide-steps' },
-                                  guideData.steps.map((step, index) => h('li', { key: index }, step)),
-                                ),
-                                h('div', { className: 'uc-guide-actions' },
-                                  h('button', { type: 'button', className: 'uc-btn', onClick: restartNow }, t('restartApp')),
-                                  h('a', {
-                                    className: 'uc-btn uc-btn-ghost',
-                                    href: guideData.url,
-                                    target: '_blank',
-                                    rel: 'noreferrer',
-                                  }, t('guideReadme')),
-                                ),
-                              )
-                            : null,
-                          !guideLoading && guideData && (!guideData.ok || !Array.isArray(guideData.steps) || guideData.steps.length === 0)
-                            ? h('div', { className: 'uc-muted' }, t('guideEmpty'))
-                            : null,
-                        )
-                      : null,
-                    ]),
-                  )
-                : h('div', { className: 'uc-muted', style: { padding: '4px 18px 14px' } }, t('sourceEmpty')),
-            )
-          : null,
-
-        tab === 'add'
-          ? h('section', { className: 'uc-card' },
-              h('div', { className: 'uc-card-head' },
-                h('div', { className: 'uc-card-title' }, t('installNpm')),
-              ),
-              h('div', { className: 'uc-install' },
-                h('input', {
-                  type: 'text',
-                  value: npmSpec,
-                  placeholder: t('installNpmPlaceholder'),
-                  onChange: (event) => setNpmSpec(event.target.value),
-                  onKeyDown: (event) => {
-                    if (event.key === 'Enter') installNpm()
-                  },
-                }),
-                h('button', {
-                  type: 'button',
-                  className: 'uc-btn uc-btn-accent',
-                  disabled: installingNpm || npmSpec.trim() === '',
-                  onClick: installNpm,
-                }, installingNpm ? t('installingNpm') : t('installNpm')),
-              ),
-            )
-          : null,
-
-        data && tab === 'add'
-          ? h('section', { className: 'uc-card' },
-              h('div', { className: 'uc-card-head' },
-                h('div', { className: 'uc-card-title' }, t('tokenTitle')),
-                tokenState
-                  ? h('span', {
-                      className: tokenState.hasToken ? 'uc-chip uc-chip-ok' : 'uc-chip',
-                    }, tokenState.fromEnv
-                      ? t('tokenFromEnvChip')
-                      : tokenState.hasToken
-                        ? t('tokenConfigured')
-                        : t('tokenMissing'))
-                  : null,
-              ),
-              tokenState && tokenState.hasToken
-                ? h('div', { className: 'uc-token-current' },
-                    h('span', { className: 'uc-token-mono' }, tokenState.masked || '****'),
-                    h('span', { className: 'uc-token-current-hint' },
-                      tokenState.fromEnv ? t('tokenFromEnv') : t('tokenSavedHint')),
-                  )
-                : null,
-              h('div', { className: 'uc-install' },
-                h('input', {
-                  type: 'password',
-                  value: tokenInput,
-                  placeholder: tokenState && tokenState.hasToken ? t('tokenReplacePlaceholder') : t('tokenPlaceholder'),
-                  onChange: (event) => setTokenInput(event.target.value),
-                  onKeyDown: (event) => {
-                    if (event.key === 'Enter') saveToken()
-                  },
-                }),
-                h('button', {
-                  type: 'button',
-                  className: 'uc-btn uc-btn-accent',
-                  disabled: tokenInput.trim() === '',
-                  onClick: saveToken,
-                }, t('tokenSave')),
-                tokenState && tokenState.hasToken && !tokenState.fromEnv
-                  ? h('button', { type: 'button', className: 'uc-btn uc-btn-ghost', onClick: clearToken }, t('tokenClear'))
-                  : null,
-              ),
-              h('div', { className: 'uc-token-doc' },
-                h('p', null, tokenState && tokenState.fromEnv ? t('tokenFromEnv') : t('tokenDocWhy')),
-                h('p', null, t('tokenDocHow')),
-                h('div', { className: 'uc-token-links' },
-                  h('a', {
-                    className: 'uc-token-link',
-                    href: 'https://github.com/settings/personal-access-tokens/new',
-                    target: '_blank',
-                    rel: 'noreferrer',
-                  }, t('tokenLinkFine')),
-                  h('a', {
-                    className: 'uc-token-link',
-                    href: 'https://github.com/settings/tokens',
-                    target: '_blank',
-                    rel: 'noreferrer',
-                  }, t('tokenLinkClassic')),
-                ),
-                h('p', null, t('tokenDocHow2')),
-                h('p', null, t('tokenDocWhere')),
-              ),
-            )
-          : null,
-
-        tab === 'add'
-          ? h('section', { className: 'uc-card' },
-              h('div', { className: 'uc-card-head' },
-                h('div', { className: 'uc-card-title' }, t('foldersTitle')),
-              ),
-              h('div', { className: 'uc-folder-actions' },
-                h('button', { type: 'button', className: 'uc-btn uc-btn-ghost', onClick: () => openFolder('plugins') }, t('openPlugins')),
-                h('button', { type: 'button', className: 'uc-btn uc-btn-ghost', onClick: () => openFolder('config') }, t('openConfig')),
-                h('button', { type: 'button', className: 'uc-btn uc-btn-ghost', onClick: () => openFolder('safe') }, t('openSafeFolder')),
-              ),
-              h('p', { className: 'uc-folder-hint' }, t('safeModeHint')),
-            )
-          : null,
-
         data && tab === 'plugins'
           ? h('section', { className: 'uc-card' },
               h('div', { className: 'uc-card-head' },
@@ -4077,6 +3916,199 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
                   ),
             )
           : null,
+        data && tab === 'plugins'
+          ? h('section', { className: 'uc-card' },
+              h('div', { className: 'uc-card-head' },
+                h('div', { className: 'uc-card-title' }, t('sourcesTitle')),
+              ),
+              h('div', { className: 'uc-install' },
+                h('input', {
+                  type: 'text',
+                  value: gitUrl,
+                  placeholder: t('sourcePlaceholder'),
+                  onChange: (event) => setGitUrl(event.target.value),
+                  onKeyDown: (event) => {
+                    if (event.key === 'Enter') addSource()
+                  },
+                }),
+                h('button', {
+                  type: 'button',
+                  className: 'uc-btn uc-btn-accent',
+                  disabled: addingSource || gitUrl.trim() === '',
+                  onClick: addSource,
+                }, addingSource ? t('adding') : t('addSource')),
+              ),
+              Array.isArray(data.sources) && data.sources.length > 0
+                ? h('div', { className: 'uc-sources' },
+                    data.sources.map((item) => [
+                      h('div', { key: item.repo, className: 'uc-source' },
+                      h('div', { className: 'uc-source-main' },
+                        h('a', {
+                          className: 'uc-source-repo',
+                          href: item.url,
+                          target: '_blank',
+                          rel: 'noreferrer',
+                        }, item.repo),
+                        h('div', { className: 'uc-source-meta' },
+                          item.latest ? `${t('sourceLatest')} ${item.latest}` : t('sourceNoRelease'),
+                          item.installed ? ` · ${t('sourceInstalled')} ${item.installedVersion}` : ` · ${t('sourceNotInstalled')}`,
+                          item.updateAvailable ? h('span', { className: 'uc-tag uc-tag-hot' }, t('sourceHasUpdate')) : null,
+                          item.error ? h('span', { className: 'uc-tag' }, item.error) : null,
+                        ),
+                      ),
+                      h('div', { className: 'uc-source-actions' },
+                        h('button', {
+                          type: 'button',
+                          className: 'uc-btn uc-btn-ghost',
+                          disabled: sourceBusy !== null,
+                          onClick: () => installSource(item),
+                        }, sourceBusy === item.repo ? t('installing') : item.installed ? t('sourceReinstall') : t('sourceInstall')),
+                        h('button', {
+                          type: 'button',
+                          className: 'uc-btn uc-btn-ghost',
+                          onClick: () => loadGuide(item.repo),
+                        }, t('guideButton')),
+                        h('button', {
+                          type: 'button',
+                          className: 'uc-btn uc-btn-ghost',
+                          onClick: () => removeSource(item.repo),
+                        }, t('sourceRemove')),
+                      ),
+                    ),
+                    guideRepo === item.repo
+                      ? h('div', { key: `${item.repo}-guide`, className: 'uc-guide' },
+                          guideLoading ? h('div', { className: 'uc-muted' }, t('guideLoading')) : null,
+                          !guideLoading && guideData && guideData.ok && Array.isArray(guideData.steps) && guideData.steps.length > 0
+                            ? h('div', null,
+                                h('div', { className: 'uc-guide-title' }, t('guideTitle')),
+                                h('ol', { className: 'uc-guide-steps' },
+                                  guideData.steps.map((step, index) => h('li', { key: index }, step)),
+                                ),
+                                h('div', { className: 'uc-guide-actions' },
+                                  h('button', { type: 'button', className: 'uc-btn', onClick: restartNow }, t('restartApp')),
+                                  h('a', {
+                                    className: 'uc-btn uc-btn-ghost',
+                                    href: guideData.url,
+                                    target: '_blank',
+                                    rel: 'noreferrer',
+                                  }, t('guideReadme')),
+                                ),
+                              )
+                            : null,
+                          !guideLoading && guideData && (!guideData.ok || !Array.isArray(guideData.steps) || guideData.steps.length === 0)
+                            ? h('div', { className: 'uc-muted' }, t('guideEmpty'))
+                            : null,
+                        )
+                      : null,
+                    ]),
+                  )
+                : h('div', { className: 'uc-muted', style: { padding: '4px 18px 14px' } }, t('sourceEmpty')),
+            )
+          : null,
+
+        tab === 'plugins'
+          ? h('section', { className: 'uc-card' },
+              h('div', { className: 'uc-card-head' },
+                h('div', { className: 'uc-card-title' }, t('installNpm')),
+              ),
+              h('div', { className: 'uc-install' },
+                h('input', {
+                  type: 'text',
+                  value: npmSpec,
+                  placeholder: t('installNpmPlaceholder'),
+                  onChange: (event) => setNpmSpec(event.target.value),
+                  onKeyDown: (event) => {
+                    if (event.key === 'Enter') installNpm()
+                  },
+                }),
+                h('button', {
+                  type: 'button',
+                  className: 'uc-btn uc-btn-accent',
+                  disabled: installingNpm || npmSpec.trim() === '',
+                  onClick: installNpm,
+                }, installingNpm ? t('installingNpm') : t('installNpm')),
+              ),
+            )
+          : null,
+
+        data && tab === 'plugins'
+          ? h('section', { className: 'uc-card' },
+              h('div', { className: 'uc-card-head' },
+                h('div', { className: 'uc-card-title' }, t('tokenTitle')),
+                tokenState
+                  ? h('span', {
+                      className: tokenState.hasToken ? 'uc-chip uc-chip-ok' : 'uc-chip',
+                    }, tokenState.fromEnv
+                      ? t('tokenFromEnvChip')
+                      : tokenState.hasToken
+                        ? t('tokenConfigured')
+                        : t('tokenMissing'))
+                  : null,
+              ),
+              tokenState && tokenState.hasToken
+                ? h('div', { className: 'uc-token-current' },
+                    h('span', { className: 'uc-token-mono' }, tokenState.masked || '****'),
+                    h('span', { className: 'uc-token-current-hint' },
+                      tokenState.fromEnv ? t('tokenFromEnv') : t('tokenSavedHint')),
+                  )
+                : null,
+              h('div', { className: 'uc-install' },
+                h('input', {
+                  type: 'password',
+                  value: tokenInput,
+                  placeholder: tokenState && tokenState.hasToken ? t('tokenReplacePlaceholder') : t('tokenPlaceholder'),
+                  onChange: (event) => setTokenInput(event.target.value),
+                  onKeyDown: (event) => {
+                    if (event.key === 'Enter') saveToken()
+                  },
+                }),
+                h('button', {
+                  type: 'button',
+                  className: 'uc-btn uc-btn-accent',
+                  disabled: tokenInput.trim() === '',
+                  onClick: saveToken,
+                }, t('tokenSave')),
+                tokenState && tokenState.hasToken && !tokenState.fromEnv
+                  ? h('button', { type: 'button', className: 'uc-btn uc-btn-ghost', onClick: clearToken }, t('tokenClear'))
+                  : null,
+              ),
+              h('div', { className: 'uc-token-doc' },
+                h('p', null, tokenState && tokenState.fromEnv ? t('tokenFromEnv') : t('tokenDocWhy')),
+                h('p', null, t('tokenDocHow')),
+                h('div', { className: 'uc-token-links' },
+                  h('a', {
+                    className: 'uc-token-link',
+                    href: 'https://github.com/settings/personal-access-tokens/new',
+                    target: '_blank',
+                    rel: 'noreferrer',
+                  }, t('tokenLinkFine')),
+                  h('a', {
+                    className: 'uc-token-link',
+                    href: 'https://github.com/settings/tokens',
+                    target: '_blank',
+                    rel: 'noreferrer',
+                  }, t('tokenLinkClassic')),
+                ),
+                h('p', null, t('tokenDocHow2')),
+                h('p', null, t('tokenDocWhere')),
+              ),
+            )
+          : null,
+
+        tab === 'plugins'
+          ? h('section', { className: 'uc-card' },
+              h('div', { className: 'uc-card-head' },
+                h('div', { className: 'uc-card-title' }, t('foldersTitle')),
+              ),
+              h('div', { className: 'uc-folder-actions' },
+                h('button', { type: 'button', className: 'uc-btn uc-btn-ghost', onClick: () => openFolder('plugins') }, t('openPlugins')),
+                h('button', { type: 'button', className: 'uc-btn uc-btn-ghost', onClick: () => openFolder('config') }, t('openConfig')),
+                h('button', { type: 'button', className: 'uc-btn uc-btn-ghost', onClick: () => openFolder('safe') }, t('openSafeFolder')),
+              ),
+              h('p', { className: 'uc-folder-hint' }, t('safeModeHint')),
+            )
+          : null,
+
 
         tab === 'perf' ? h('section', { className: 'uc-card' },
           h('div', { className: 'uc-card-head' },
@@ -4198,7 +4230,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
           ),
         ) : null,
 
-        tab === 'typer' ? h('section', { className: 'uc-card' },
+        tab === 'look' ? h('section', { className: 'uc-card' },
           h('div', { className: 'uc-card-head' },
             h('div', { className: 'uc-card-title' }, t('typerTitle')),
           ),

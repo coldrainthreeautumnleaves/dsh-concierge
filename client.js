@@ -946,6 +946,63 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       return out
     }
 
+    // 窗口缩放时按帧采样：底部那块位置上是哪个元素、祖先链底色、视口高度。
+    // 静态探针抓不到「正在缩放」那一瞬，所以这里挂在 resize 上连拍 900ms。
+    let resizeSamples = []
+    let resizeProbeOn = false
+
+    function sampleResizeFrame(tag) {
+      if (typeof document === 'undefined' || typeof window === 'undefined') return
+      const vw = window.innerWidth
+      const vh = window.innerHeight
+      const docH = document.documentElement.clientHeight
+      const points = [
+        [Math.round(vw / 2), Math.max(0, vh - 12)],
+        [Math.round(vw / 2), Math.max(0, vh - 60)],
+        [Math.round(vw / 2), Math.max(0, vh - 140)],
+        [Math.max(0, vw - 40), Math.max(0, vh - 12)],
+      ]
+      const hits = points.map(([x, y]) => {
+        const el = document.elementFromPoint(x, y)
+        if (!el) return { x, y, hit: null, chain: [] }
+        const chain = []
+        let node = el
+        let depth = 0
+        while (node && depth < 4) {
+          const style = getComputedStyle(node)
+          chain.push({
+            tag: node.tagName.toLowerCase(),
+            cls: String(node.className || '').slice(0, 46),
+            bg: style.backgroundColor,
+          })
+          node = node.parentElement
+          depth += 1
+        }
+        return { x, y, hit: chain[0], chain }
+      })
+      resizeSamples.push({ at: Date.now(), tag, vw, vh, docH, hits })
+      if (resizeSamples.length > 40) resizeSamples.shift()
+    }
+
+    function installResizeProbe() {
+      if (resizeProbeOn || typeof window === 'undefined') return
+      resizeProbeOn = true
+      window.addEventListener(
+        'resize',
+        () => {
+          const started = Date.now()
+          sampleResizeFrame('sync')
+          const tick = () => {
+            sampleResizeFrame('raf')
+            if (Date.now() - started < 900) requestAnimationFrame(tick)
+            else scheduleProbeSend(1200)
+          }
+          requestAnimationFrame(tick)
+        },
+        { passive: true },
+      )
+    }
+
     function probeLongFrame(elapsed) {
       if (!(elapsed >= 40)) return
       probeLongFrames.push({ at: Date.now(), ms: Math.round(elapsed) })
@@ -979,6 +1036,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       payload.whites = probeWhiteBoxes
       if (probeBand === null) probeBand = collectBand()
       payload.band = probeBand
+      payload.resize = resizeSamples.slice()
       payload.floating = floatingLog.slice()
       fetch(`${API}/perf-report`, {
         method: 'POST',
@@ -986,6 +1044,8 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         body: JSON.stringify(payload),
       }).catch(() => {})
     }
+
+    installResizeProbe()
 
     function scheduleProbeSend(delay) {
       if (probeReportTimer) clearTimeout(probeReportTimer)

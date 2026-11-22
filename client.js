@@ -181,37 +181,29 @@ html[data-dsh-glass="1"] #dsh-concierge-glass {
 #dsh-concierge-glass > div:first-child {
   position: absolute;
   inset: 0;
-  /* 冷调三团色：蓝 / 淡紫 / 青。底色压到中灰蓝，色块中心是实色——玻璃要「看得出
-     在透」，背后必须有明暗和色相，否则半透明面板叠上去只是一片接近白的淡色。 */
-  background:
+  /* 颗粒作为同一张图的第一个背景层，而不是另一个元素：多一个全屏元素就是多一个
+     全屏合成层，Iris Xe 这种核显上等于每帧多读 4M 像素。 */
+  --dsh-grain: none;
+  background-image:
+    var(--dsh-grain),
     radial-gradient(900px 700px at 8% 0%, rgba(111, 154, 216, 1) 0%, rgba(111, 154, 216, 0) 60%),
     radial-gradient(820px 640px at 96% 4%, rgba(154, 143, 208, 0.92) 0%, rgba(154, 143, 208, 0) 62%),
     radial-gradient(940px 720px at 80% 104%, rgba(95, 176, 184, 0.95) 0%, rgba(95, 176, 184, 0) 62%),
     linear-gradient(165deg, #dbe4f3 0%, #d5dfef 50%, #d9e9ea 100%);
+  background-size: 140px 140px, auto, auto, auto, auto;
+  background-repeat: repeat, no-repeat, no-repeat, no-repeat, no-repeat;
 }
 html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-glass > div:first-child {
-  background:
+  background-image:
+    var(--dsh-grain),
     radial-gradient(900px 700px at 8% 0%, rgba(46, 74, 118, 1) 0%, rgba(46, 74, 118, 0) 60%),
     radial-gradient(820px 640px at 96% 4%, rgba(74, 62, 118, 0.92) 0%, rgba(74, 62, 118, 0) 62%),
     radial-gradient(940px 720px at 80% 104%, rgba(26, 84, 92, 0.95) 0%, rgba(26, 84, 92, 0) 62%),
     linear-gradient(165deg, #10151d 0%, #121a24 50%, #0c1417 100%);
 }
-/* Grain: a tiled fractal-noise plate that rides ON the wallpaper layer, behind
-   all content. It used to be a fixed overlay at z-index 2 above the page, which
-   forces the compositor to re-blend a full-viewport layer on every frame —
-   scrolling and streaming text both paid for it. Behind the content it is
-   painted once with the wallpaper and costs nothing while you interact.
-   The strength is baked into the SVG's own opacity (set by applyGrainImage)
-   instead of an opacity property on this element: a fractional opacity would make
-   the compositor keep it as its own full-screen layer and re-blend it every frame. */
-#dsh-concierge-grain { display: none; }
-html[data-dsh-glass="1"] #dsh-concierge-grain {
-  display: block;
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background-size: 140px 140px;
-}
+/* 颗粒现在是壁纸层背景里的第一层（--dsh-grain），不再是独立元素：多一个全屏
+   元素就多一个全屏合成层，每帧都要和壁纸混一次。强度仍然烘进 SVG 自己的
+   opacity，元素上不挂 opacity。 */
 /* 顶部那条 40px（窗口按钮所在的标题栏）：它是外壳的原生 WCO 遮罩，插件只能改它的
    颜色（token → windowsAppearance IPC → setTitleBarOverlay），改不了它是不是盖着页面。
    所以这里做两件事：
@@ -430,13 +422,8 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         root.appendChild(media)
         document.body.appendChild(root)
       }
-      // Grain rides inside the wallpaper layer (behind content). Repair it if an
-      // older root from a previous load is still around without one.
-      if (!root.querySelector('#dsh-concierge-grain')) {
-        const grain = document.createElement('div')
-        grain.id = 'dsh-concierge-grain'
-        root.appendChild(grain)
-      }
+      // 颗粒已经并进壁纸层自己的背景里（见 --dsh-grain），不再单独建元素：
+      // 少一个全屏合成层。
       // 顶部标题栏那条磨砂：盖在壁纸和颗粒之上，仍在页面内容之下。
       if (!root.querySelector('#dsh-concierge-top')) {
         const top = document.createElement('div')
@@ -1118,9 +1105,10 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
 
     function applyGrainImage() {
       if (typeof document === 'undefined') return
-      const node = document.getElementById('dsh-concierge-grain')
-      if (!node) return
-      node.style.backgroundImage = look.skin === 'glass' && look.enabled ? grainImage(look.grain) : ''
+      const layer = document.querySelector('#dsh-concierge-glass > div:first-child')
+      if (!layer) return
+      const url = look.skin === 'glass' && look.enabled ? grainImage(look.grain) : ''
+      layer.style.setProperty('--dsh-grain', url || 'none')
     }
 
     function applyGrain(value) {

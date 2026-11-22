@@ -730,6 +730,60 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       return rows
     }
 
+    // 浮层是「按需插入 DOM」的，4 秒那一刻探针跑的时候它还不存在。所以挂一个
+    // MutationObserver：新节点里凡是定位为 fixed/absolute、尺寸像浮层的，就把它的
+    // 样式记下来（去重、最多 20 条），然后补发一次报告。
+    const floatingLog = []
+    let floatingTimer = 0
+    let pendingFloating = new Set()
+
+    function noteFloating(el) {
+      if (floatingLog.length >= 20) return
+      if (!el || el.nodeType !== 1) return
+      if (el.closest && el.closest('#dsh-concierge-glass')) return
+      const style = getComputedStyle(el)
+      if (style.position !== 'fixed' && style.position !== 'absolute') return
+      const rect = el.getBoundingClientRect()
+      if (rect.width < 40 || rect.height < 14) return
+      if (rect.width > 900 || rect.height > 600) return
+      const key = `${el.tagName}.${String(el.className || '')}`
+      if (floatingLog.some((item) => item.key === key)) return
+      floatingLog.push({
+        key: key.slice(0, 90),
+        cls: String(el.className || '').slice(0, 70),
+        bg: style.backgroundColor,
+        img: style.backgroundImage && style.backgroundImage !== 'none' ? style.backgroundImage.slice(0, 44) : '',
+        shadow: style.boxShadow && style.boxShadow !== 'none' ? style.boxShadow.slice(0, 44) : '',
+        z: style.zIndex,
+        w: Math.round(rect.width),
+        h: Math.round(rect.height),
+      })
+      scheduleProbeSend(1500)
+    }
+
+    function startFloatingWatch() {
+      if (typeof MutationObserver !== 'function' || typeof document === 'undefined') return
+      const observer = new MutationObserver((records) => {
+        for (const record of records) {
+          for (const node of record.addedNodes) {
+            if (node.nodeType === 1) pendingFloating.add(node)
+          }
+        }
+        if (!pendingFloating.size || floatingTimer) return
+        floatingTimer = setTimeout(() => {
+          floatingTimer = 0
+          const nodes = [...pendingFloating].slice(0, 40)
+          pendingFloating = new Set()
+          for (const node of nodes) {
+            noteFloating(node)
+            const kids = node.querySelectorAll ? node.querySelectorAll('*') : []
+            for (let i = 0; i < kids.length && i < 40; i++) noteFloating(kids[i])
+          }
+        }, 500)
+      })
+      observer.observe(document.body, { childList: true, subtree: true })
+    }
+
     function probeLongFrame(elapsed) {
       if (!(elapsed >= 40)) return
       probeLongFrames.push({ at: Date.now(), ms: Math.round(elapsed) })
@@ -759,6 +813,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       payload.whites = probeWhiteBoxes
       if (probeBand === null) probeBand = collectBand()
       payload.band = probeBand
+      payload.floating = floatingLog.slice()
       fetch(`${API}/perf-report`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -931,6 +986,8 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         requestAnimationFrame(tick)
       }
       requestAnimationFrame(tick)
+      // 浮层是按需插入的，挂个观察者把它们记下来。
+      startFloatingWatch()
       // 加载 4 秒后补一份诊断：即使没有长帧、没有流式，也能拿到「谁还在模糊」的清单。
       setTimeout(() => {
         if (probeBlurList === null) probeSend()
@@ -1152,7 +1209,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         // 出现一条硬边界，看着像贴了另一块材质；「+」按钮要比卡片亮一点，才看得出
         // 它是个控件。
         '--dsw-specific-selector': fill(0.44, 0.5),
-        '--dsw-specific-tip': fill(0.52, 0.58),
+        '--dsw-specific-tip': fill(0.86, 0.84),
         // 代码块 / 行内代码 / 标签徽章的底默认是 #f9fafb、#f5f6f7 这类近白实色，
         // 在玻璃上同样是一块块死白。跟着色温走，但保留一点层次：块比行内略实。
         '--dsw-alias-markdown-code-block': fill(0.55, 0.5),

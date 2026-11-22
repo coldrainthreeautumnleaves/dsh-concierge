@@ -10,6 +10,7 @@ rem   launch-with-patch.cmd 5      → --default-background-color=ffccd8ee（内
 rem   launch-with-patch.cmd 6      → --default-background-color=00000000（完全透明）
 rem   launch-with-patch.cmd 7      → --disable-frame-rate-limit --disable-gpu-vsync（放开帧率）
 rem   launch-with-patch.cmd 8      → --enable-gpu-rasterization --num-raster-threads=4
+rem   launch-with-patch.cmd 9      → --disable-gpu（完全软件渲染，最后手段）
 rem
 rem 每次只用一个，方便定位是哪个起作用。
 setlocal
@@ -29,6 +30,8 @@ rem 放开帧率限制：让合成器不等垂直同步，尽快提交新帧（�
 if "%PICK%"=="7" set "FLAGS=--disable-frame-rate-limit --disable-gpu-vsync"
 rem 光栅化提速：更多光栅线程 + GPU 光栅
 if "%PICK%"=="8" set "FLAGS=--enable-gpu-rasterization --num-raster-threads=4"
+rem 彻底关掉 GPU 加速（完全软件渲染，最后手段：不闪但整体会变慢）
+if "%PICK%"=="9" set "FLAGS=--disable-gpu"
 
 where node >nul 2>nul
 if errorlevel 1 (

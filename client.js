@@ -1,4 +1,4 @@
-/**
+﻿/**
  * dsh-concierge — Client half.
  * A dashboard-style settings page plus a top notification strip.
  */
@@ -347,46 +347,9 @@ html[data-dsh-glass="1"] [data-conversation-region="chat"]::before {
 /* 会话区那层模糊已经从 backdrop-filter 换成预模糊层（#dsh-concierge-frost），
    所以「轻玻璃 / 视频壁纸 / 自动降级 / 流式」这四条原本用来临时撤掉模糊的规则
    全部失效——留着它们只会让人以为还有第二条模糊在跑，直接删掉。 */
-/* 输入框那一圈不再自己模糊：它里面还压着输入卡自己的 backdrop-filter（走
-   --dsw-menu-backdrop-filter），两层叠在「每帧都在动的聊天记录」上——这是全
-   界面唯一 blur 背后一直在变的地方。留卡片那一层就够看。 */
-html[data-dsh-glass="1"] [role="dialog"],
-html[data-dsh-glass="1"] [role="alertdialog"],
-html[data-dsh-glass="1"] [role="menu"],
-html[data-dsh-glass="1"] [role="listbox"],
-html[data-dsh-glass="1"] [role="tooltip"],
-html[data-dsh-glass="1"] [data-shell-overlay="true"] [data-slot] > *,
-html[data-dsh-glass="1"] [class*="_menu"],
-html[data-dsh-glass="1"] [class*="_portal_"],
-html[data-dsh-glass="1"] .uc-card,
-html[data-dsh-glass="1"] .uc-banner {
-  backdrop-filter: blur(12px) saturate(150%);
-  -webkit-backdrop-filter: blur(12px) saturate(150%);
-}
-/* 设置面板这种大面积浮层多糊一点：背后的色块糊开了，文字才不打架。
-   半径别往 26px 堆——采样成本随半径线性涨，14px 已经够糊开色块。 */
-html[data-dsh-glass="1"] [role="dialog"],
-html[data-dsh-glass="1"] [data-shell-overlay="true"] [data-slot] > * {
-  backdrop-filter: blur(14px) saturate(150%);
-  -webkit-backdrop-filter: blur(14px) saturate(150%);
-}
-/* 轻玻璃 = 无模糊模式：除了顶部那条 40px 的原生遮罩，所有 backdrop-filter 都关掉，
-   只留半透明。这一档是用来分开两件事的——「模糊吃帧」还是「半透明吃帧」。
-   同一时刻只该有一个模糊面在动的地方，就是输入卡；它走 --dsw-menu-backdrop-filter，
-   在 glassTokens 里一起关掉。 */
-html[data-dsh-glass="1"][data-dsh-glass-light="1"] [role="dialog"],
-html[data-dsh-glass="1"][data-dsh-glass-light="1"] [role="alertdialog"],
-html[data-dsh-glass="1"][data-dsh-glass-light="1"] [role="menu"],
-html[data-dsh-glass="1"][data-dsh-glass-light="1"] [role="listbox"],
-html[data-dsh-glass="1"][data-dsh-glass-light="1"] [role="tooltip"],
-html[data-dsh-glass="1"][data-dsh-glass-light="1"] [data-shell-overlay="true"] [data-slot] > *,
-html[data-dsh-glass="1"][data-dsh-glass-light="1"] [class*="_menu"],
-html[data-dsh-glass="1"][data-dsh-glass-light="1"] [class*="_portal_"],
-html[data-dsh-glass="1"][data-dsh-glass-light="1"] .uc-card,
-html[data-dsh-glass="1"][data-dsh-glass-light="1"] .uc-banner {
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-}
+/* 浮层一律「实底 + 不模糊」：下面那条 :is() 给它们 0.96 的不透明底，并把
+   backdrop-filter 关掉。底已经不透明，模糊本来也糊不出东西，纯属每帧白花一次
+   采样——所以这里不再有任何 blur 规则，也没有「关掉浮层模糊」这种开关。 */
 /* 「盖在内容上」的浮层必须给足不透明底：它们背后就是正在显示的对话/侧边栏，半透明
    会让两套文字叠在一起变成重影。这类面板宁可牺牲一点玻璃感，也要保证只有一层字。
    光认 role="dialog" 不够——实际会透的是菜单、悬浮卡、提示卡这些 popover 容器，
@@ -635,7 +598,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         longTasks: typeof longTaskLog !== 'undefined' ? longTaskLog.slice(-20) : [],
         fps: perf.samples.slice(-8),
         streaming: perf.streaming,
-        lightGlass: look.lightGlass,
         skin: look.skin,
         enabled: look.enabled,
       }
@@ -944,8 +906,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       grain: 0.06,
       // 0 = 最实，100 = 最透；玻璃皮肤用它整体缩放各表面的 alpha
       transparency: 43,
-      // 轻玻璃：会话区整块不模糊，只留浮层。流式输出时不再整块重糊。
-      lightGlass: false,
       // 窗口外框直角：走宿主侧的 DWM 调用，和构造参数无关。
       squareWindow: true,
       // 背景：预设渐变 / 图片 / 视频（Wallpaper Engine 导出的 mp4/webm 走视频）
@@ -1145,7 +1105,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         if (typeof parsed.transparency === 'number' && Number.isFinite(parsed.transparency)) {
           look.transparency = Math.max(0, Math.min(100, Math.round(parsed.transparency)))
         }
-        if (typeof parsed.lightGlass === 'boolean') look.lightGlass = parsed.lightGlass
         if (typeof parsed.squareWindow === 'boolean') look.squareWindow = parsed.squareWindow
         // 旧版本把原生材质做成玻璃皮肤下的一个开关，现在它是一套独立皮肤。
         if (parsed.nativeMaterial === true && look.skin === 'glass') look.skin = 'native'
@@ -1258,7 +1217,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
           fontStep: look.fontStep,
           codeFont: look.codeFont,
           grain: look.grain,
-          lightGlass: look.lightGlass,
           squareWindow: look.squareWindow,
         }))
       } catch {
@@ -1366,7 +1324,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         if (!root) return
         delete root.dataset.dshGlass
         delete root.dataset.dshNative
-        delete root.dataset.dshGlassLight
         delete root.dataset.dshGlassScheme
         applyGrainImage()
       }
@@ -1404,8 +1361,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         else delete root.dataset.dshNative
         // 关掉浮层模糊：只影响弹窗/菜单/提示条那几处（它们背后是静止的，但每帧
         // 仍要采样一次）。会话区那块已经换成预模糊层，和这个开关无关。
-        if (look.lightGlass) root.dataset.dshGlassLight = '1'
-        else delete root.dataset.dshGlassLight
         applyGrainImage()
         applyFrostLayer()
         applyWindowCorners()
@@ -1767,8 +1722,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       lookSkinNative: '原生材质（Acrylic）',
       lookGrain: '颗粒',
       lookTransparency: '透明度',
-      lookLightGlass: '关掉浮层模糊',
-      lookLightGlassHint: '弹窗、菜单、提示条不再模糊，省一点合成；会话区不受影响',
       lookSquareWindow: '窗口直角',
       lookSquareWindowHint: '去掉窗口外框的系统圆角（DWM 画的），只影响这个窗口',
       lookNative: '原生材质',
@@ -2011,8 +1964,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       lookSkinNative: 'Native material (Acrylic)',
       lookGrain: 'Grain',
       lookTransparency: 'Transparency',
-      lookLightGlass: 'No overlay blur',
-      lookLightGlassHint: 'Dialogs, menus and tooltips stop blurring; the chat column is unaffected',
       lookSquareWindow: 'Square window',
       lookSquareWindowHint: 'Drops the Windows 11 corner rounding on this window frame',
       lookNative: 'Native material',
@@ -3556,14 +3507,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
                         }),
                         h('span', { className: 'uc-typer-value' }, `${lookSnapshot.transparency}%`),
                       ))
-                  : null,
-                lookSnapshot.skin === 'glass'
-                  ? settingRow(t('lookLightGlass'), t('lookLightGlassHint'), switchControl(lookSnapshot.lightGlass, () => {
-                      look.lightGlass = !look.lightGlass
-                      saveLookPrefs()
-                      applyLook()
-                      lookUpdate()
-                    }))
                   : null,
                 isGlassSkin(lookSnapshot.skin)
                   ? settingRow(t('lookSquareWindow'), t('lookSquareWindowHint'), switchControl(lookSnapshot.squareWindow, () => {

@@ -25,12 +25,8 @@ if errorlevel 1 (
   goto launch
 )
 
-node "%HERE%patch-window-fallback.mjs" --color "#ccd8ee" --check >nul 2>nul
-if errorlevel 1 (
-  echo 补丁不在或已过期，正在重打……
-  node "%HERE%patch-window-fallback.mjs" --color "#ccd8ee"
-  if errorlevel 1 echo 补丁失败（应用可能还在运行），这次先直接启动。
-)
+node "%HERE%patch-window-fallback.mjs" --ensure
+
 
 :launch
 if "%FLAGS%"=="" (

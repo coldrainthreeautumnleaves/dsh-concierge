@@ -6,6 +6,18 @@
 
 ## [Unreleased]
 
+## [0.6.4] - 2026-11-22
+
+> 补丁脚本支持透明窗口模式，启动器改为按记录自动重打
+
+### Added
+
+- 工具: `--mode transparent|opaque`，透明窗口用等长替换（`transparent:!0,`）塞进构造参数，不动 asar 头
+- 工具: `--ensure`，应用更新后按上次记录的模式自动重打
+
+### Changed
+
+- 工具: `--check` 直接报告当前模式、底色和 acrylic 状态
 ## [0.6.3] - 2026-11-22
 
 > 启动器改成编号选开关：`launch-with-patch.cmd 1|2|3|4`

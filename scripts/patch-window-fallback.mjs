@@ -1,20 +1,19 @@
 #!/usr/bin/env node
 /**
- * 给 DSH 主窗口设置底色、关掉 acrylic 材质（等长替换，不动 asar 头）。
+ * 切换 DSH 主窗口的「透明窗口」模式（等长替换，不动 asar 头）。
  *
- * 为什么：窗口缩放期间 Chromium 不重绘视图，新露出的区域直接用窗口底色填
- * （electron#10801、#44689、#1391）。所以那个「白带」不在页面里，CSS 改不到。
+ * 两种模式：
+ *   transparent  窗口变成分层窗口（transparent:!0），系统没法再用窗口类的背景刷
+ *                擦出新露出的区域——露出来的是桌面而不是白色。backgroundColor 置透明。
+ *   opaque       回到不透明窗口，底色 #ccd8ee，acrylic 关掉。
  *
- * 更新安全：
- * - 备份旁边会写一份 `app.asar.patch.json`（应用版本 + 备份哈希 + 打的颜色）；
- * - `--revert` 会核对当前应用版本，**版本对不上就拒绝还原**——否则会把应用
- *   整个退回旧版本；
- * - `--check` 会告诉你补丁是否已经过期（应用更新过就需要重打）。
+ * 为什么只用等长替换：asar 头里存着每个文件的偏移和大小，长度一变就要重写整个头，
+ * 风险高。下面每一对的字符数都严格相等。
  *
  * 用法：
+ *   node scripts/patch-window-fallback.mjs --mode transparent
+ *   node scripts/patch-window-fallback.mjs --mode opaque --color '#ccd8ee'
  *   node scripts/patch-window-fallback.mjs --check
- *   node scripts/patch-window-fallback.mjs                       # 默认色 #ccd8ee
- *   node scripts/patch-window-fallback.mjs --color '#ff0000'     # 换颜色（诊断用）
  *   node scripts/patch-window-fallback.mjs --revert [--force]
  *   node scripts/patch-window-fallback.mjs --asar <path>
  */
@@ -22,9 +21,6 @@ import fs from 'node:fs'
 import path from 'node:path'
 import os from 'node:os'
 import crypto from 'node:crypto'
-
-const DEFAULT_COLOR = '#ccd8ee'
-const KNOWN_COLORS = ['#000000', '#e8f0fa', '#ccd8ee', '#ff0000', '#00ff00', '#0000ff']
 
 const args = process.argv.slice(2)
 const flag = (name) => args.includes(name)
@@ -54,9 +50,9 @@ const readManifest = () => {
   }
 }
 
-// asar 头是 pickle：8 字节前缀，16 字节处是 JSON，长度在偏移 12。
-function readAsarJson(asarPath) {
-  const fd = fs.openSync(asarPath, 'r')
+// asar 头是 pickle：JSON 在偏移 16，长度在偏移 12。
+function readAsarJson(file) {
+  const fd = fs.openSync(file, 'r')
   try {
     const head = Buffer.alloc(16)
     fs.readSync(fd, head, 0, 16, 0)
@@ -70,12 +66,12 @@ function readAsarJson(asarPath) {
   }
 }
 
-function readAppVersion(asarPath) {
+function readAppVersion(file) {
   try {
-    const { header, dataOffset } = readAsarJson(asarPath)
+    const { header, dataOffset } = readAsarJson(file)
     const entry = header.files && header.files['package.json']
     if (!entry) return ''
-    const fd = fs.openSync(asarPath, 'r')
+    const fd = fs.openSync(file, 'r')
     try {
       const buf = Buffer.alloc(entry.size)
       fs.readSync(fd, buf, 0, entry.size, dataOffset + Number(entry.offset))
@@ -90,32 +86,68 @@ function readAppVersion(asarPath) {
 
 const sha256 = (file) => crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex').slice(0, 16)
 
-const colorArg = (valueOf('--color') || DEFAULT_COLOR).toLowerCase()
+// 每条都是 [源, 目标]，长度必须相等。
+const PAD = (n) => ' '.repeat(n)
+
+const OPAQUE_COLORS = ['#ccd8ee', '#e8f0fa', '#ff0000', '#000000']
+
+function opaquePatches(color) {
+  const hex = `${color}ff`
+  return [
+    {
+      name: '窗口底色',
+      alternatives: OPAQUE_COLORS.map((c) => `backgroundColor:"${c}ff",`).concat(['backgroundColor:"#00000000",']),
+      to: `backgroundColor:"${hex}",`,
+    },
+    {
+      name: '不透明窗口',
+      alternatives: [
+        // 从透明模式回来
+        `transparent:!0,${PAD(14)}`,
+        // 原始状态（acrylic 还在）
+        'backgroundMaterial:"acrylic",',
+        // 已经是关掉材质的状态
+        `backgroundMaterial:"none"   ,`,
+      ],
+      to: `backgroundMaterial:"none"   ,`,
+    },
+  ]
+}
+
+const TRANSPARENT_PATCHES = [
+  {
+    name: '窗口底色透明',
+    alternatives: OPAQUE_COLORS.map((c) => `backgroundColor:"${c}ff",`).concat(['backgroundColor:"#00000000",']),
+    to: 'backgroundColor:"#00000000",',
+  },
+  {
+    name: '透明窗口',
+    alternatives: [
+      'backgroundMaterial:"acrylic",',
+      `backgroundMaterial:"none"   ,`,
+      `transparent:!0,${PAD(14)}`,
+    ],
+    // transparent:!0, = 15 字符，补 14 个空格凑满 29
+    to: `transparent:!0,${PAD(14)}`,
+  },
+]
+
+const colorArg = (valueOf('--color') || '#ccd8ee').toLowerCase()
 if (!/^#[0-9a-f]{6}$/.test(colorArg)) {
   console.error(`颜色格式要 #rrggbb，收到：${colorArg}`)
   process.exit(1)
 }
-const windowColor = `${colorArg}ff`
+const mode = valueOf('--mode') || (flag('--transparent') ? 'transparent' : 'opaque')
+if (mode !== 'transparent' && mode !== 'opaque') {
+  console.error(`--mode 只接受 transparent 或 opaque，收到：${mode}`)
+  process.exit(1)
+}
+const patches = mode === 'transparent' ? TRANSPARENT_PATCHES : opaquePatches(colorArg)
 
-const PATCHES = [
-  {
-    name: '窗口底色',
-    alternatives: KNOWN_COLORS.map((color) => `backgroundColor:"${color}ff",backgroundMaterial`).concat([
-      'backgroundColor:"#00000000",backgroundMaterial',
-    ]),
-    to: `backgroundColor:"${windowColor}",backgroundMaterial`,
-  },
-  {
-    name: '关掉 acrylic',
-    alternatives: ['backgroundMaterial:"acrylic"'],
-    to: 'backgroundMaterial:"none"   ',
-  },
-]
-
-for (const patch of PATCHES) {
+for (const patch of patches) {
   for (const from of patch.alternatives) {
     if (from.length !== patch.to.length) {
-      console.error(`补丁「${patch.name}」长度不等（${from.length} vs ${patch.to.length}），会破坏 asar 头。`)
+      console.error(`补丁「${patch.name}」长度不等（${from.length} vs ${patch.to.length}）。`)
       process.exit(1)
     }
   }
@@ -130,7 +162,7 @@ const count = (needle) => {
   return n
 }
 
-const status = PATCHES.map((patch) => {
+const status = patches.map((patch) => {
   const applied = count(patch.to) > 0
   const pending = applied ? 0 : patch.alternatives.reduce((sum, from) => sum + count(from), 0)
   return { ...patch, applied, pending }
@@ -138,34 +170,26 @@ const status = PATCHES.map((patch) => {
 
 const appVersion = readAppVersion(asarPath)
 const manifest = readManifest()
-
-// 当前 asar 里实际是哪个颜色：逐个候选探一遍，不要只看默认色。
-const detectedColor = (() => {
-  for (const color of KNOWN_COLORS) {
-    if (text.includes(`backgroundColor:"${color}ff",backgroundMaterial`)) return `${color}ff`
-  }
-  if (text.includes('backgroundColor:"#00000000",backgroundMaterial')) return '#00000000（透明）'
-  return '未知'
+const currentMode = text.includes(`transparent:!0,${PAD(14)}`) ? 'transparent' : 'opaque'
+const currentColor = (() => {
+  const m = /backgroundColor:"(#[0-9a-f]{8})",/.exec(text)
+  return m ? m[1] : '未知'
 })()
 
 if (flag('--check')) {
   console.log(`asar:        ${asarPath}`)
   console.log(`应用版本:    ${appVersion || '（读不到）'}`)
-  console.log(`窗口底色:    ${detectedColor}`)
-  for (const item of status) {
-    if (item.name === '窗口底色') continue
-    console.log(`${item.applied ? '✓' : '·'} ${item.name}: ${item.applied ? '已打' : `未打（可替换 ${item.pending} 处）`}`)
-  }
+  console.log(`当前模式:    ${currentMode}`)
+  console.log(`窗口底色:    ${currentColor}`)
+  console.log(`acrylic:     ${text.includes('backgroundMaterial:"acrylic",') ? '还开着' : '已关'}`)
   console.log(`备份:        ${fs.existsSync(backupPath) ? backupPath : '（无）'}`)
   if (manifest) {
-    console.log(`补丁记录:    ${manifest.appVersion} / ${manifest.color} / ${manifest.patchedAt}`)
+    console.log(`补丁记录:    ${manifest.appVersion} / ${manifest.mode} / ${manifest.patchedAt}`)
     if (manifest.appVersion && appVersion && manifest.appVersion !== appVersion) {
       console.log(`⚠ 应用已从 ${manifest.appVersion} 更新到 ${appVersion}，补丁已失效，请重打。`)
     }
-  } else {
-    console.log('补丁记录:    （无）')
   }
-  process.exit(status.every((item) => item.applied) ? 0 : 2)
+  process.exit(0)
 }
 
 if (flag('--revert')) {
@@ -173,24 +197,33 @@ if (flag('--revert')) {
     console.error(`没有备份，无法还原：${backupPath}`)
     process.exit(1)
   }
-  // 关键保护：备份是「打补丁那一刻的应用版本」。应用更新过之后再还原，
-  // 等于把整个应用退回旧版——必须拦住。
-  if (manifest && manifest.appVersion && appVersion && manifest.appVersion !== appVersion) {
-    if (!flag('--force')) {
-      console.error(`拒绝还原：备份来自应用 ${manifest.appVersion}，当前是 ${appVersion}。`)
-      console.error('更新后再还原会把应用整个退回旧版。确实要退版本，加 --force。')
-      process.exit(1)
-    }
-    console.warn(`⚠ --force：把应用从 ${appVersion} 退回 ${manifest.appVersion}。`)
+  if (manifest && manifest.appVersion && appVersion && manifest.appVersion !== appVersion && !flag('--force')) {
+    console.error(`拒绝还原：备份来自应用 ${manifest.appVersion}，当前是 ${appVersion}。`)
+    console.error('更新后再还原会把应用整个退回旧版。确实要退版本，加 --force。')
+    process.exit(1)
   }
   fs.copyFileSync(backupPath, asarPath)
   console.log('已用备份还原 app.asar')
   process.exit(0)
 }
 
+// --ensure：给启动器用。只做一件事——应用更新后按上次记录的模式自动重打；
+// 没有记录就什么都不做（不猜用户想要哪种模式）。
+if (flag('--ensure')) {
+  if (!manifest) {
+    console.log('没有补丁记录，跳过。')
+    process.exit(0)
+  }
+  if (manifest.appVersion === appVersion) {
+    console.log('应用版本未变，补丁仍然有效。')
+    process.exit(0)
+  }
+  console.log(`应用已从 ${manifest.appVersion} 更新到 ${appVersion}，按记录重打 ${manifest.mode} 模式。`)
+}
+
 const todo = status.filter((item) => !item.applied)
-if (todo.length === 0 && manifest && manifest.color === colorArg) {
-  console.log(`已经是指定颜色 ${windowColor}，无需操作。`)
+if (todo.length === 0) {
+  console.log(`已经是 ${mode} 模式（${currentColor}），无需操作。`)
   process.exit(0)
 }
 for (const item of todo) {
@@ -200,7 +233,6 @@ for (const item of todo) {
   }
 }
 
-// 备份只在「还没有备份」或「应用版本已经变了」时重建，避免把旧版本备份覆盖掉。
 if (!fs.existsSync(backupPath) || (manifest && manifest.appVersion && manifest.appVersion !== appVersion)) {
   fs.copyFileSync(asarPath, backupPath)
   console.log(`已备份到 ${backupPath}`)
@@ -226,11 +258,11 @@ try {
 
 fs.writeFileSync(manifestPath, JSON.stringify({
   appVersion,
-  color: colorArg,
-  windowColor,
+  mode,
+  color: mode === 'opaque' ? colorArg : '#00000000',
   backupSha256: sha256(backupPath),
   patchedAt: new Date().toISOString(),
 }, null, 2) + '\n')
 
-console.log(`已写入：${todo.length ? todo.map((item) => item.name).join('、') : '窗口底色'}（${windowColor}）`)
+console.log(`已写入：${mode} 模式（${todo.map((item) => item.name).join('、')}）`)
 console.log('重启 DSH 生效（主进程参数，刷新界面不够）。')

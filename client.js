@@ -2880,12 +2880,12 @@ html:not([data-dsh-glass="1"]) .uc-root {
 .uc-btn-danger:hover { background: var(--dsw-alias-bg-layer-2) !important; }
 
 .uc-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-.uc-stat { border-radius: var(--uc-r-card); background: var(--uc-surface-1); padding: 16px; }
+.uc-stat { border-radius: var(--uc-r-card); background: var(--uc-surface-1); padding: 16px; border: 1px solid var(--dsw-alias-border-l1); }
 .uc-stat-value { font-size: var(--uc-fs-title); font-weight: 650; font-variant-numeric: tabular-nums; }
 .uc-stat-value-hot { color: var(--dsw-alias-state-warn-primary); }
 .uc-stat-label { margin-top: 4px; font-size: var(--uc-fs-small); color: var(--dsw-alias-label-secondary); }
 
-.uc-card { border-radius: var(--uc-r-card); background: var(--uc-surface-1); overflow: hidden; box-shadow: inset 0 1px 0 var(--uc-highlight); animation: uc-fade .15s ease; }
+.uc-card { border-radius: var(--uc-r-card); background: var(--uc-surface-1); border: 1px solid var(--dsw-alias-border-l1); overflow: hidden; box-shadow: inset 0 1px 0 var(--uc-highlight); animation: uc-fade .15s ease; }
 .uc-card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 16px 8px; flex-wrap: wrap; }
 .uc-card-actions { display: flex; align-items: center; gap: 8px; }
 .uc-card-title { font-size: var(--uc-fs-title); font-weight: 600; }

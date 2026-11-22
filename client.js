@@ -986,6 +986,12 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         '--dsw-alias-border-l2': pair('rgba(120, 130, 150, 0.18)', 'rgba(255, 255, 255, 0.18)'),
         '--dsw-alias-label-primary': pair('#1a1d23', '#e8ebf1'),
         '--dsw-alias-label-secondary': pair('#5d6470', '#9aa3b2'),
+        // 说明文字、未选中菜单项用的是应用自己的三级/说明色，默认是按**纯白底**调的
+        // （#81858c / #adb2b8 / #e1e5ee）。我们的面板现在带冷调、又半透明，这几个值
+        // 在上面就明显偏淡——所以一起压深一档。
+        '--dsw-alias-label-tertiary': pair('#4f5763', '#a3acba'),
+        '--dsw-alias-label-caption': pair('#5a626e', '#98a1af'),
+        '--dsw-alias-label-dimmed': pair('#6b7280', '#8b93a3'),
         '--dsw-radius-md': pair('14px', '14px'),
         '--dsw-radius-lg': pair('18px', '18px'),
         '--dsw-radius-panel': pair('18px', '18px'),

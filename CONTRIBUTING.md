@@ -35,13 +35,14 @@
 
 ## 更新日志
 
-格式按 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)：
+格式按 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，写法向 VS Code / Raycast / Linear 看齐：
 
 - 顶部 `## [Unreleased]` 攒没发版的改动；
-- 每版一条 `## [x.y.z] - YYYY-MM-DD`；
+- 每版一条 `## [x.y.z] - YYYY-MM-DD`，紧跟一句 `> 头条`——一句话说清这版最值得知道的事；
 - 分组固定为 `Added` / `Changed` / `Fixed` / `Removed`，空组不写；
-- 一版通常 1–3 条，一句话说完；
-- 设置页只显示最近 3 条，完整历史看仓库里的 `CHANGELOG.md`。
+- **每条以功能域打头**：`更新:` `插件:` `外观:` `性能:` `关于:` `文档:`，人能直接跳到关心的部分；
+- 一版通常 1–3 条；
+- 设置页只显示最近 3 条的「版本 + 日期 + 头条」，完整历史看仓库里的 `CHANGELOG.md`。
 
 ## 发布
 

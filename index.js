@@ -839,6 +839,12 @@ async function readChangelog() {
         current.sections.push(section)
         continue
       }
+      // 「> 一句头条」
+      const quote = /^>\s*(.+?)\s*$/.exec(line)
+      if (quote && current) {
+        if (!current.headline) current.headline = quote[1].trim()
+        continue
+      }
       const item = /^[-*]\s+(.+?)\s*$/.exec(line)
       if (item && current) {
         if (!section) {

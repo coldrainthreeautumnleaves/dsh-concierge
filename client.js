@@ -2510,7 +2510,11 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
 .uc-log-group { margin: 16px 0 4px; font-size: 11.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--dsw-alias-label-tertiary); }
 .uc-log-more { margin: 6px 0 2px 18px; padding: 2px 0; border: 0; background: none; color: var(--dsw-alias-label-secondary); font: inherit; font-size: 12px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
 .uc-design { padding: 4px 18px 10px; }
-.uc-log-date { margin-left: 8px; font-size: 11.5px; color: var(--dsw-alias-label-tertiary); font-variant-numeric: tabular-nums; }
+.uc-log-date { margin-left: 8px; font-size: 11.5px; color: var(--dsw-alias-label-tertiary); font-variant-numeric: tabular-nums; }
+.uc-log-summary { padding: 8px 0 8px 4px; border-bottom: 1px solid var(--dsw-alias-border-l2); }
+.uc-log-summary:last-of-type { border-bottom: 0; }
+.uc-log-summary-head { display: flex; align-items: baseline; gap: 8px; }
+.uc-log-headline { margin-top: 3px; font-size: 12.5px; line-height: 1.55; color: var(--dsw-alias-label-secondary); }
 .uc-log-sections { padding: 2px 0 4px 18px; }
 .uc-log-section + .uc-log-section { margin-top: 8px; }
 .uc-log-full { display: inline-block; margin: 10px 0 2px 18px; font-size: 12px; color: var(--dsw-alias-label-secondary); text-decoration: underline; text-underline-offset: 3px; }
@@ -4394,9 +4398,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
             !aboutData || !Array.isArray(aboutData.changelog) || aboutData.changelog.length === 0
               ? h('div', { className: 'uc-empty' }, t('changelogEmpty'))
               : (() => {
-                  // 设置页只放最近 3 条摘要；完整历史在仓库的 CHANGELOG.md 里。
-                  // 宿主那份解析器重启后才更新，所以这里同时兼容旧形状（items 平铺）和新形状（sections 分组）。
-                  const SECTION_KEYS = { Added: 'logAdded', Changed: 'logChanged', Fixed: 'logFixed', Removed: 'logRemoved' }
+                  // 设置页只放最近 3 条：版本 + 日期 + 一句头条，不展开细节。
                   const normalized = aboutData.changelog
                     .map((entry) => {
                       let version = String(entry.version || '')
@@ -4406,44 +4408,20 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
                         version = m[1].trim()
                         if (!date && m[2]) date = m[2].trim()
                       }
-                      const sections = Array.isArray(entry.sections) && entry.sections.length
-                        ? entry.sections
-                        : Array.isArray(entry.items) && entry.items.length
-                          ? [{ title: '', items: entry.items }]
-                          : []
-                      return { version, date, sections }
+                      return { version, date, headline: entry.headline || "" }
                     })
-                    .filter((entry) => entry.sections.some((section) => section.items.length))
+                    .filter((entry) => entry.version && entry.version !== "Unreleased")
                     .slice(0, 3)
                   if (normalized.length === 0) return h('div', { className: 'uc-empty' }, t('changelogEmpty'))
-                  return normalized.map((entry, index) => {
-                    const open = openVersions[entry.version] !== undefined ? openVersions[entry.version] : index === 0
-                    const total = entry.sections.reduce((sum, section) => sum + section.items.length, 0)
-                    return h('div', { className: 'uc-log-entry', key: entry.version },
-                      h('button', {
-                        type: 'button',
-                        className: 'uc-log-head',
-                        onClick: () => setOpenVersions({ ...openVersions, [entry.version]: !open }),
-                      },
-                        h('span', { className: 'uc-log-chevron', 'data-open': open ? '1' : '0' }, '▸'),
+                  return normalized.map((entry) =>
+                    h('div', { className: 'uc-log-summary', key: entry.version },
+                      h('div', { className: 'uc-log-summary-head' },
                         h('span', { className: 'uc-log-version' }, `v${entry.version}`),
                         entry.date ? h('span', { className: 'uc-log-date' }, entry.date) : null,
-                        h('span', { className: 'uc-log-count' }, t('changelogCount', { n: total })),
                       ),
-                      open
-                        ? h('div', { className: 'uc-log-sections' },
-                            entry.sections.map((section, sectionIndex) =>
-                              h('div', { key: sectionIndex, className: 'uc-log-section' },
-                                section.title
-                                  ? h('div', { className: 'uc-log-group' }, SECTION_KEYS[section.title] ? t(SECTION_KEYS[section.title]) : section.title)
-                                  : null,
-                                h('ul', { className: 'uc-log-items' }, section.items.map((item, itemIndex) => h('li', { key: itemIndex }, item))),
-                              ),
-                            ),
-                          )
-                        : null,
-                    )
-                  })
+                      entry.headline ? h('div', { className: 'uc-log-headline' }, entry.headline) : null,
+                    ),
+                  )
                 })(),
             h('a', {
               className: 'uc-log-full',

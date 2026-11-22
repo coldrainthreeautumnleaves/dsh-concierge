@@ -81,8 +81,6 @@ window.__ModuleLoader__.load({
       noAnim: false,
       low: false,
       longActive: false,
-      // 玻璃自动降级：帧率掉下来时临时关掉会话区模糊，不是用户的设置。
-      glassAuto: false,
     }
     const perfListeners = new Set()
     const perfUpdate = (patch) => {
@@ -549,18 +547,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
     // —— 滚动/流式正好撞上 React 在渲染的时候，就是那几帧 100ms 的来源。所以记下
     // 上次写进去的值，没变就一个字都不写。
     let writtenPerfAttr = null
-    let writtenStreamAttr = null
-    let writtenGlassAutoAttr = null
-
-    function applyPerfStreaming() {
-      if (typeof document === 'undefined') return
-      const root = document.documentElement
-      const want = perf.streaming === true
-      if (want === writtenStreamAttr) return
-      writtenStreamAttr = want
-      if (want) root.dataset.dshStream = '1'
-      else delete root.dataset.dshStream
-    }
 
     // 诊断：把长帧记下来发给宿主落盘。除了流式开始/结束，只要出现 ≥40ms 的
     // 长帧，每 10 秒也补发一次——不然平时卡一下根本留不下证据。
@@ -585,7 +571,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         longTasks: typeof longTaskLog !== 'undefined' ? longTaskLog.slice(-20) : [],
         fps: perf.samples.slice(-8),
         streaming: perf.streaming,
-        glassAuto: perf.glassAuto,
         lightGlass: look.lightGlass,
         skin: look.skin,
         enabled: look.enabled,
@@ -634,18 +619,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       }
       const next = mode || 'normal'
       if (perf.mode !== next) perfUpdate({ mode: next })
-    }
-
-    // 玻璃自动降级只写一个属性，不碰用户的「轻玻璃」设置；关掉外观或换皮肤时由
-    // applyLook 清掉。
-    function applyGlassAuto() {
-      if (typeof document === 'undefined') return
-      const root = document.documentElement
-      const want = perf.glassAuto && look.enabled && look.skin === 'glass'
-      if (want === writtenGlassAutoAttr) return
-      writtenGlassAutoAttr = want
-      if (want) root.dataset.dshGlassAuto = '1'
-      else delete root.dataset.dshGlassAuto
     }
 
     // Sidebar collapse animates the chat column width; during that window only
@@ -720,10 +693,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       let last = performance.now()
       let lowFor = 0
       let goodFor = 0
-      // 玻璃自动降级的独立计数与冷却，和上面的精简模式互不影响。
-      let glassLowFor = 0
-      let glassGoodFor = 0
-      let lastGlassAt = 0
       // Flipping the lite mode rewrites animations, shadows and backdrop blur,
       // which reads as a blink: never change it more than once every 15 seconds.
       let lastModeAt = 0
@@ -772,37 +741,8 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
             if (now - lastModeAt < 15000) low = perf.low
             else lastModeAt = now
           }
-          // 玻璃自动降级：120Hz 屏掉到 90 帧人已经能感觉到，但上面那条 50% 的阈值
-          // 不会触发。单独给玻璃一条更敏感的线：低于刷新率 75% 连续 2 秒就关掉会话区
-          // 模糊，回到 90% 连续 5 秒恢复；两次切换至少隔 20 秒，避免来回闪。
-          let glassAuto = false
-          if (perf.auto && look.skin === 'glass' && look.enabled) {
-            glassAuto = perf.glassAuto
-            const glassLow = Math.max(45, Math.round(effectiveRefresh * 0.75))
-            const glassGood = Math.max(glassLow + 5, Math.round(effectiveRefresh * 0.9))
-            if (average < glassLow) {
-              glassLowFor += 1
-              glassGoodFor = 0
-            } else if (average > glassGood) {
-              glassGoodFor += 1
-              glassLowFor = 0
-            } else {
-              glassLowFor = 0
-              glassGoodFor = 0
-            }
-            let next = glassAuto
-            if (glassLowFor >= 2) next = true
-            if (glassGoodFor >= 5) next = false
-            if (next !== glassAuto && now - lastGlassAt >= 20000) {
-              lastGlassAt = now
-              glassAuto = next
-              // 记一笔：这一下会把会话区那层模糊挂上/摘掉，本身是一次大重绘。
-              probeEvent(next ? 'glass-auto-on' : 'glass-auto-off')
-            }
-          }
-          perfUpdate({ fps: average, samples, low, glassAuto })
+          perfUpdate({ fps: average, samples, low })
           applyPerfMode()
-          applyGlassAuto()
         }
         requestAnimationFrame(tick)
       }
@@ -843,7 +783,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
           history,
           peak,
         })
-        applyPerfStreaming()
         applyPerfMode()
       }, 2000)
     }
@@ -1190,6 +1129,15 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       }
       const region = document.querySelector('[data-conversation-region="chat"]')
       if (!region) return
+      // 自定义壁纸（图片/视频）时把预模糊层藏起来：那层永远是预设渐变的模糊副本，
+      // 和自定义壁纸对不上，会让会话区显示成「另一张壁纸」。这种情况下会话区回到
+      // 半透明、不糊。
+      const custom = look.wall && look.wall.mode !== 'preset' && String(look.wall.src || '').trim()
+      if (custom) {
+        layer.style.display = 'none'
+        return
+      }
+      layer.style.display = ''
       const rect = region.getBoundingClientRect()
       if (!rect.width || !rect.height) return
       layer.style.left = `${Math.round(rect.left)}px`
@@ -1340,9 +1288,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         delete root.dataset.dshNative
         delete root.dataset.dshGlassLight
         delete root.dataset.dshGlassScheme
-        delete root.dataset.dshGlassWall
-        delete root.dataset.dshGlassAuto
-        if (perf.glassAuto) perfUpdate({ glassAuto: false })
         applyGrainImage()
       }
       if (!look.enabled || !lookCtx) {
@@ -1377,15 +1322,13 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         // 否则把材质整个盖住。需要 app.asar 补丁。
         if (look.skin === 'native') root.dataset.dshNative = '1'
         else delete root.dataset.dshNative
-        // 轻玻璃：只关会话区那一条 blur，浮层不动（规则在 LOOK_CSS 里）。
+        // 关掉浮层模糊：只影响弹窗/菜单/提示条那几处（它们背后是静止的，但每帧
+        // 仍要采样一次）。会话区那块已经换成预模糊层，和这个开关无关。
         if (look.lightGlass) root.dataset.dshGlassLight = '1'
         else delete root.dataset.dshGlassLight
-        // 视频壁纸每帧都在变，会话区那块模糊会被逐帧重算，CSS 里按这个属性关掉。
-        root.dataset.dshGlassWall = (look.wall && look.wall.mode) || 'preset'
         applyGrainImage()
         applyFrostLayer()
         applyWindowCorners()
-        applyGlassAuto()
         syncGlassScheme()
       } else {
         clearGlassLayer()
@@ -1719,10 +1662,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       perfPeak: '近 80 秒峰值 {ms}ms',
       perfRefresh: '刷新率',
       perfRefreshHint: '默认跟随屏幕刷新率',
-      perfGlassAuto: '玻璃自动降级',
-      perfGlassAutoHint: '低于刷新率 75% 连续 2 秒就关掉会话区模糊，回升到 90% 连续 5 秒恢复',
-      perfGlassAutoOn: '已降级',
-      perfGlassAutoOff: '正常',
       perfRefreshAuto: '自动识别',
       pendingDisabled: '上次启动时有 {count} 个插件加载失败被禁用：{names}',
       enableAll: '全部启用',
@@ -1748,8 +1687,8 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       lookSkinNative: '原生材质（Acrylic）',
       lookGrain: '颗粒',
       lookTransparency: '透明度',
-      lookLightGlass: '轻玻璃',
-      lookLightGlassHint: '不模糊，只半透明：菜单、弹窗、输入卡全部关掉 backdrop-filter，最省帧',
+      lookLightGlass: '关掉浮层模糊',
+      lookLightGlassHint: '弹窗、菜单、提示条不再模糊，省一点合成；会话区不受影响',
       lookSquareWindow: '窗口直角',
       lookSquareWindowHint: '去掉窗口外框的系统圆角（DWM 画的），只影响这个窗口',
       lookNative: '原生材质',
@@ -1967,10 +1906,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       perfPeak: '80s peak {ms}ms',
       perfRefresh: 'Refresh rate',
       perfRefreshHint: 'Follows the display refresh by default',
-      perfGlassAuto: 'Glass auto-degrade',
-      perfGlassAutoHint: 'Drops the chat blur after 2s below 75% of the refresh rate; restores after 5s above 90%',
-      perfGlassAutoOn: 'Reduced',
-      perfGlassAutoOff: 'Normal',
       perfRefreshAuto: 'Auto detect',
       pendingDisabled: '{count} plugin(s) failed to load after the last start and were disabled: {names}',
       enableAll: 'Enable all',
@@ -1996,8 +1931,8 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       lookSkinNative: 'Native material (Acrylic)',
       lookGrain: 'Grain',
       lookTransparency: 'Transparency',
-      lookLightGlass: 'Light glass',
-      lookLightGlassHint: 'No blur anywhere — only translucency. Cheapest on the compositor.',
+      lookLightGlass: 'No overlay blur',
+      lookLightGlassHint: 'Dialogs, menus and tooltips stop blurring; the chat column is unaffected',
       lookSquareWindow: 'Square window',
       lookSquareWindowHint: 'Drops the Windows 11 corner rounding on this window frame',
       lookNative: 'Native material',
@@ -3997,8 +3932,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
                 h('option', { value: '0' }, t('perfRefreshAuto')),
                 [60, 90, 120, 144, 165, 240].map((rate) => h('option', { key: rate, value: String(rate) }, `${rate}Hz`)),
               )),
-            settingRow(t('perfGlassAuto'), t('perfGlassAutoHint'),
-              h('span', { className: 'uc-typer-value' }, perfSnapshot.glassAuto ? t('perfGlassAutoOn') : t('perfGlassAutoOff'))),
             h('p', { className: 'uc-perf-hint' }, t('perfHint')),
             h('div', { className: 'uc-hintbox' },
               h('div', { className: 'uc-hintbox-title' }, t('perfTipsTitle')),

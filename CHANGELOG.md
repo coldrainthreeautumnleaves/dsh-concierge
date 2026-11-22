@@ -6,6 +6,19 @@
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-11-22
+
+> 窗口底色改成和界面同色，不再追求透明
+
+### Added
+
+- 工具: `scripts/patch-window-match.mjs`（配 `apply-window-match.cmd`）。把 `chromeFallbackFill()` 的返回值从 `"#1b1b1c" : "#f9fafb"` 换成 `"#0e1116" : "#eef3fa"`——等长替换，窗口底色、标题栏遮罩和所有 `setBackgroundColor` 调用一起变成玻璃皮肤的基色
+- 文档: 说明窗口有约 11px 非客户区，页面画不进去；窗口透明时那圈会露出桌面，所以改成同色而不是透明
+
+### Changed
+
+- 工具: `apply-window-match.cmd` 沿用「应用 → 启动 → 观察 25 秒 → 没起来就自动还原」的流程
+
 ## [0.9.9] - 2026-11-22
 
 > 全屏和改尺寸的过渡期不再透出桌面

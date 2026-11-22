@@ -42,21 +42,16 @@ const PAD = (n) => ' '.repeat(n)
 const padTo = (value, len) => value + PAD(Math.max(0, len - value.length))
 
 const RUNTIME_FROM = 'setBackgroundColor(chromeFallbackFill())'
-const COLOR_FROM = 'color:chromeFallbackFill(),'
 
-// 每条都是 [源, 目标]，长度必须严格相等。
+// 只改运行时那三处 setBackgroundColor。
+// 标题栏遮罩的 color:chromeFallbackFill() 故意不动：它的颜色由 preload 探针按
+// token 经 IPC 重设，改了构造参数也会被覆盖；少改一处，出问题时少一个变量。
 const PATCHES = [
   {
     name: '运行时窗口底色',
     from: RUNTIME_FROM,
     to: `${padTo('setBackgroundColor("#00000000"', RUNTIME_FROM.length - 1)})`,
     expect: 3,
-  },
-  {
-    name: '标题栏遮罩底色',
-    from: COLOR_FROM,
-    to: `${padTo('color:"#00000000"', COLOR_FROM.length - 1)},`,
-    expect: 1,
   },
 ]
 

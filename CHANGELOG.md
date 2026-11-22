@@ -6,6 +6,15 @@
 
 ## [Unreleased]
 
+## [0.9.2] - 2026-11-22
+
+> 窗口透明补丁收窄范围，应用脚本加上自动回滚
+
+### Changed
+
+- 工具: `patch-window-clear.mjs` 只改运行时那 3 处 `setBackgroundColor(chromeFallbackFill())`，不再动标题栏遮罩的构造颜色——后者的颜色本来就会被 preload 探针按 token 覆盖，少改一处少一个变量
+- 工具: `apply-window-clear.cmd` 改成「应用 → 启动 → 观察 25 秒 → 进程不在就自动还原并重启」。上一次打完补丁启动即退（崩溃日志是 `desktop welcome: Web request failed`，不是颜色报错，但无法排除补丁影响），所以这次让脚本自己兜底
+
 ## [0.9.1] - 2026-11-22
 
 > 找到留边发白的真正原因：主进程在运行时把窗口底色刷成了不透明

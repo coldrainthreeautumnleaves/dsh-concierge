@@ -1088,6 +1088,12 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         // 它是个控件。
         '--dsw-specific-selector': fill(0.44, 0.5),
         '--dsw-specific-tip': fill(0.52, 0.58),
+        // 代码块 / 行内代码 / 标签徽章的底默认是 #f9fafb、#f5f6f7 这类近白实色，
+        // 在玻璃上同样是一块块死白。跟着色温走，但保留一点层次：块比行内略实。
+        '--dsw-alias-markdown-code-block': fill(0.55, 0.5),
+        '--dsw-alias-markdown-code-block-banner': fill(0.64, 0.56),
+        '--dsw-alias-markdown-inline-code': fill(0.55, 0.5),
+        '--dsw-alias-markdown-tag': fill(0.6, 0.5),
         '--dsw-specific-login-input': fill(0.42, 0.46),
         // 标题栏那条是 Windows 原生 WCO 画的，颜色来自 preload 探针读的这个 token。
         // 关键是 alpha 要「几乎 0 但不是 0」：完全 0 会被 Electron 当成没设，回退成

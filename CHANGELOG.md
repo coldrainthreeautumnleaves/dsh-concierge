@@ -6,6 +6,15 @@
 
 ## [Unreleased]
 
+## [0.13.3] - 2026-11-22
+
+> 探针改用尺寸判定，并 dump 设置页子树
+
+### Fixed
+
+- 工具: 设置页容器是 `pointer-events: none`，`elementFromPoint` 会穿透到下面的会话页，所以前几版一直报 `page=chat`。改成量 `_page` 的 `getBoundingClientRect()`
+- 工具: 上报里新增 `pageChain`——从 `_page` 起逐层往下 6 级的 `y / height / background / ::before / ::after`，横带画在哪一层可以直接读出来
+
 ## [0.13.2] - 2026-11-22
 
 > 探针改成「设置页真的在前台」才上报

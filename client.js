@@ -709,6 +709,8 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
             if (next !== glassAuto && now - lastGlassAt >= 20000) {
               lastGlassAt = now
               glassAuto = next
+              // 记一笔：这一下会把会话区那层模糊挂上/摘掉，本身是一次大重绘。
+              probeEvent(next ? 'glass-auto-on' : 'glass-auto-off')
             }
           }
           perfUpdate({ fps: average, samples, low, glassAuto })

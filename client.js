@@ -1882,23 +1882,26 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
 
     // 窗口外框圆角由系统 DWM 画：客户端改不了，交给宿主侧调 DwmSetWindowAttribute。
     // 只在值变化时发一次；失败就清掉记录，下次 applyLook 再试。
-    let appliedSquareWindow = null
+    // 同时把「要不要那圈 1px 窗口边框」一起传下去：开留边时去掉它，窗口边框和
+    // 内容圆角边才会合成一条线，而不是中间夹着 10px 的两条边。
+    let appliedWindowChrome = null
 
     function applyWindowCorners(force = false) {
       if (typeof fetch !== 'function') return
       if (!look.enabled || !isGlassSkin()) return
-      if (!force && appliedSquareWindow === look.squareWindow) return
-      appliedSquareWindow = look.squareWindow
+      const key = `${look.squareWindow}:${look.edgeGlass ? 1 : 0}`
+      if (!force && appliedWindowChrome === key) return
+      appliedWindowChrome = key
       fetch(`${API}/window-corners`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ square: look.squareWindow }),
+        body: JSON.stringify({ square: look.squareWindow, borderless: look.edgeGlass === true }),
       })
         .then((response) => response.json())
         .then((body) => {
-          if (!body || body.ok !== true) appliedSquareWindow = null
+          if (!body || body.ok !== true) appliedWindowChrome = null
         })
-        .catch(() => { appliedSquareWindow = null })
+        .catch(() => { appliedWindowChrome = null })
     }
 
     // 只有「玻璃」会挂壁纸、预模糊和整套半透明 token。「原生」走官方默认样式：

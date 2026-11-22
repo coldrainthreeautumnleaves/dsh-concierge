@@ -690,7 +690,12 @@ async function handleStartupBoost(request, response) {
 // 圆角偏好可以在运行时改。DWMWA_WINDOW_CORNER_PREFERENCE = 33，
 // DWMWCP_DONOTROUND = 1，DWMWCP_ROUND = 2。和 dsh-win11-material 的做法一致：
 // 插件跑在 Host 进程里，能调 Win32/DWM，只是动不了窗口构造参数。
-const WINDOW_CORNER_SCRIPT = (square) => [
+//
+// DWMWA_BORDER_COLOR = 34：Windows 11 会给窗口画一圈 1px 边框。开了「真透明留边」
+// 之后，这圈边框和内容的圆角边会并排成两条线——留边那 10px 在中间，看起来就是
+// 「窗口边框 + 内边框」。把它设成 DWMWA_COLOR_NONE（0xFFFFFFFE）就没有外框了，
+// 只剩内容自己那条圆角边。关掉留边时设回 DWMWA_COLOR_DEFAULT（0xFFFFFFFF）。
+const WINDOW_CORNER_SCRIPT = (square, borderless) => [
   "$ErrorActionPreference = 'Stop'",
   'Add-Type -TypeDefinition @"',
   'using System;',
@@ -704,7 +709,10 @@ const WINDOW_CORNER_SCRIPT = (square) => [
   "if ($null -eq $p) { Write-Output 'no-window'; exit 0 }",
   `$v = ${square ? 1 : 2}`,
   '$hr = [DshDwmCorner]::DwmSetWindowAttribute($p.MainWindowHandle, 33, [ref]$v, 4)',
-  "Write-Output ('hr=' + $hr)",
+  // 0xFFFFFFFE 会超过 int 上限，用负的等价值传进去（unchecked (int)）。
+  `$b = ${borderless ? -2 : -1}`,
+  '$hr2 = [DshDwmCorner]::DwmSetWindowAttribute($p.MainWindowHandle, 34, [ref]$b, 4)',
+  "Write-Output ('hr=' + $hr + ' border=' + $hr2)",
 ].join('\n')
 
 function runPowerShellCommand(script) {
@@ -760,10 +768,12 @@ async function handleWindowCorners(request, response) {
   try {
     const body = await readNodeJson(request)
     const square = body && body.square === true
-    const result = await runPowerShellCommand(WINDOW_CORNER_SCRIPT(square))
+    const borderless = body && body.borderless === true
+    const result = await runPowerShellCommand(WINDOW_CORNER_SCRIPT(square, borderless))
     sendNodeJson(response, {
       ok: result.ok,
       square,
+      borderless,
       output: result.output || '',
       error: result.error || '',
     }, result.ok ? 200 : 500)

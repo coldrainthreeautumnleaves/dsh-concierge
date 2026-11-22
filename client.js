@@ -1562,9 +1562,14 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         },
       },
       glass: { tokens: glassTokens() },
-      // 原生：不覆盖任何 token，也不挂壁纸/模糊层，就是官方自己的纯色底。
-      // 选它就是「关掉皮肤、只保留字体和品牌色」的那一档。
-      native: { tokens: {} },
+      // 原生：只把「页面画布」对齐到玻璃那套的中性底色，其余全部走官方 token。
+      // 卡片仍是官方白，所以整体还是纯白界面，只是画布不再用偏暖的 #fbfcfe——
+      // 两套皮肤来回切时底色不会跳。
+      native: {
+        tokens: {
+          '--dsw-alias-bg-base': { light: '#eef3fa', dark: '#0e1116' },
+        },
+      },
       ocean: {
         tokens: {
           '--dsw-specific-sidebar-fill': { light: '#eaf3fb', dark: '#0d1822' },

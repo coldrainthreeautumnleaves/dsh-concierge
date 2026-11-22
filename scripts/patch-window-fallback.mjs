@@ -1,14 +1,20 @@
 #!/usr/bin/env node
 /**
- * 给 DSH 主窗口换掉 acrylic 材质，并把窗口底色设成壁纸近似色。
+ * 给 DSH 主窗口换掉 acrylic 材质，并把窗口底色设成「内容区实际合成色」。
  *
- * 为什么：玻璃皮肤的观感是「预模糊壁纸层 + 不透明内容」画出来的，窗口后面的
- * DWM 亚克力根本看不见——它不贡献任何视觉，只贡献 Windows 上那串 bug
- * （electron#39959：透明无边框窗口下 backgroundMaterial 在缩放前不生效，
- * 拖窗口时非客户区重绘，露出一条和壁纸不搭的浅色带）。
+ * 为什么：窗口缩放期间 Chromium 不重绘视图，新露出的区域直接用窗口底色填
+ * （electron#10801、#44689、#1391：维护者的结论就是 "How Chromium Works"，
+ * 唯一解法是把 BrowserWindow 的 backgroundColor 设成应用背景色）。所以那个
+ * 白条不在页面里，CSS 改不到，只能改主进程。
  *
- * 两条补丁都是**等长替换**，不动 asar 头：
- *   1. `#00000000` → `#e8f0faff`          窗口底色 = 壁纸同色系（不透明）
+ * 底色取实测的内容区合成色 RGB(204,216,238) = #ccd8ee，不是 tint——tint 太浅，
+ * 露出来仍然像白条。
+ *
+ * 另外玻璃皮肤的观感是「预模糊壁纸层 + 不透明内容」画出来的，窗口后面的 DWM
+ * 亚克力根本看不见，只贡献 Windows 上那串 bug（electron#39959），所以一并关掉。
+ *
+ * 三条补丁都是**等长替换**，不动 asar 头：
+ *   1. `#00000000` / 旧值 → `#ccd8eeff`    窗口底色 = 内容区颜色（不透明）
  *   2. `"acrylic"` → `"none"   `          关掉 DWM 材质，让底色真正参与绘制
  *
  * 用法：
@@ -23,15 +29,21 @@ import fs from 'node:fs'
 import path from 'node:path'
 import os from 'node:os'
 
+const WINDOW_COLOR = '#ccd8eeff'
+
 const PATCHES = [
   {
     name: '窗口底色',
-    from: 'backgroundColor:"#00000000",backgroundMaterial',
-    to: 'backgroundColor:"#e8f0faff",backgroundMaterial',
+    // 原始值是透明；也可能已经是历史版本写过的 #e8f0faff
+    alternatives: [
+      'backgroundColor:"#00000000",backgroundMaterial',
+      'backgroundColor:"#e8f0faff",backgroundMaterial',
+    ],
+    to: `backgroundColor:"${WINDOW_COLOR}",backgroundMaterial`,
   },
   {
     name: '关掉 acrylic',
-    from: 'backgroundMaterial:"acrylic"',
+    alternatives: ['backgroundMaterial:"acrylic"'],
     to: 'backgroundMaterial:"none"   ',
   },
 ]
@@ -56,9 +68,11 @@ if (!fs.existsSync(asarPath)) {
 const backupPath = `${asarPath}.bak`
 
 for (const patch of PATCHES) {
-  if (patch.from.length !== patch.to.length) {
-    console.error(`补丁「${patch.name}」长度不等（${patch.from.length} vs ${patch.to.length}），会破坏 asar 头。`)
-    process.exit(1)
+  for (const from of patch.alternatives) {
+    if (from.length !== patch.to.length) {
+      console.error(`补丁「${patch.name}」长度不等（${from.length} vs ${patch.to.length}），会破坏 asar 头。`)
+      process.exit(1)
+    }
   }
 }
 
@@ -71,11 +85,11 @@ const count = (needle) => {
   return n
 }
 
-const status = PATCHES.map((patch) => ({
-  ...patch,
-  applied: count(patch.to) > 0,
-  pending: count(patch.from),
-}))
+const status = PATCHES.map((patch) => {
+  const applied = count(patch.to) > 0
+  const pending = applied ? 0 : patch.alternatives.reduce((sum, from) => sum + count(from), 0)
+  return { ...patch, applied, pending }
+})
 
 if (flag('--check')) {
   console.log(`asar:   ${asarPath}`)
@@ -98,7 +112,7 @@ if (flag('--revert')) {
 
 const todo = status.filter((item) => !item.applied)
 if (todo.length === 0) {
-  console.log('两条补丁都已生效，无需操作。')
+  console.log('补丁都已生效，无需操作。')
   process.exit(0)
 }
 for (const item of todo) {
@@ -114,7 +128,10 @@ if (!fs.existsSync(backupPath)) {
 }
 
 let next = text
-for (const item of todo) next = next.replace(item.from, item.to)
+for (const item of todo) {
+  const from = item.alternatives.find((candidate) => next.includes(candidate))
+  next = next.replace(from, item.to)
+}
 const nextBuffer = Buffer.from(next, 'latin1')
 if (nextBuffer.length !== buffer.length) {
   console.error('替换后长度变了，拒绝写入（会破坏 asar 头）。')
@@ -127,5 +144,5 @@ try {
   console.error('多半是应用正在运行锁住了文件——先退出 DSH，再跑一次。')
   process.exit(1)
 }
-console.log(`已写入：${todo.map((item) => item.name).join('、')}`)
-console.log('重启 DSH 生效（主进程参数，Ctrl+R 不够）。')
+console.log(`已写入：${todo.map((item) => item.name).join('、')}（窗口底色 ${WINDOW_COLOR}）`)
+console.log('重启 DSH 生效（主进程参数，刷新界面不够）。')

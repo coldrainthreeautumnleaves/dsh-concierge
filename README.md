@@ -77,12 +77,12 @@ dsh plugin --profile <profile> add github:coldrainthreeautumnleaves/dsh-concierg
 
 ## 窗口材质补丁（可选）
 
-主窗口默认挂 `backgroundMaterial: "acrylic"`。玻璃皮肤的观感是「预模糊壁纸层 + 不透明内容」画出来的，窗口后面的 DWM 亚克力**根本看不见**——它不贡献视觉，只贡献 Windows 上那串 bug（[electron#39959](https://github.com/electron/electron/issues/39959)：透明无边框窗口下 `backgroundMaterial` 在缩放前不生效，拖窗口时非客户区重绘，露出一条和壁纸不搭的浅色带）。
+窗口缩放时 Chromium **不重绘视图**，新露出的区域直接用窗口底色填——那个「白条」不在页面里，CSS 改不到。这是 Chromium 的既定行为（electron#10801、#44689、#1391，维护者结论是 *"How Chromium Works"*），唯一解法是把 `BrowserWindow` 的 `backgroundColor` 设成应用背景色。
 
 `scripts/patch-window-fallback.mjs` 做两件事：
 
-1. 窗口底色 `#00000000` → `#e8f0faff`（壁纸同色系，不透明）；
-2. `backgroundMaterial: "acrylic"` → `"none"`，关掉 DWM 材质，让底色真正参与绘制。
+1. 窗口底色 → `#ccd8eeff`（内容区**实测合成色** RGB(204,216,238)；用 tint 会太浅，露出来仍然像白条）；
+2. `backgroundMaterial: "acrylic"` → `"none"`，关掉 DWM 材质——玻璃皮肤的观感由预模糊壁纸层画，亚克力在后面根本看不见，只贡献 Windows 上的 bug（electron#39959）。
 
 两条都是**等长替换**，不动 asar 头。
 

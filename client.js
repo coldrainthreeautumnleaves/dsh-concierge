@@ -1,4 +1,4 @@
-/**
+﻿/**
  * dsh-concierge — Client half.
  * A dashboard-style settings page plus a top notification strip.
  */
@@ -364,7 +364,6 @@ html[data-dsh-glass="1"] :is(
   [class*="_hovercard"],
   [class*="_menu"],
   [class*="_portal_"] > *,
-  [data-composer-dock],
   [data-composer-dock] > *,
   [data-composer-dock] [class*="_root"],
   .uc-card,
@@ -386,7 +385,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] :is(
   [class*="_hovercard"],
   [class*="_menu"],
   [class*="_portal_"] > *,
-  [data-composer-dock],
   [data-composer-dock] > *,
   [data-composer-dock] [class*="_root"],
   .uc-card,

@@ -387,6 +387,19 @@ html[data-dsh-glass="1"][data-dsh-glass-light="1"] .uc-banner {
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
+/* 「盖在内容上」的浮层（设置面板、弹窗、全屏覆盖）必须给足不透明底：它们背后就是
+   正在显示的对话，半透明会让两套文字叠在一起，变成重影。这类面板宁可牺牲一点
+   玻璃感，也要保证只有一层字。 */
+html[data-dsh-glass="1"] [role="dialog"],
+html[data-dsh-glass="1"] [role="alertdialog"],
+html[data-dsh-glass="1"] [data-shell-overlay="true"] [data-slot] > * {
+  background-color: rgba(var(--dsh-tint-rgb), 0.96) !important;
+}
+html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] [role="dialog"],
+html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] [role="alertdialog"],
+html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] [data-shell-overlay="true"] [data-slot] > * {
+  background-color: rgba(16, 20, 28, 0.96) !important;
+}
 html[data-dsh-glass="1"] [role="dialog"],
 html[data-dsh-glass="1"] [role="menu"],
 html[data-dsh-glass="1"] [role="listbox"],
@@ -989,9 +1002,9 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         // 说明文字、未选中菜单项用的是应用自己的三级/说明色，默认是按**纯白底**调的
         // （#81858c / #adb2b8 / #e1e5ee）。我们的面板现在带冷调、又半透明，这几个值
         // 在上面就明显偏淡——所以一起压深一档。
-        '--dsw-alias-label-tertiary': pair('#4f5763', '#a3acba'),
-        '--dsw-alias-label-caption': pair('#5a626e', '#98a1af'),
-        '--dsw-alias-label-dimmed': pair('#6b7280', '#8b93a3'),
+        '--dsw-alias-label-tertiary': pair('#414852', '#b6bec9'),
+        '--dsw-alias-label-caption': pair('#4d5560', '#aab2bf'),
+        '--dsw-alias-label-dimmed': pair('#5f6672', '#9aa2b0'),
         '--dsw-radius-md': pair('14px', '14px'),
         '--dsw-radius-lg': pair('18px', '18px'),
         '--dsw-radius-panel': pair('18px', '18px'),

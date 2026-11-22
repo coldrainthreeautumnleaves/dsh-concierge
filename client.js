@@ -195,28 +195,17 @@ html[data-dsh-glass="1"] #dsh-concierge-glass {
 }
 /* 真透明留边。窗口本身是 backgroundColor #00000000 + backgroundMaterial acrylic，
    DWM 一直在窗口后面画桌面壁纸的模糊——只是被页面铺满的不透明底盖住了。
-   这里把页面四周留出 10px 不画任何东西，那圈就露出真毛玻璃；内容区（壁纸 + 面板）
-   跟着内缩同样的距离，所以中间永远实心，尺寸变化时不会露白。
 
-   只给 _frame 加 margin 不够：_frame 的祖先（#root 和它的包装层）自己可能铺底，
-   内缩出来的那圈仍然被它们盖住。所以再给 #root 一刀 clip-path——裁剪作用于元素
-   自己的绘制（含背景），祖先铺什么都裁掉，窗口外圈就一定是空的。 */
+   只留一套机制：**裁剪**。内容不内缩、壁纸不内缩、_frame 不加 margin，
+   页面和壁纸用同一个切口，所以不会出现两套基准对不齐的缝。
+   裁剪作用于元素自己的绘制（含背景和 fixed 后代），祖先铺什么都到不了外圈。 */
 html[data-dsh-edge="1"],
 html[data-dsh-edge="1"] body,
 html[data-dsh-edge="1"] #root { background: transparent !important; }
-html[data-dsh-edge="1"] #root {
+html[data-dsh-edge="1"] #root,
+html[data-dsh-edge="1"] #dsh-concierge-glass,
+html[data-dsh-edge="1"] #dsh-concierge-frost {
   clip-path: inset(10px round 14px);
-}
-html[data-dsh-edge="1"] #dsh-concierge-glass {
-  inset: 10px;
-  border-radius: 14px;
-  overflow: hidden;
-}
-html[data-dsh-edge="1"] [class*="_frame"] {
-  margin: 10px;
-  border-radius: 14px;
-  overflow: hidden;
-  background: transparent !important;
 }
 /* The wallpaper stays SHARP. Frost comes from each panel blurring what is
    behind it (backdrop-filter); pre-blurring the wallpaper leaves nothing to

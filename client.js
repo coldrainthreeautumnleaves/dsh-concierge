@@ -2048,7 +2048,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       aboutRepo: 'GitHub 仓库',
       changelogTitle: '更新日志',
       changelogCount: '{n} 条',
-      changelogHint: '最近 3 版 · 可展开全部',
+      changelogHintCount: '最近 3 版 · 展开全部 {n} 版',
       logAdded: '新增',
       logChanged: '变更',
       logFixed: '修复',
@@ -2315,7 +2315,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       aboutRepo: 'GitHub repository',
       changelogTitle: 'Changelog',
       changelogCount: '{n} changes',
-      changelogHint: 'Last 3 releases · expand for all',
+      changelogHintCount: 'Last 3 releases · show all {n}',
       logAdded: 'Added',
       logChanged: 'Changed',
       logFixed: 'Fixed',
@@ -2861,6 +2861,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       const [openVersions, setOpenVersions] = React.useState({})
       const [openGuide, setOpenGuide] = React.useState(false)
       const [openLogAll, setOpenLogAll] = React.useState(false)
+      const [openLogCard, setOpenLogCard] = React.useState(false)
       const [rollbackName, setRollbackName] = React.useState(null)
       const [rollbackData, setRollbackData] = React.useState(null)
       const [rollbackLoading, setRollbackLoading] = React.useState(false)
@@ -3415,6 +3416,10 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       const app = data ? data.app : null
       const rows = data ? data.plugins : []
       const updatable = rows.filter((row) => row.updateAvailable).length
+      // 「关于」页折叠头部的摘要：「最近 3 版 · 展开全部 N 版」
+      const logTotal = Array.isArray(aboutData && aboutData.changelog)
+        ? aboutData.changelog.filter((entry) => !String(entry.version || '').includes('Unreleased')).length
+        : 0
       const needle = query.trim().toLowerCase()
       const visible = (filter === 'updates' ? rows.filter((row) => row.updateAvailable) : rows)
         .filter((row) => {
@@ -4382,11 +4387,17 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         ) : null,
 
         tab === 'about' ? h('section', { className: 'uc-card' },
-          h('div', { className: 'uc-card-head' },
-            h('div', { className: 'uc-card-title' }, t('changelogTitle')),
-            h('span', { className: 'uc-about-license' }, t('changelogHint')),
+          h('button', {
+            type: 'button',
+            className: 'uc-log-head',
+            onClick: () => setOpenLogCard(!openLogCard),
+          },
+            h('span', { className: 'uc-log-chevron', 'data-open': openLogCard ? '1' : '0' }, '▸'),
+            h('span', { className: 'uc-log-version' }, t('changelogTitle')),
+            h('span', { className: 'uc-log-count' }, t('changelogHintCount', { n: logTotal })),
           ),
-          h('div', { className: 'uc-log' },
+          openLogCard
+            ? h('div', { className: 'uc-log' },
             !aboutData || !Array.isArray(aboutData.changelog) || aboutData.changelog.length === 0
               ? h('div', { className: 'uc-empty' }, t('changelogEmpty'))
               : (() => {
@@ -4443,7 +4454,8 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
                       : null,
                   ]
                 })(),
-          ),
+              )
+            : null,
         ) : null,
         h('footer', { className: 'uc-foot' },
           h('span', null, t('autoHint')),

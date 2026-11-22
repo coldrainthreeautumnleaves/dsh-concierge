@@ -236,6 +236,20 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-top {
 }
 html[data-dsh-glass="1"][data-fullscreen] #dsh-concierge-top { display: none; }
 
+/* 别的插件的「DSH 控制台」浮层：面板是 aside.dsh-console-modal，遮罩是它没有类名的父 div。
+   面板改成半透明，只让里面的卡片自己带底；遮罩也调淡，才能看见后面的主界面。 */
+html[data-dsh-glass="1"] .dsh-console-modal {
+  background: rgba(var(--dsh-tint-rgb), 0.72) !important;
+  border-color: transparent !important;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--dsw-alias-label-on-color) 7%, transparent), 0 20px 60px rgba(0, 0, 0, .18) !important;
+}
+html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .dsh-console-modal {
+  background: rgba(16, 20, 28, 0.74) !important;
+}
+html[data-dsh-glass="1"] div:has(> aside.dsh-console-modal) {
+  background: rgba(0, 0, 0, 0.12) !important;
+}
+
 /* 侧边栏：从「压回实色」改成半透明，和聊天区一样透出壁纸。这里**不加**
    backdrop-filter——侧边栏里挂着 fixed 定位的弹层，给容器加 filter 会把它们的
    包含块换成侧边栏，弹层会错位（dsh-glass-skin 的 README 也提到这一点）。

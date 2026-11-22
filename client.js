@@ -310,6 +310,10 @@ html[data-dsh-glass="1"]:not([data-dsh-native="1"]) #dsh-concierge-frost {
   pointer-events: none;
   /* 把布局/绘制范围锁在这块矩形里：外面的变化不会让它重绘 */
   contain: strict;
+  /* 壁纸是蓝→紫→青三段，会话区正好压在青段上：模糊一糊，整块就被染成薄荷绿，
+     而侧边栏压在蓝紫段上偏紫蓝——同一个壁纸两处取到的色相本来就不一样。
+     所以在模糊层上再盖一层统一色温，把局部色相拉回中性。 */
+  background: rgba(var(--dsh-tint-rgb), 0.45);
 }
 #dsh-concierge-frost > div {
   position: absolute;
@@ -323,7 +327,9 @@ html[data-dsh-glass="1"]:not([data-dsh-native="1"]) #dsh-concierge-frost {
     linear-gradient(165deg, #dbe4f3 0%, #d5dfef 50%, #d9e9ea 100%);
   background-size: 140px 140px, auto, auto, auto, auto;
   background-repeat: repeat, no-repeat, no-repeat, no-repeat, no-repeat;
-  filter: blur(18px) saturate(115%);
+  /* 降饱和是关键：模糊只负责「糊」，颜色交给上面那层统一色温，
+     这样会话区不会跟着壁纸的青色走。 */
+  filter: blur(18px) saturate(0.32) brightness(1.04);
 }
 html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-frost > div {
   background-image:

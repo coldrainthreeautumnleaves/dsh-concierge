@@ -196,61 +196,48 @@ html[data-dsh-glass="1"] #dsh-concierge-glass {
 /* 真透明留边。窗口本身是 backgroundColor #00000000 + backgroundMaterial acrylic，
    DWM 一直在窗口后面画桌面壁纸的模糊——只是被页面铺满的不透明底盖住了。
 
-   只留一套机制：**裁剪**。内容不内缩、壁纸不内缩、_frame 不加 margin，
-   页面和壁纸用同一个切口，所以不会出现两套基准对不齐的缝。
-   裁剪作用于元素自己的绘制（含背景和 fixed 后代），祖先铺什么都到不了外圈。
+   做法按 Electron 官方「自定义窗口样式」的配方：**内容自己内缩，外圈留空**。
+   不用 clip-path——它的 inset 是相对元素自己的参考盒算的，元素盒子不在窗口原点
+   时整个切口会跟着偏移（之前「一上一下」就是这么来的）。
+
+   内缩用 body 的透明 border：border 参与布局，所以菜单栏、#root 这些 body 的
+   子节点会一起向内缩 10px；overflow: hidden 把绘制裁在 padding box 上，外圈
+   那 10px 什么都不画，露出亚克力。border-radius 让裁出来的角是圆的。
    几何只在这里定义一次，边距和圆角要调就改这两个值。 */
 html[data-dsh-edge="1"] {
   --dsh-edge: 10px;
   --dsh-edge-radius: 16px;
-  /* 切口那条 1px 内描边的颜色：取壁纸基色。clip-path 的抗锯齿会跟窗口表面
-     混色，在边界上留一条发白的细线；这条描边盖在切口内侧，把它压掉。 */
-  --dsh-edge-line: #eef3fa;
   /* 顶部 40px 是 Windows 的 WCO 遮罩，颜色来自这个 token。玻璃皮肤给的是
-     alpha 0.004——几乎透明但不是零，它会在顶部盖一层极淡的白，和左右下三边的
-     纯亚克力形成一条线。留边模式下必须完全透明。
+     alpha 0.004——几乎透明但不是零，它会在顶部盖一层极淡的白，和左右下三边
+     形成一条线。留边模式下必须完全透明。
      用 rgba(1,0,0,0) 而不是 rgba(0,0,0,0)：后者在部分 Electron 版本会回退成
-     默认帧色（Electron v43 才修），前者是实测可用的逃生值。 */
+     默认帧色，前者是实测可用的逃生值。 */
   --dsw-specific-sidebar-fill: rgba(1, 0, 0, 0) !important;
-}
-html[data-dsh-edge="1"][data-dsh-glass-scheme="dark"] {
-  --dsh-edge-line: #0e1116;
 }
 html[data-dsh-edge="1"],
 html[data-dsh-edge="1"] body,
 html[data-dsh-edge="1"] #root { background: transparent !important; }
-/* 裁剪必须挂在 html 上。
-   clip-path 的 inset 是相对**元素自己的参考盒**算的（默认 border-box），不是相对
-   视口。应用把菜单栏画在 #root 外面，裁 #root 时整个切口跟着 #root 的盒子一起
-   下移——顶部就露出一大条亚克力，看起来像玻璃和界面「一上一下」。body 也一样，
-   它的盒子可能被内容撑开。只有根元素 html 的 border-box 恒等于视口，裁它才是
-   真正的「离窗口边缘 10px」。 */
-html[data-dsh-edge="1"] {
-  clip-path: inset(var(--dsh-edge) round var(--dsh-edge-radius));
+html[data-dsh-edge="1"] body {
+  box-sizing: border-box;
+  border: var(--dsh-edge) solid transparent;
+  /* 外半径 = 内半径 + 边距，padding box 上剩下的圆角正好是 --dsh-edge-radius */
+  border-radius: calc(var(--dsh-edge) + var(--dsh-edge-radius));
+  overflow: hidden;
 }
-/* 切口内侧压一条 1px 的壁纸色描边。clip-path 的抗锯齿像素会和窗口表面混色，
-   在边界上留一条发白的细线；这条描边就贴在切口内侧，把那条线盖住。
-   它画在 #root 里面，被同一个切口裁着，所以和内容共用一条边界，不会再出现
-   两条各自定位的边。 */
-html[data-dsh-edge="1"] #root::after {
-  content: '';
-  position: fixed;
+/* 壁纸是 fixed，不参与 body 的 border 布局，所以自己内缩同样的距离、用同样的
+   内半径，才能和内容严丝合缝。 */
+html[data-dsh-edge="1"] #dsh-concierge-glass {
   inset: var(--dsh-edge);
   border-radius: var(--dsh-edge-radius);
-  box-shadow: inset 0 0 0 1px var(--dsh-edge-line);
-  pointer-events: none;
-  z-index: 2147483000;
+  overflow: hidden;
 }
-html[data-dsh-edge-debug="1"] #root::after { display: none; }
-/* 外投影去掉了。裁剪挂在 html 上之后，页面上任何元素都在切口里面，投影也会被
-   一起裁掉——CSS 画不出「落在切口外面」的阴影。窗口自己的投影由 DWM 负责
-   （亚克力窗口默认有），所以这里只保留切口内侧那条 1px 高光。 */
-/* 留边调试。外圈（窗口最外 10px）品红、内容区绿，边界在哪里、有没有缝、
-   四边是否一致，一眼就能看出来。投影一起关掉，免得暗边干扰判断。
-   这个开关故意留在代码里：以后调边距、圆角、投影都能拿它量。 */
+/* 留边调试：外圈品红、内容绿。body 的绿只画到 padding box，正好是内容区，
+   所以「品红 ↔ 绿」的交界就是内容边界，缝在哪一层一眼可见。 */
 html[data-dsh-edge-debug="1"] { background: #ff00ff !important; }
-html[data-dsh-edge-debug="1"] body { background: #00ff00 !important; }
-html[data-dsh-edge-debug="1"] #root { background: transparent !important; }
+html[data-dsh-edge-debug="1"] body {
+  background-color: #00ff00 !important;
+  background-clip: padding-box !important;
+}
 html[data-dsh-edge-debug="1"] #dsh-concierge-glass > div:first-child {
   background-image: linear-gradient(#00ff00, #00ff00) !important;
   filter: none !important;

@@ -254,11 +254,16 @@ html[data-dsh-glass="1"] div:has(> aside.dsh-console-modal) {
    backdrop-filter——侧边栏里挂着 fixed 定位的弹层，给容器加 filter 会把它们的
    包含块换成侧边栏，弹层会错位（dsh-glass-skin 的 README 也提到这一点）。
    壁纸是柔和的冷调渐变，不糊也看不出锯齿。 */
+/* 侧边栏和内容区必须是同一块：内容列用的是 --dsw-alias-bg-base（fill 0.3），
+   侧边栏原来单独给 0.42，两者差 12% 就拼出一道竖直的亮度台阶——看着像一条线。
+   现在两边同值，并且显式去掉边框，接缝彻底消失。 */
 html[data-dsh-glass="1"] [class*="_sidebarCol"] {
-  background: rgba(var(--dsh-tint-rgb), 0.42) !important;
+  background: rgba(var(--dsh-tint-rgb), 0.3) !important;
+  border-right: none !important;
 }
 html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] [class*="_sidebarCol"] {
-  background: rgba(18, 22, 30, 0.52) !important;
+  background: rgba(var(--dsh-tint-rgb), 0.32) !important;
+  border-right: none !important;
 }
 /* 官方 Windows 布局在内容列左上角留 16px 圆角（--dsh-windows-content-radius），
    壁纸铺满整窗之后，那个圆角会切出一块露壁纸的缺口，看着就是「一块空的」。

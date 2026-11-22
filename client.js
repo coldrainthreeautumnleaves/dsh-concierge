@@ -1,4 +1,4 @@
-﻿/**
+/**
  * dsh-concierge — Client half.
  * A dashboard-style settings page plus a top notification strip.
  */
@@ -596,15 +596,30 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       const dock = document.querySelector('[data-composer-dock]')
       if (!dock) return []
       const rows = []
+      const pseudoInfo = (el, name) => {
+        const ps = getComputedStyle(el, name)
+        const bg = ps.backgroundColor
+        const img = ps.backgroundImage && ps.backgroundImage !== 'none' ? ps.backgroundImage : ''
+        const shadow = ps.boxShadow && ps.boxShadow !== 'none' ? ps.boxShadow : ''
+        const opaque = bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent'
+        if (!opaque && !img && !shadow) return ''
+        return `${name} bg=${bg}${img ? ` img=${img.slice(0, 40)}` : ''}${shadow ? ' shadow' : ''}`
+      }
       const walk = (el, depth) => {
-        if (rows.length >= 26 || depth > 4) return
+        if (rows.length >= 30 || depth > 5) return
         const style = getComputedStyle(el)
+        const rect = el.getBoundingClientRect()
         rows.push({
           d: depth,
           tag: el.tagName.toLowerCase(),
           cls: String(el.className || '').slice(0, 60),
           bg: style.backgroundColor,
-          pos: style.position,
+          img: style.backgroundImage && style.backgroundImage !== 'none' ? style.backgroundImage.slice(0, 50) : '',
+          shadow: style.boxShadow && style.boxShadow !== 'none' ? style.boxShadow.slice(0, 50) : '',
+          w: Math.round(rect.width),
+          h: Math.round(rect.height),
+          before: pseudoInfo(el, '::before'),
+          after: pseudoInfo(el, '::after'),
         })
         for (const child of el.children) walk(child, depth + 1)
       }

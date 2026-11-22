@@ -2375,7 +2375,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
   --uc-shadow: 0 1px 2px rgba(0, 0, 0, .07);
   --uc-surface-1: color-mix(in srgb, var(--dsw-alias-bg-layer-1) 97%, var(--uc-accent));
   --uc-surface-2: color-mix(in srgb, var(--dsw-alias-bg-layer-2) 97%, var(--uc-accent));
-  --uc-hover: color-mix(in srgb, var(--uc-surface-1) 95%, var(--dsw-alias-label-on-color));
+  --uc-hover: color-mix(in srgb, var(--uc-surface-1) 96%, color-mix(in srgb, var(--dsw-alias-label-on-color) 90%, var(--uc-accent)));
   --uc-press: color-mix(in srgb, var(--uc-surface-2) 92%, var(--dsw-alias-label-primary));
   --uc-pad: 16px;
   display: flex; flex-direction: column; gap: 16px; padding: 8px 0 32px;
@@ -2423,7 +2423,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
 .uc-btn:hover:not(:disabled) { background: var(--uc-press); }
 .uc-btn:disabled { opacity: .55; cursor: default; }
 .uc-btn-accent { background: var(--uc-accent); color: var(--dsw-alias-label-on-color); font-weight: 600; }
-.uc-btn-accent:hover:not(:disabled) { background: color-mix(in srgb, var(--uc-accent) 92%, var(--dsw-alias-label-primary)); filter: none; }
+.uc-btn-accent:hover:not(:disabled) { background: color-mix(in srgb, var(--uc-accent) 94%, var(--dsw-alias-label-primary)); filter: none; }
 .uc-btn-ghost { background: transparent; color: var(--dsw-alias-label-secondary); padding: 8px; }
 .uc-btn-ghost:hover:not(:disabled) { color: var(--dsw-alias-state-error-primary); background: transparent; }
 .uc-btn-danger { color: var(--dsw-alias-state-error-primary) !important; background: transparent !important; }

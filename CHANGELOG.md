@@ -6,6 +6,24 @@
 
 ## [Unreleased]
 
+## [0.12.5] - 2026-11-22
+
+> 新增「去掉 11px 缩放边框」的 asar 补丁
+
+### Added
+
+- 工具: `scripts/patch-window-frame.mjs`（配 `apply-window-frame.cmd`）。给主窗口构造插入 `thickFrame:!1,roundedCorners:!1`。Electron 41.3+ 的 `RestoredFrameBorderInsets()` 会在无边框窗口的左/右/下各留一圈不可见缩放边框（顶部为 0），acrylic 铺满整个窗口矩形、页面只铺客户区，那圈就是「后面一层」
+- 工具: 这是插入式修改，会重建 asar 头——新内容追加到数据区末尾，只改它自己的 offset/size 并去掉 integrity，其余文件的偏移不变（已验证：20055 个文件字节一致，只有 `lib/main.js` 变化）
+- 代价: 窗口不能再拖边改大小（`thickFrame:false` 的直接结果）
+
+## [0.12.4] - 2026-11-22
+
+> 撤销 0.12.3 的「关掉亚克力」
+
+### Changed
+
+- 外观: 不再由插件设置 `DWMWA_SYSTEMBACKDROP_TYPE`。那块「亚克力板」的根因是窗口的 11px 缩放边框，不是材质本身；材质交给应用自己决定
+
 ## [0.12.3] - 2026-11-22
 
 > 关掉窗口后面那块亚克力

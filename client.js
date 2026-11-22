@@ -1196,6 +1196,15 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
           probeSend()
         }
       })
+      // 设置页（插件 / 插件市场 / 维护中心）一出现就自动上报一次，省得手动按。
+      let pageProbeSent = false
+      const pageTimer = setInterval(() => {
+        if (pageProbeSent) return
+        if (!document.querySelector('[class*="_pageHead"]')) return
+        pageProbeSent = true
+        clearInterval(pageTimer)
+        setTimeout(probeSend, 900)
+      }, 1200)
     }
 
     function scheduleProbeSend(delay) {

@@ -155,9 +155,8 @@ html[data-dsh-noanim="1"] [data-animating] {
    no alpha; a transparent root forces the compositor to blend the page with the
    window surface every frame. The wallpaper layer sits at z-index: -1, i.e.
    above this background, so nothing changes visually. */
-/* 画布色在这里定义一次，玻璃、壁纸基色、过渡兜底全部从 --dsh-canvas 派生。
-   唯一的另一份是 JS 里的 LOOK_CANVAS（原生皮肤的 token 是 JS 对象，读不到 CSS
-   变量），两处必须保持同一组值。 */
+/* 画布色在这里定义：玻璃一套、原生一套。玻璃的根层、壁纸基色、过渡兜底全部从
+   --dsh-canvas 派生；原生用官方的 #fff / #151517，不覆盖任何 token。 */
 
    根层必须不透明：Chromium 只在「整帧判定为不透明」时才允许在窗口尺寸跳变时
    拉伸上一帧；非不透明的帧只能等下一次提交，那一两帧就露出窗口表面色
@@ -173,9 +172,12 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] {
 html[data-dsh-glass="1"] body,
 html[data-dsh-glass="1"] #root { background-color: var(--dsh-canvas) !important; }
 /* 「原生」没有壁纸层，画布同样从 --dsh-canvas 派生。深色用 body 上的
-   data-ds-dark-theme 判断：原生不走玻璃那套 scheme 属性。 */
-html[data-dsh-skin="native"] { --dsh-canvas: #eef3fa; }
-html[data-dsh-skin="native"]:has(body[data-ds-dark-theme]) { --dsh-canvas: #0e1116; }
+   data-ds-dark-theme 判断：原生不走玻璃那套 scheme 属性。
+   值必须是**官方**的画布色（neutral-bluish-00 / -950 = #fff / #151517），
+   不能用玻璃那套 #eef3fa：原生下的卡片是官方白 #fff，画布一旦偏蓝，
+   卡片和周围就对不上——「原生（纯白）」也就名不副实了。 */
+html[data-dsh-skin="native"] { --dsh-canvas: #ffffff; }
+html[data-dsh-skin="native"]:has(body[data-ds-dark-theme]) { --dsh-canvas: #151517; }
 html[data-dsh-skin="native"],
 html[data-dsh-skin="native"] body,
 html[data-dsh-skin="native"] #root { background-color: var(--dsh-canvas) !important; }
@@ -1499,11 +1501,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       amber: { light: '#d97706', dark: '#fbbf24' },
     }
 
-    // 画布色。CSS 那边也有一份（--dsh-canvas，见文件开头的样式表），两处必须一致：
-    // CSS 那份管根层/壁纸/过渡兜底，这份给「原生」皮肤的 token 用（token 是 JS
-    // 对象，读不到 CSS 变量）。
-    const LOOK_CANVAS = { light: '#eef3fa', dark: '#0e1116' }
-
     const BRAND_TOKEN_NAMES = [
       '--dsw-alias-brand-primary',
       '--dsw-alias-brand-text',
@@ -1621,15 +1618,10 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       // 原生：只把「页面画布」对齐到玻璃那套的中性底色，其余全部走官方 token。
       // 卡片仍是官方白，所以整体还是纯白界面，只是画布不再用偏暖的 #fbfcfe——
       // 两套皮肤来回切时底色不会跳。
-      native: {
-        tokens: {
-          '--dsw-alias-bg-base': LOOK_CANVAS,
-          // 侧边栏和标题栏用的是这个 token（不是 bg-base）。只改 bg-base 的话，
-          // 侧边栏会留在官方的 #f9fafb，和聊天区的 #eef3fa 并排就是两种近白，
-          // 一眼能看出偏暖/偏冷。这里一起归到画布色。
-          '--dsw-specific-sidebar-fill': LOOK_CANVAS,
-        },
-      },
+      // 原生：一个 token 都不覆盖，完全交给官方主题。
+      // 之前这里覆盖过 bg-base 和 sidebar-fill 去「对齐玻璃底色」，结果是画布偏蓝、
+      // 官方白卡片压在上面像贴了另一块纸。原生就该是官方的纯白。
+      native: { tokens: {} },
     }
 
     let lookCtx = null

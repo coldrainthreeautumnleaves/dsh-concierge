@@ -196,10 +196,17 @@ html[data-dsh-glass="1"] #dsh-concierge-glass {
 /* 真透明留边。窗口本身是 backgroundColor #00000000 + backgroundMaterial acrylic，
    DWM 一直在窗口后面画桌面壁纸的模糊——只是被页面铺满的不透明底盖住了。
    这里把页面四周留出 10px 不画任何东西，那圈就露出真毛玻璃；内容区（壁纸 + 面板）
-   跟着内缩同样的距离，所以中间永远实心，尺寸变化时不会露白。 */
+   跟着内缩同样的距离，所以中间永远实心，尺寸变化时不会露白。
+
+   只给 _frame 加 margin 不够：_frame 的祖先（#root 和它的包装层）自己可能铺底，
+   内缩出来的那圈仍然被它们盖住。所以再给 #root 一刀 clip-path——裁剪作用于元素
+   自己的绘制（含背景），祖先铺什么都裁掉，窗口外圈就一定是空的。 */
 html[data-dsh-edge="1"],
 html[data-dsh-edge="1"] body,
 html[data-dsh-edge="1"] #root { background: transparent !important; }
+html[data-dsh-edge="1"] #root {
+  clip-path: inset(10px round 14px);
+}
 html[data-dsh-edge="1"] #dsh-concierge-glass {
   inset: 10px;
   border-radius: 14px;
@@ -534,6 +541,14 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       style.id = 'dsh-concierge-look-css'
       style.textContent = LOOK_CSS
       document.head.appendChild(style)
+    }
+
+    // 宿主在启动过程中还会往 head 里追加样式表，追加在后面的同权重规则会赢。
+    // 每次应用外观时把这张表挪到 head 末尾，保证玻璃/留边的规则始终压在上面。
+    function promoteLookCss() {
+      if (typeof document === 'undefined') return
+      const style = document.getElementById('dsh-concierge-look-css')
+      if (style && style.parentNode === document.head) document.head.appendChild(style)
     }
 
     // 本地路径走宿主的 /wallpaper 路由（页面是 dsh-app:// 文档，读不了 file://），
@@ -1875,6 +1890,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
     }
 
     function applyLook() {
+      promoteLookCss()
       if (lookDispose) {
         try {
           lookDispose()

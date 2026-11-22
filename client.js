@@ -226,15 +226,14 @@ html[data-dsh-glass="1"] #dsh-concierge-top {
   inset: 0 0 auto;
   height: var(--dsh-windows-titlebar-height, 40px);
   pointer-events: none;
-  /* 原来是 backdrop-filter。它是全界面最后一处「每帧重新采样」的模糊，而它背后
-     只是应用自己的工具栏（静止的），换来的观感提升很小——直接去掉，靠提高一点
-     不透明度补回来。 */
-  /* 58% 会让壁纸的蓝→紫→青三段透上来，顶部变成一条渐变且比下面亮一档。
-     提到 92% 之后它就是一块纯色，任何壁纸下都一致。 */
-  background: rgba(var(--dsh-tint-rgb), 0.92);
+  /* 不用 backdrop-filter：它每帧重新采样，正是为了帧率才清掉的东西。
+     也不能用 0.58——那样壁纸的蓝→紫→青会原样透上来，顶部变成渐变。
+     取 0.88，和内容层同一个透明度：壁纸只剩 12% 参与，色差被压到看不出来，
+     同时它仍然是「透」的，不是一块实色。不加边框，靠内容从下面滑过去分层级。 */
+  background: rgba(var(--dsh-tint-rgb), 0.88);
 }
 html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-top {
-  background: rgba(21, 27, 43, 0.9);
+  background: rgba(21, 27, 43, 0.88);
 }
 html[data-dsh-glass="1"][data-fullscreen] #dsh-concierge-top { display: none; }
 /* 侧边栏：从「压回实色」改成半透明，和聊天区一样透出壁纸。这里**不加**

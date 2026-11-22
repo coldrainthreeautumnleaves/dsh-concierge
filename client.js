@@ -956,6 +956,11 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       const vw = window.innerWidth
       const vh = window.innerHeight
       const docH = document.documentElement.clientHeight
+      // outer* 是操作系统窗口尺寸，inner* 是渲染视口。两者差得比标题栏还多，
+      // 就说明「窗口已经变大、渲染进程还没跟上」——那种情况下露出来的区域
+      // 在 DOM 里根本不存在，elementFromPoint 也点不到它。
+      const ow = window.outerWidth
+      const oh = window.outerHeight
       const points = [
         [Math.round(vw / 2), Math.max(0, vh - 12)],
         [Math.round(vw / 2), Math.max(0, vh - 60)],
@@ -993,6 +998,8 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         vw,
         vh,
         docH,
+        ow,
+        oh,
         frameH: frameRect ? Math.round(frameRect.height) : null,
         frameBottom: frameRect ? Math.round(frameRect.bottom) : null,
         hits,

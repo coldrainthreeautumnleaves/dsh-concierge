@@ -385,12 +385,12 @@ html[data-dsh-glass="1"] [data-windows-titlebar] [class*="_frame"] {
 
    输入卡本身不是用 input-major 画的：应用给卡片挂了一个 ::before，底色取
    --dsw-specific-menu（和菜单共用同一个 token）。直接改 token 会把菜单一起变透，
-   所以在底栏这个作用域里把它改成透明——卡片就和会话区同色了，菜单不受影响。
-   卡片的投影一起收掉，否则底没了、阴影还在，看着像一块悬空的边。 */
+   所以在底栏这个作用域里单独给它一个值：
+     0.87（token 原值）太实，看着像块白板；完全透明又没了边界。
+     0.55 是中间档——卡片还在、投影还在，但不再是死白，和会话区更接近。 */
 html[data-dsh-glass="1"] [class*="_bottomRow"] {
   background: transparent !important;
-  --dsw-specific-menu: rgba(0, 0, 0, 0);
-  --dsw-elevation-panel: none;
+  --dsw-specific-menu: rgba(var(--dsh-tint-rgb), 0.55);
 }
 html[data-dsh-glass="1"] [class*="_centerCol"] {
   border-radius: 0 !important;

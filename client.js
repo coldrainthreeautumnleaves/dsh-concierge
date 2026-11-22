@@ -273,37 +273,6 @@ html[data-dsh-edge="1"][data-dsh-edge-settle="1"] #root {
   background-repeat: repeat, no-repeat, no-repeat, no-repeat, no-repeat;
 }
 
-
-/* B6：简化壁纸。四个径向渐变是 resize 重绘的大头，砍掉之后只留一条线性渐变
-   加颗粒，观感少了三层光斑，色温不变。默认开，外观页可以关回去。 */
-html[data-dsh-simple-wallpaper="1"] #dsh-concierge-glass > div:first-child {
-  background-image:
-    var(--dsh-grain, none),
-    linear-gradient(165deg, var(--dsh-canvas) 0%, #e7eef7 50%, #eaf1f1 100%);
-  background-size: 140px 140px, auto;
-  background-repeat: repeat, no-repeat;
-}
-html[data-dsh-simple-wallpaper="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-glass > div:first-child {
-  background-image:
-    var(--dsh-grain, none),
-    linear-gradient(165deg, var(--dsh-canvas) 0%, #121a24 50%, #0c1417 100%);
-  background-size: 140px 140px, auto;
-  background-repeat: repeat, no-repeat;
-}
-
-/* B1：拖动窗口期间把壁纸和预模糊层换成一块纯色。填充带是「新帧没提交前」
-   露出的窗口表面色，页面变轻之后新帧提交更快，带子就短到看不见。
-   默认关，外观页打开。 */
-html[data-dsh-resize-degrade="1"][data-dsh-resizing="1"] #dsh-concierge-glass > div:first-child {
-  background-image: linear-gradient(165deg, #e7eef7 0%, #e7eef7 100%) !important;
-}
-html[data-dsh-resize-degrade="1"][data-dsh-resizing="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-glass > div:first-child {
-  background-image: linear-gradient(165deg, #121a24 0%, #121a24 100%) !important;
-}
-html[data-dsh-resize-degrade="1"][data-dsh-resizing="1"] #dsh-concierge-frost {
-  display: none !important;
-}
-
 html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-glass > div:first-child {
   background-image:
     var(--dsh-grain, none),
@@ -1396,18 +1365,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       )
     }
 
-    function perfChip(t, labelKey, checked, onChange) {
-      return h('button', {
-        type: 'button',
-        className: checked ? 'uc-chip-toggle uc-chip-toggle-on' : 'uc-chip-toggle',
-        'aria-pressed': checked ? 'true' : 'false',
-        onClick: onChange,
-      },
-        h('span', { className: 'uc-chip-dot' }),
-        t(labelKey),
-      )
-    }
-
     /* ------------------------------------------------------------ typewriter -- */
 
     // Off by default: revealing Markdown character by character re-renders the
@@ -1464,10 +1421,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       transparency: 43,
       // 窗口外框直角：走宿主侧的 DWM 调用，和构造参数无关。
       squareWindow: true,
-      // 简化壁纸（砍掉三层径向光斑），换来 resize 时更轻的重绘。
-      simpleWallpaper: true,
-      // 拖动窗口期间临时把壁纸和预模糊层降级成纯色。
-      resizeDegrade: true,
       // 真透明留边：窗口本身是 #00000000 + acrylic，页面四周留一圈不画东西，
       // 露出来的是 DWM 画的桌面壁纸模糊（真毛玻璃），而不是页面自己的假透明。
       edgeGlass: false,
@@ -1648,8 +1601,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
           look.transparency = Math.max(0, Math.min(100, Math.round(parsed.transparency)))
         }
         if (typeof parsed.squareWindow === 'boolean') look.squareWindow = parsed.squareWindow
-        if (typeof parsed.simpleWallpaper === 'boolean') look.simpleWallpaper = parsed.simpleWallpaper
-        if (typeof parsed.resizeDegrade === 'boolean') look.resizeDegrade = parsed.resizeDegrade
         if (typeof parsed.edgeGlass === 'boolean') look.edgeGlass = parsed.edgeGlass
         // 0.7.3 重做了玻璃配色：透明度映射和颗粒基准都换了。旧存档里的滑杆值
         // （排查时常见透明度 100、颗粒 7%）在新配色下会明显不对，一次性回落到新默认。
@@ -1775,8 +1726,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
           codeFont: look.codeFont,
           grain: look.grain,
           squareWindow: look.squareWindow,
-          simpleWallpaper: look.simpleWallpaper,
-          resizeDegrade: look.resizeDegrade,
           edgeGlass: look.edgeGlass,
           lookRev: LOOK_REV,
         }))
@@ -1879,33 +1828,9 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       return (skin || look.skin) === 'glass'
     }
 
-    // 拖动窗口期间把壁纸和预模糊层换成纯色（B1）。
-    // 渲染进程没有 will-resize（那是主进程的 BrowserWindow 事件），所以只挂 resize；
-    // 结束判定用 150ms debounce：最后一次 resize 之后再等 150ms 才恢复。
-    let resizeDegradeOn = false
-    let resizeDegradeTimer = 0
-    function installResizeDegrade() {
-      if (resizeDegradeOn || typeof window === 'undefined') return
-      resizeDegradeOn = true
-      window.addEventListener(
-        'resize',
-        () => {
-          if (!look.enabled || !isGlassSkin() || !look.resizeDegrade) return
-          document.documentElement.dataset.dshResizing = '1'
-          if (resizeDegradeTimer) clearTimeout(resizeDegradeTimer)
-          resizeDegradeTimer = setTimeout(() => {
-            resizeDegradeTimer = 0
-            delete document.documentElement.dataset.dshResizing
-          }, 150)
-        },
-        { passive: true },
-      )
-    }
-
     // 全屏 / 改尺寸的过渡期：窗口是真透明的，新露出的区域在下一帧提交前会露出
     // 桌面。这段时间给根层铺一块和壁纸一致的实色，整帧重新判定为「不透明」，
     // 合成器就能拉伸上一帧，露出来的是内容而不是桌面；200ms 后自动放开。
-    // 和 B1 的「拖动时降级」无关：那个开关管壁纸重绘成本，这个管透明窗口。
     let edgeSettleOn = false
     let edgeSettleTimer = 0
     function installEdgeResizeGuard() {
@@ -1981,10 +1906,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       // 只有玻璃皮肤挂壁纸 + 预模糊层；原生走官方默认样式，不挂任何层。
       if (isGlassSkin() && root) {
         root.dataset.dshGlass = '1'
-        // 关掉浮层模糊：只影响弹窗/菜单/提示条那几处（它们背后是静止的，但每帧
-        // 仍要采样一次）。会话区那块已经换成预模糊层，和这个开关无关。
-        root.dataset.dshSimpleWallpaper = look.simpleWallpaper ? '1' : '0'
-        root.dataset.dshResizeDegrade = look.resizeDegrade ? '1' : '0'
         if (look.edgeGlass) {
           root.dataset.dshEdge = '1'
           installEdgeResizeGuard()
@@ -1997,7 +1918,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         if (look.edgeGlass && typeof document !== 'undefined' && document.body) {
           document.body.style.setProperty('--dsh-edge-ping', String(Date.now()))
         }
-        installResizeDegrade()
         applyGrainImage()
         applyFrostLayer()
         applyWindowCorners()
@@ -2358,10 +2278,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       lookTransparency: '透明度',
       lookSquareWindow: '窗口直角',
       lookSquareWindowHint: '去掉窗口外框的系统圆角（DWM 画的），只影响这个窗口',
-      lookSimpleWallpaper: '简化壁纸',
-      lookSimpleWallpaperHint: '砍掉壁纸的三层径向光斑，换窗口缩放时更轻的重绘；关掉恢复原样',
-      lookResizeDegrade: '拖动时降级',
-      lookResizeDegradeHint: '拖窗口期间把壁纸换成纯色，松手 150ms 后恢复，减少缩放时的填充条',
       lookEdgeGlass: '无边框窗口',
       lookEdgeGlassHint: '去掉窗口那圈 1px 边框，内容铺满窗口。方角，四角不会透出桌面',
       lookNative: '原生材质',
@@ -2629,10 +2545,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       lookTransparency: 'Transparency',
       lookSquareWindow: 'Square window',
       lookSquareWindowHint: 'Drops the Windows 11 corner rounding on this window frame',
-      lookSimpleWallpaper: 'Simple wallpaper',
-      lookSimpleWallpaperHint: 'Drops the three radial light spots so resizing repaints less; turn off to restore',
-      lookResizeDegrade: 'Degrade while resizing',
-      lookResizeDegradeHint: 'Paints the wallpaper flat while the window is being dragged, restores 150ms after',
       lookEdgeGlass: 'Borderless window',
       lookEdgeGlassHint: 'Drops the 1px window frame so the content fills the window. Square corners, so nothing shows through',
       lookNative: 'Native material',
@@ -2811,7 +2723,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
 .uc-kicker { font-size: var(--uc-fs-small); letter-spacing: .08em; text-transform: uppercase; color: var(--dsw-alias-label-secondary); margin-bottom: 8px; }
 .uc-title { margin: 0 0 4px; font-size: var(--uc-fs-page); font-weight: 650; letter-spacing: -.01em; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .uc-sub { margin: 0; color: var(--dsw-alias-label-secondary); font-size: var(--uc-fs-body); }
-.uc-head-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; margin-left: auto; }
 
 .uc-switch { display: inline-flex; align-items: center; gap: 8px; font-size: var(--uc-fs-small); color: var(--dsw-alias-label-secondary); cursor: pointer; user-select: none; }
 .uc-switch input { position: absolute; opacity: 0; width: 0; height: 0; }
@@ -2827,13 +2738,11 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
 .uc-icon-btn:hover:not(:disabled) { color: var(--dsw-alias-label-primary); background: var(--uc-surface-1); }
 .uc-icon-btn:disabled { opacity: .5; cursor: default; }
 .uc-btn:focus-visible, .uc-icon-btn:focus-visible, .uc-log-head:focus-visible,
-.uc-tab:focus-visible, .uc-chip-toggle:focus-visible, .uc-segment button:focus-visible,
+.uc-tab:focus-visible, .uc-segment button:focus-visible,
 .uc-select:focus-visible, .uc-install input:focus-visible, .uc-search input:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--uc-accent) 25%, transparent);
 }
-.uc-spin { animation: uc-spin 1s linear infinite; }
-@keyframes uc-spin { to { transform: rotate(360deg); } }
 
 .uc-hero { position: relative; overflow: hidden; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 24px; border-radius: var(--uc-r-card); background: var(--uc-surface-1); border: 1px solid var(--dsw-alias-border-l1); box-shadow: var(--dsw-shadow-lv1); }
 .uc-glow { display: none; }
@@ -2860,7 +2769,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
 .uc-btn:disabled { opacity: .55; cursor: default; }
 .uc-btn:active:not(:disabled) { background: var(--uc-press); transform: scale(.98); transition-duration: 80ms; transition-timing-function: ease-out; }
 .uc-row:active { background: var(--uc-press); }
-.uc-chip-toggle:active { background: var(--uc-press); }
 .uc-tab:active { background: var(--uc-press); }
 .uc-btn-accent { background: var(--uc-accent); color: var(--dsw-alias-label-on-color); font-weight: 600; }
 .uc-btn-accent:hover:not(:disabled) { background: color-mix(in srgb, var(--uc-accent) 94%, var(--dsw-alias-label-primary)); filter: none; }
@@ -2989,7 +2897,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
 .uc-about-license { color: var(--dsw-alias-label-secondary); font-size: var(--uc-fs-small); }
 
 .uc-log { display: flex; flex-direction: column; padding: 8px 16px 16px; }
-.uc-log-entry { padding: 8px 0; }
 .uc-log-head { appearance: none; width: 100%; border: none; background: transparent; display: flex; align-items: center; gap: 8px; padding: 8px 0; border-radius: var(--uc-r-control); cursor: pointer; color: var(--dsw-alias-label-primary); text-align: left; font: inherit; }
 .uc-log-head { transition: background-color .12s ease, color .12s ease; }
 .uc-log-head:hover { background: var(--uc-hover); color: var(--dsw-alias-label-primary); }
@@ -3014,11 +2921,8 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
 .uc-hintbox-title { font-size: var(--uc-fs-body); font-weight: 600; color: var(--dsw-alias-label-primary); margin-bottom: 4px; }
 .uc-hintbox-list { margin: 0; padding-left: 16px; display: flex; flex-direction: column; gap: 4px; font-size: var(--uc-fs-small); line-height: 1.6; color: var(--dsw-alias-label-secondary); }
 
-.uc-look-editor { display: flex; flex-direction: column; gap: 8px; padding: 8px 16px 16px; }
 .uc-look-text { width: 100%; box-sizing: border-box; min-height: 192px; resize: vertical; border: 1px solid var(--dsw-alias-border-l2); border-radius: var(--uc-r-control); background: var(--uc-surface-1); color: var(--dsw-alias-label-primary); font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: var(--uc-fs-small); line-height: 1.6; padding: 12px; outline: none; }
 .uc-look-text:focus { border-color: var(--uc-accent); }
-.uc-look-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-.uc-look-error { margin: 0; font-size: var(--uc-fs-small); line-height: 1.5; color: var(--dsw-alias-label-secondary); }
 
 .uc-token-current { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; padding: 0 16px 8px; }
 .uc-token-mono { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: var(--uc-fs-body); color: var(--dsw-alias-label-primary); }
@@ -3028,15 +2932,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
 .uc-token-links { display: flex; flex-wrap: wrap; gap: 16px; }
 .uc-token-link { color: var(--dsw-alias-brand-primary); text-decoration: none; }
 .uc-token-link:hover { text-decoration: underline; }
-.uc-token-block { display: flex; flex-direction: column; gap: 8px; padding: 16px; border-radius: var(--uc-r-card); background: var(--uc-surface-2); }
-.uc-token-head { display: flex; flex-direction: column; gap: 4px; }
-.uc-token-title { font-size: var(--uc-fs-body); font-weight: 600; color: var(--dsw-alias-label-primary); }
-.uc-token-sub { font-size: var(--uc-fs-small); line-height: 1.6; color: var(--dsw-alias-label-secondary); }
-.uc-token-row { padding: 0; }
-.uc-token-msg { font-size: var(--uc-fs-small); color: var(--dsw-alias-brand-primary); }
 
-.uc-safe { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-radius: var(--uc-r-card); background: var(--uc-surface-2); font-size: var(--uc-fs-small); line-height: 1.6; color: var(--dsw-alias-label-secondary); }
-.uc-safe-text { min-width: 0; }
 .uc-changelog { margin-top: 8px; padding: 12px; border-radius: var(--uc-r-control); background: var(--uc-surface-2); font-size: var(--uc-fs-small); line-height: 1.6; color: var(--dsw-alias-label-secondary); white-space: pre-wrap; max-height: 160px; overflow: auto; }
 
 .uc-install { display: flex; gap: 8px; padding: 8px 16px 4px; }
@@ -3047,12 +2943,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
 .uc-install input:focus, .uc-search input:focus { border-color: var(--uc-accent); }
 
 .uc-toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.uc-chips { display: flex; flex-wrap: wrap; gap: 8px; }
-.uc-chip-toggle { appearance: none; border: none; background: var(--uc-surface-2); color: var(--dsw-alias-label-secondary); border-radius: 999px; padding: 8px 12px; font-size: var(--uc-fs-small); line-height: 1.25; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: color .15s ease, background .15s ease; }
-.uc-chip-toggle:hover { color: var(--dsw-alias-label-primary); background: var(--uc-hover); }
-.uc-chip-toggle-on { background: var(--uc-surface-1); color: var(--dsw-alias-brand-primary); box-shadow: var(--uc-shadow); }
-.uc-chip-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; opacity: .35; }
-.uc-chip-toggle-on .uc-chip-dot { opacity: 1; }
 
 .uc-perf { padding: 8px 16px 16px; display: flex; flex-direction: column; gap: 12px; }
 .uc-perf-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
@@ -3060,7 +2950,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
 .uc-perf-value { font-size: var(--uc-fs-title); font-weight: 650; font-variant-numeric: tabular-nums; }
 .uc-perf-cap { font-size: var(--uc-fs-small); font-weight: 400; color: var(--dsw-alias-label-secondary); }
 .uc-perf-label { margin-top: 4px; font-size: var(--uc-fs-small); color: var(--dsw-alias-label-secondary); }
-.uc-perf-rows { display: flex; flex-wrap: wrap; gap: 8px 16px; }
 .uc-perf-hint { margin: 0; font-size: var(--uc-fs-small); color: var(--dsw-alias-label-secondary); }
 
 .uc-typer { display: flex; align-items: center; gap: 8px; }
@@ -3173,17 +3062,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       const hours = Math.floor(minutes / 60)
       if (hours < 24) return t('hoursAgo', { n: hours })
       return new Date(ts).toLocaleDateString()
-    }
-
-    function IconRefresh(props) {
-      return h('svg', {
-        viewBox: '0 0 24 24', width: 15, height: 15, fill: 'none', stroke: 'currentColor',
-        'stroke-width': 2, 'stroke-linecap': 'round', 'stroke-linejoin': 'round',
-        'aria-hidden': true, className: props && props.spin ? 'uc-spin' : undefined,
-      },
-        h('path', { d: 'M20 11a8 8 0 1 0-2.3 5.7' }),
-        h('path', { d: 'M20 4v7h-7' }),
-      )
     }
 
     function UpdateCenter(props) {
@@ -4308,22 +4186,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
                       look.squareWindow = !look.squareWindow
                       saveLookPrefs()
                       applyWindowCorners(true)
-                      lookUpdate()
-                    }))
-                  : null,
-                isGlassSkin(lookSnapshot.skin)
-                  ? settingRow(t('lookSimpleWallpaper'), t('lookSimpleWallpaperHint'), switchControl(lookSnapshot.simpleWallpaper, () => {
-                      look.simpleWallpaper = !look.simpleWallpaper
-                      saveLookPrefs()
-                      applyLook()
-                      lookUpdate()
-                    }))
-                  : null,
-                isGlassSkin(lookSnapshot.skin)
-                  ? settingRow(t('lookResizeDegrade'), t('lookResizeDegradeHint'), switchControl(lookSnapshot.resizeDegrade, () => {
-                      look.resizeDegrade = !look.resizeDegrade
-                      saveLookPrefs()
-                      applyLook()
                       lookUpdate()
                     }))
                   : null,

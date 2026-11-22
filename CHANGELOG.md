@@ -6,6 +6,20 @@
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-11-22
+
+> 删掉「简化壁纸」和「拖动时降级」两个开关
+
+### Removed
+
+- 外观: 「简化壁纸」「拖动时降级」两个开关，连同持久化字段、`data-dsh-simple-wallpaper` / `data-dsh-resize-degrade` 两个钩子和对应的 B6 / B1 样式。这两个开关对现在的帧率已经没有影响，留着只是让外观页更长
+- 代码: `perfChip`、`IconRefresh` 两个没人调用的函数
+- 样式: `.uc-token-*`（7 条）、`.uc-look-editor`、`.uc-look-actions`、`.uc-look-error`、`.uc-log-entry`、`.uc-chips`、`.uc-perf-rows`、`.uc-head-actions`、`.uc-safe`、`.uc-chip-toggle*`（5 条）、`.uc-spin` 等 23 条死规则
+
+### Added
+
+- 工具: `scripts/scan-dead-code.mjs`，静态扫「定义了没人调用的函数 / 写了没人用的 dataset 钩子 / 定义了没人用的 `uc-*` 类」
+
 ## [0.11.7] - 2026-11-22
 
 > 维护中心不再自己配底色，和外面的设置窗口同一块

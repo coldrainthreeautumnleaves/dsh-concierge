@@ -2791,8 +2791,8 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
   --uc-r-card: 12px;
   --uc-r-control: 8px;
   --uc-shadow: 0 1px 2px rgba(0, 0, 0, .07);
-  --uc-surface-1: color-mix(in srgb, var(--dsw-alias-bg-layer-1) 97%, var(--uc-accent));
-  --uc-surface-2: color-mix(in srgb, var(--dsw-alias-bg-layer-2) 97%, var(--uc-accent));
+  --uc-surface-1: var(--dsw-alias-bg-layer-1);
+  --uc-surface-2: var(--dsw-alias-bg-layer-2);
   --uc-hover: color-mix(in srgb, var(--uc-surface-1) 96%, color-mix(in srgb, var(--dsw-alias-label-on-color) 90%, var(--uc-accent)));
   --uc-press: color-mix(in srgb, var(--uc-surface-2) 92%, var(--dsw-alias-label-primary));
   --uc-sep: color-mix(in srgb, var(--uc-accent) 8%, transparent);
@@ -2800,37 +2800,12 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
   display: flex; flex-direction: column; gap: 16px;
   margin: 12px; padding: 16px 16px 24px;
   border-radius: var(--uc-r-card);
-  /* 玻璃下这块面板要比卡片**更透、也更沉**。原来这里是 0.88，而卡片用的是
-     layer-1（约 0.72）——面板比卡片还实，卡片压上去就成了「比底更暗的一块」。
-     但只把 alpha 降到 0.55 还不够：对话框本身是白的，白叠白之后面板和卡片实测
-     只差 1 个色阶（#F6F9FB vs #F7F9FB），层级还是看不出来。所以这里改成一层
-     很淡的中性压暗（浅色 6% 黑 / 深色 5% 白），面板退到 #F1F2F4，卡片再亮一档。 */
-  background: rgba(var(--dsh-tint-rgb, 248, 250, 252), 0.55);
-  box-shadow: inset 0 1px 0 var(--uc-highlight);
+  /* 面板自己不上色：这一页是嵌在应用的设置窗口里的，外面那层已经有底了。
+     再刷一层 bg-base 等于在同一块底上叠两次（玻璃下 0.55 叠 0.55 会明显偏白），
+     看起来就成了「插件自己调的一块颜色」。透明之后，这一页和外面完全是同一块底。 */
+  background: transparent;
   color: var(--dsw-alias-label-primary);
   font-size: var(--uc-fs-body); line-height: 1.5;
-}
-/* 原生皮肤（以及外观关掉时）不套玻璃色温：面板底色用官方层级色。
-   --dsh-tint-rgb 只在玻璃皮肤下定义，这里若继续用带兜底的写法，
-   整块会回退成浅蓝 (232,240,250)，在纯白皮肤上很明显。
-
-   注意这里用的是 layer-2 而不是 bg-base：原生的页面本身就是 bg-base（纯白），
-   面板再用同一个值，卡片（layer-1 白）压上去就完全看不见边界——玻璃下是
-   「有色面板 + 更亮卡片」，原生要保住同一个层级关系，面板就得比页面深一档。 */
-html:not([data-dsh-glass="1"]) .uc-root {
-  --uc-surface-1: var(--dsw-alias-bg-layer-1);
-  --uc-surface-2: var(--dsw-alias-bg-layer-2);
-  background: var(--dsw-alias-bg-layer-2);
-}
-/* 玻璃：面板压暗一点、卡片提亮一点，层级才看得出来。
-   只靠 alpha 不行——对话框本身是白的，白叠白之后实测面板 #F6F9FB、卡片 #F7F9FB，
-   只差 1 个色阶。压一层 6% 的中性色，面板落到 #F1F2F4，卡片（0.86 白）重新浮起来。 */
-html[data-dsh-glass="1"] .uc-root {
-  background: rgba(15, 23, 42, 0.06);
-  --uc-surface-1: color-mix(in srgb, rgba(var(--dsh-tint-rgb), 0.86) 97%, var(--uc-accent));
-}
-html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-root {
-  background: rgba(255, 255, 255, 0.05);
 }
 .uc-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; min-width: 0; }
 .uc-kicker { font-size: var(--uc-fs-small); letter-spacing: .08em; text-transform: uppercase; color: var(--dsw-alias-label-secondary); margin-bottom: 8px; }
@@ -2903,13 +2878,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-root {
 .uc-stats-card { gap: 0; }
 .uc-stats-card .uc-stat { background: transparent; border: 0; box-shadow: none; border-radius: 0; }
 .uc-stats-card .uc-stat + .uc-stat { border-left: 1px solid var(--uc-sep); }
-/* 玻璃下卡片的边改用 l2（灰 0.18）：l1 是白 0.6，压在本来就是白色的卡面上
-   等于没有边，卡片只能靠投影分辨。原生保持 l1。 */
-html[data-dsh-glass="1"] .uc-card,
-html[data-dsh-glass="1"] .uc-stat,
-html[data-dsh-glass="1"] .uc-hero {
-  border-color: var(--dsw-alias-border-l2);
-}
 
 .uc-card { border-radius: var(--uc-r-card); background: var(--uc-surface-1); border: 1px solid var(--dsw-alias-border-l1); overflow: hidden; box-shadow: var(--dsw-shadow-lv1), inset 0 1px 0 var(--uc-highlight); animation: uc-fade .15s ease; }
 .uc-card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--uc-sep); flex-wrap: wrap; }

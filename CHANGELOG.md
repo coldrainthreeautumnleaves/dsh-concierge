@@ -6,6 +6,13 @@
 
 ## [Unreleased]
 
+## [0.5.8] - 2026-11-22
+
+> 新增「关闭实时缩放」开关脚本：拖动窗口只显示虚线框，不再露出填充块
+
+### Added
+
+- 工具: `scripts/toggle-live-resize.ps1`，一键切换 Windows 的 DragFullWindows，带 -Status / -On / -Off
 ## [0.5.7] - 2026-11-22
 
 > 窗口底色改成内容区实测色 #ccd8ee，缩放时的白条是 Chromium 的既定行为

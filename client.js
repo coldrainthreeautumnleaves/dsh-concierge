@@ -229,10 +229,12 @@ html[data-dsh-glass="1"] #dsh-concierge-top {
   /* 原来是 backdrop-filter。它是全界面最后一处「每帧重新采样」的模糊，而它背后
      只是应用自己的工具栏（静止的），换来的观感提升很小——直接去掉，靠提高一点
      不透明度补回来。 */
-  background: rgba(var(--dsh-tint-rgb), 0.58);
+  /* 58% 会让壁纸的蓝→紫→青三段透上来，顶部变成一条渐变且比下面亮一档。
+     提到 92% 之后它就是一块纯色，任何壁纸下都一致。 */
+  background: rgba(var(--dsh-tint-rgb), 0.92);
 }
 html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-top {
-  background: rgba(21, 27, 43, 0.6);
+  background: rgba(21, 27, 43, 0.9);
 }
 html[data-dsh-glass="1"][data-fullscreen] #dsh-concierge-top { display: none; }
 /* 侧边栏：从「压回实色」改成半透明，和聊天区一样透出壁纸。这里**不加**
@@ -574,6 +576,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
     let probeSentAt = 0
     let probeBlurList = null
     let probeComposerTree = null
+    let probeShell = null
     let probeWhiteBoxes = null
     let probeBand = null
 
@@ -789,6 +792,31 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       observer.observe(document.body, { childList: true, subtree: true })
     }
 
+    // 主窗口布局树：#root 往下两层，用来确认「外壳 + 内窗口」该挂在哪一层。
+    function collectShell() {
+      if (typeof document === 'undefined') return []
+      const root = document.getElementById('root')
+      if (!root) return []
+      const rows = []
+      const walk = (el, depth) => {
+        if (rows.length >= 24 || depth > 2) return
+        const rect = el.getBoundingClientRect()
+        const style = getComputedStyle(el)
+        rows.push({
+          d: depth,
+          tag: el.tagName.toLowerCase(),
+          cls: String(el.className || '').slice(0, 70),
+          w: Math.round(rect.width),
+          h: Math.round(rect.height),
+          pos: style.position,
+          bg: style.backgroundColor,
+        })
+        for (const child of el.children) walk(child, depth + 1)
+      }
+      walk(root, 0)
+      return rows
+    }
+
     function probeLongFrame(elapsed) {
       if (!(elapsed >= 40)) return
       probeLongFrames.push({ at: Date.now(), ms: Math.round(elapsed) })
@@ -814,6 +842,8 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       payload.blurs = probeBlurList
       if (probeComposerTree === null) probeComposerTree = collectComposerTree()
       payload.composer = probeComposerTree
+      if (probeShell === null) probeShell = collectShell()
+      payload.shell = probeShell
       if (probeWhiteBoxes === null) probeWhiteBoxes = collectWhiteBoxes()
       payload.whites = probeWhiteBoxes
       if (probeBand === null) probeBand = collectBand()

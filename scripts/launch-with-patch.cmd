@@ -1,11 +1,13 @@
 @echo off
-rem 启动 DSH，并可选地带上 GPU/合成层的开关。
+rem 启动 DSH，并可选地带上 GPU/合成层/默认底色的开关。
 rem
 rem   launch-with-patch.cmd        → 不带任何开关（原样）
 rem   launch-with-patch.cmd 1      → --enable-features=windows11-mica-titlebar
-rem   launch-with-patch.cmd 2      → --use-angle=d3d9            （消白闪，帧率会掉）
-rem   launch-with-patch.cmd 3      → --disable-gpu-compositing    （软件合成，整体变慢）
-rem   launch-with-patch.cmd 4      → --disable-direct-composition （绕开 DirectComposition）
+rem   launch-with-patch.cmd 2      → --use-angle=d3d9               （消白闪，帧率会掉）
+rem   launch-with-patch.cmd 3      → --disable-gpu-compositing       （软件合成，整体变慢）
+rem   launch-with-patch.cmd 4      → --disable-direct-composition    （绕开 DirectComposition）
+rem   launch-with-patch.cmd 5      → --default-background-color=ffccd8ee（内容区同色，AARRGGBB）
+rem   launch-with-patch.cmd 6      → --default-background-color=00000000（完全透明）
 rem
 rem 每次只用一个，方便定位是哪个起作用。
 setlocal
@@ -18,6 +20,9 @@ if "%PICK%"=="1" set "FLAGS=--enable-features=windows11-mica-titlebar"
 if "%PICK%"=="2" set "FLAGS=--use-angle=d3d9"
 if "%PICK%"=="3" set "FLAGS=--disable-gpu-compositing"
 if "%PICK%"=="4" set "FLAGS=--disable-direct-composition"
+rem AARRGGBB：alpha 在前。ffccd8ee = 不透明的 #ccd8ee
+if "%PICK%"=="5" set "FLAGS=--default-background-color=ffccd8ee"
+if "%PICK%"=="6" set "FLAGS=--default-background-color=00000000"
 
 where node >nul 2>nul
 if errorlevel 1 (
@@ -26,7 +31,6 @@ if errorlevel 1 (
 )
 
 node "%HERE%patch-window-fallback.mjs" --ensure
-
 
 :launch
 if "%FLAGS%"=="" (

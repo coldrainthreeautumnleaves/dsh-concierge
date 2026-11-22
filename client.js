@@ -155,9 +155,14 @@ html[data-dsh-noanim="1"] [data-animating] {
    no alpha; a transparent root forces the compositor to blend the page with the
    window surface every frame. The wallpaper layer sits at z-index: -1, i.e.
    above this background, so nothing changes visually. */
-html[data-dsh-glass="1"] { background-color: #f0f3fc !important; }
-html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] { background-color: #151b2b !important; }
-html[data-dsh-glass="1"] body { background: transparent !important; }
+/* 根画布必须是透明的：原来为了合成器快路径把它设成不透明（#f0f3fc），
+   代价是窗口缩放时新露出的区域先画成这块颜色——就是那条横贯整窗的浅色带
+   （实测 RGB(239,242,251)，和 #f0f3fc 的 (240,243,252) 是同一块）。
+   透明之后那块露出的是壁纸层/窗口底色，不再是白板。 */
+html[data-dsh-glass="1"] { background-color: transparent !important; }
+html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] { background-color: transparent !important; }
+html[data-dsh-glass="1"] body,
+html[data-dsh-glass="1"] #root { background: transparent !important; }
 /* The frost lives on the wallpaper itself: one blurred layer covers every
    translucent surface, instead of paying a backdrop-filter per panel (each one
    reads the pixels behind it and runs a blur kernel, so the cost scales with

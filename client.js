@@ -268,6 +268,20 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] [data-conversation-region
 html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] [class*="_centerCol"] {
   background: linear-gradient(180deg, #121822 0%, #0f151d 100%);
 }
+/* 原生材质模式（窗口底色透明、由 DWM 画 Acrylic/Mica）：页面不能再画壁纸，也不能
+   留不透明底色，否则材质整个被盖住。所有面只留半透明色层。
+   这一档要配合 app.asar 补丁使用，没打补丁就打开会让窗口变成全透。 */
+html[data-dsh-glass="1"][data-dsh-native="1"],
+html[data-dsh-glass="1"][data-dsh-native="1"] body {
+  background: transparent !important;
+}
+html[data-dsh-glass="1"][data-dsh-native="1"] #dsh-concierge-glass {
+  display: none !important;
+}
+html[data-dsh-glass="1"][data-dsh-native="1"] [data-conversation-region="chat"],
+html[data-dsh-glass="1"][data-dsh-native="1"] [class*="_centerCol"] {
+  background: transparent !important;
+}
 /* 面板已经不透明，模糊没有东西可糊，整层去掉——留着只是白花一次合成。 */
 html[data-dsh-glass="1"] [data-conversation-region="chat"] {
   isolation: isolate;
@@ -882,6 +896,9 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       lightGlass: false,
       // 窗口外框直角：走宿主侧的 DWM 调用，和构造参数无关。
       squareWindow: true,
+      // 原生材质：窗口透明、由 Windows 自己画 Acrylic/Mica，页面不画壁纸。
+      // 默认关——只有打过 app.asar 补丁的安装才该打开，否则窗口会变成全透。
+      nativeMaterial: false,
       // 背景：预设渐变 / 图片 / 视频（Wallpaper Engine 导出的 mp4/webm 走视频）
       wall: { mode: 'preset', src: '' },
     }
@@ -1064,6 +1081,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         }
         if (typeof parsed.lightGlass === 'boolean') look.lightGlass = parsed.lightGlass
         if (typeof parsed.squareWindow === 'boolean') look.squareWindow = parsed.squareWindow
+        if (typeof parsed.nativeMaterial === 'boolean') look.nativeMaterial = parsed.nativeMaterial
         if (parsed.wall && typeof parsed.wall === 'object') {
           const mode = typeof parsed.wall.mode === 'string' && LOOK_WALL_MODES.includes(parsed.wall.mode) ? parsed.wall.mode : 'preset'
           const src = typeof parsed.wall.src === 'string' ? parsed.wall.src : ''
@@ -1137,6 +1155,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
           grain: look.grain,
           lightGlass: look.lightGlass,
           squareWindow: look.squareWindow,
+          nativeMaterial: look.nativeMaterial,
         }))
       } catch {
         /* storage unavailable */
@@ -1270,6 +1289,10 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       // 玻璃皮肤额外挂一层壁纸 + backdrop-filter（纯 CSS，不进官方样式）
       if (look.skin === 'glass' && root) {
         root.dataset.dshGlass = '1'
+        // 原生材质模式：窗口已经由 DWM 画 Acrylic/Mica（需要 app.asar 补丁把窗口
+        // 底色改成透明），页面就不能再自己画壁纸，否则把材质整个盖住。
+        if (look.nativeMaterial) root.dataset.dshNative = '1'
+        else delete root.dataset.dshNative
         // 轻玻璃：只关会话区那一条 blur，浮层不动（规则在 LOOK_CSS 里）。
         if (look.lightGlass) root.dataset.dshGlassLight = '1'
         else delete root.dataset.dshGlassLight
@@ -1643,6 +1666,8 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       lookLightGlassHint: '不模糊，只半透明：菜单、弹窗、输入卡全部关掉 backdrop-filter，最省帧',
       lookSquareWindow: '窗口直角',
       lookSquareWindowHint: '去掉窗口外框的系统圆角（DWM 画的），只影响这个窗口',
+      lookNative: '原生材质',
+      lookNativeHint: '窗口透明、由 Windows 画 Acrylic/Mica；需要先给 app.asar 打补丁，否则窗口会变全透',
       lookWall: '背景',
       lookWallPreset: '预设渐变',
       lookWallImage: '图片',
@@ -1888,6 +1913,8 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       lookLightGlassHint: 'No blur anywhere — only translucency. Cheapest on the compositor.',
       lookSquareWindow: 'Square window',
       lookSquareWindowHint: 'Drops the Windows 11 corner rounding on this window frame',
+      lookNative: 'Native material',
+      lookNativeHint: 'Transparent window, Windows draws Acrylic/Mica (needs the app.asar patch)',
       lookWall: 'Background',
       lookWallPreset: 'Preset gradient',
       lookWallImage: 'Image',
@@ -3440,6 +3467,14 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
                       look.squareWindow = !look.squareWindow
                       saveLookPrefs()
                       applyWindowCorners(true)
+                      lookUpdate()
+                    }))
+                  : null,
+                lookSnapshot.skin === 'glass'
+                  ? settingRow(t('lookNative'), t('lookNativeHint'), switchControl(lookSnapshot.nativeMaterial, () => {
+                      look.nativeMaterial = !look.nativeMaterial
+                      saveLookPrefs()
+                      applyLook()
                       lookUpdate()
                     }))
                   : null,

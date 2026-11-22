@@ -185,7 +185,7 @@ html[data-dsh-glass="1"] #dsh-concierge-glass {
      全屏合成层，Iris Xe 这种核显上等于每帧多读 4M 像素。 */
   --dsh-grain: none;
   background-image:
-    var(--dsh-grain),
+    var(--dsh-grain, none),
     radial-gradient(900px 700px at 8% 0%, rgba(111, 154, 216, 1) 0%, rgba(111, 154, 216, 0) 60%),
     radial-gradient(820px 640px at 96% 4%, rgba(154, 143, 208, 0.92) 0%, rgba(154, 143, 208, 0) 62%),
     radial-gradient(940px 720px at 80% 104%, rgba(95, 176, 184, 0.95) 0%, rgba(95, 176, 184, 0) 62%),
@@ -195,7 +195,7 @@ html[data-dsh-glass="1"] #dsh-concierge-glass {
 }
 html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-glass > div:first-child {
   background-image:
-    var(--dsh-grain),
+    var(--dsh-grain, none),
     radial-gradient(900px 700px at 8% 0%, rgba(46, 74, 118, 1) 0%, rgba(46, 74, 118, 0) 60%),
     radial-gradient(820px 640px at 96% 4%, rgba(74, 62, 118, 0.92) 0%, rgba(74, 62, 118, 0) 62%),
     radial-gradient(940px 720px at 80% 104%, rgba(26, 84, 92, 0.95) 0%, rgba(26, 84, 92, 0) 62%),
@@ -288,20 +288,46 @@ html[data-dsh-glass="1"][data-dsh-native="1"][data-dsh-glass-scheme="dark"] [dat
 html[data-dsh-glass="1"][data-dsh-native="1"][data-dsh-glass-scheme="dark"] [class*="_centerCol"] {
   background: rgba(15, 21, 30, 0.5) !important;
 }
-/* 玻璃皮肤恢复「会话区磨砂」：透明底 + 独立一层的 backdrop-filter，这就是之前
-   调过的那套观感。原生材质皮肤不挂（那边由 DWM 画）。 */
+/* 局部预模糊层：会话区上方盖一份「壁纸的模糊副本」，按会话区的 rect 裁剪。
+   关键在于 filter: blur() 作用在**静止元素**上只栅格化一次，之后每帧只是一次普通
+   贴图；而 backdrop-filter 是每帧重新采样背后像素。壁纸是静态的，模糊结果永远
+   不变，天然适合烘一次。 */
+#dsh-concierge-frost { display: none; }
+html[data-dsh-glass="1"]:not([data-dsh-native="1"]) #dsh-concierge-frost {
+  display: block;
+  position: fixed;
+  overflow: hidden;
+  z-index: -1;
+  pointer-events: none;
+}
+#dsh-concierge-frost > div {
+  position: absolute;
+  width: 100vw;
+  height: 100vh;
+  background-image:
+    var(--dsh-grain, none),
+    radial-gradient(900px 700px at 8% 0%, rgba(111, 154, 216, 1) 0%, rgba(111, 154, 216, 0) 60%),
+    radial-gradient(820px 640px at 96% 4%, rgba(154, 143, 208, 0.92) 0%, rgba(154, 143, 208, 0) 62%),
+    radial-gradient(940px 720px at 80% 104%, rgba(95, 176, 184, 0.95) 0%, rgba(95, 176, 184, 0) 62%),
+    linear-gradient(165deg, #dbe4f3 0%, #d5dfef 50%, #d9e9ea 100%);
+  background-size: 140px 140px, auto, auto, auto, auto;
+  background-repeat: repeat, no-repeat, no-repeat, no-repeat, no-repeat;
+  filter: blur(18px) saturate(115%);
+}
+html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-frost > div {
+  background-image:
+    var(--dsh-grain, none),
+    radial-gradient(900px 700px at 8% 0%, rgba(46, 74, 118, 1) 0%, rgba(46, 74, 118, 0) 60%),
+    radial-gradient(820px 640px at 96% 4%, rgba(74, 62, 118, 0.92) 0%, rgba(74, 62, 118, 0) 62%),
+    radial-gradient(940px 720px at 80% 104%, rgba(26, 84, 92, 0.95) 0%, rgba(26, 84, 92, 0) 62%),
+    linear-gradient(165deg, #10151d 0%, #121a24 50%, #0c1417 100%);
+}
+/* 会话区磨砂现在由上面那层预模糊负责，::before 不再挂 backdrop-filter。 */
 html[data-dsh-glass="1"] [data-conversation-region="chat"] {
   isolation: isolate;
 }
-html[data-dsh-glass="1"]:not([data-dsh-native="1"]) [data-conversation-region="chat"]::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  will-change: transform;
-  backdrop-filter: blur(12px) saturate(150%);
-  -webkit-backdrop-filter: blur(12px) saturate(150%);
+html[data-dsh-glass="1"] [data-conversation-region="chat"]::before {
+  content: none;
 }
 /* 轻玻璃：这一档就是「不糊，只半透明」，会话区那层也撤掉。 */
 html[data-dsh-glass="1"][data-dsh-glass-light="1"] [data-conversation-region="chat"]::before {
@@ -471,6 +497,11 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         top.id = 'dsh-concierge-top'
         root.appendChild(top)
       }
+      // 会话区那层预模糊要跟着窗口尺寸和布局走（侧栏折叠、窗口缩放都会变 rect）。
+      if (!frostWired && typeof window !== 'undefined') {
+        frostWired = true
+        window.addEventListener('resize', () => applyFrostLayer(), { passive: true })
+      }
     }
 
     function applyNoAnim() {
@@ -635,6 +666,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
     // Sidebar collapse animates the chat column width; during that window only
     // the rows on screen need laying out.
     let resizeShieldInstalled = false
+    let frostWired = false
     let resizeShieldTimer = 0
 
     function installResizeShield() {
@@ -651,6 +683,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
           const width = entry && entry.contentRect ? entry.contentRect.width : 0
           if (!width || Math.abs(width - lastWidth) < 6) return
           lastWidth = width
+          applyFrostLayer()
           document.documentElement.dataset.dshResizing = '1'
           clearTimeout(resizeShieldTimer)
           resizeShieldTimer = setTimeout(() => {
@@ -959,8 +992,10 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       // transparency 0 → ×1.8（更实），100 → ×0.4（更透）
       const factor = 1.8 - (Math.max(0, Math.min(100, transparency)) / 100) * 1.4
       const scale = (alpha) => Math.max(0.04, Math.min(1, alpha * factor)).toFixed(3)
+      // 面板底色不要用纯白：壁纸是蓝绿调，白盖上去会变成灰白、和壁纸脱节。
+      // 用壁纸同色系的冷调，半透明叠上去才是「同一个色温的玻璃」。
       const fill = (lightAlpha, darkAlpha) => pair(
-        `rgba(255, 255, 255, ${scale(lightAlpha)})`,
+        `rgba(232, 240, 250, ${scale(lightAlpha)})`,
         `rgba(20, 24, 32, ${scale(darkAlpha)})`,
       )
       return {
@@ -1155,11 +1190,40 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       return `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='${alpha}'/%3E%3C/svg%3E")`
     }
 
+    // 局部预模糊层：把壁纸的模糊副本裁到会话区的矩形上。模糊只栅格化一次，
+    // 之后每帧只是一次普通合成——这是替代 backdrop-filter 的关键。
+    function applyFrostLayer() {
+      if (typeof document === 'undefined') return
+      const root = document.getElementById('dsh-concierge-glass')
+      if (!root) return
+      let layer = document.getElementById('dsh-concierge-frost')
+      if (!layer) {
+        layer = document.createElement('div')
+        layer.id = 'dsh-concierge-frost'
+        layer.appendChild(document.createElement('div'))
+        root.appendChild(layer)
+      }
+      const region = document.querySelector('[data-conversation-region="chat"]')
+      if (!region) return
+      const rect = region.getBoundingClientRect()
+      if (!rect.width || !rect.height) return
+      layer.style.left = `${Math.round(rect.left)}px`
+      layer.style.top = `${Math.round(rect.top)}px`
+      layer.style.width = `${Math.round(rect.width)}px`
+      layer.style.height = `${Math.round(rect.height)}px`
+      const fill = layer.firstElementChild
+      if (fill) {
+        fill.style.left = `${-Math.round(rect.left)}px`
+        fill.style.top = `${-Math.round(rect.top)}px`
+      }
+    }
+
     function applyGrainImage() {
       if (typeof document === 'undefined') return
-      const layer = document.querySelector('#dsh-concierge-glass > div:first-child')
+      // 挂在玻璃根上而不是壁纸 div：预模糊层要继承同一个颗粒变量。
+      const layer = document.getElementById('dsh-concierge-glass')
       if (!layer) return
-      const url = look.skin === 'glass' && look.enabled ? grainImage(look.grain) : ''
+      const url = isGlassSkin() && look.enabled ? grainImage(look.grain) : ''
       layer.style.setProperty('--dsh-grain', url || 'none')
     }
 
@@ -1334,6 +1398,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         // 视频壁纸每帧都在变，会话区那块模糊会被逐帧重算，CSS 里按这个属性关掉。
         root.dataset.dshGlassWall = (look.wall && look.wall.mode) || 'preset'
         applyGrainImage()
+        applyFrostLayer()
         applyWindowCorners()
         applyGlassAuto()
         syncGlassScheme()

@@ -1161,6 +1161,8 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       payload.floating = floatingLog.slice()
       // 临时探针：把页面顶部几处的元素层级和背景色带回来，用来定位「横带」是谁画的。
       // 按 Ctrl+Alt+H 触发一次上报。
+      const topEl = document.elementFromPoint(Math.round(window.innerWidth * 0.5), 120)
+      payload.page = topEl && topEl.closest && topEl.closest('[class*="_page"]') ? 'settings' : 'chat'
       payload.hits = [30, 90, 230].map((y) => {
         const x = Math.round(window.innerWidth * 0.5)
         const chain = document.elementsFromPoint(x, y).slice(0, 6).map((el) => {
@@ -1196,11 +1198,14 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
           probeSend()
         }
       })
-      // 设置页（插件 / 插件市场 / 维护中心）一出现就自动上报一次，省得手动按。
+      // 设置页（插件 / 插件市场 / 维护中心）真的显示在前台时自动上报一次。
+      // 只查 `_pageHead` 不够——设置页可能是挂载着但隐藏的，那时候拿到的还是会话页。
       let pageProbeSent = false
       const pageTimer = setInterval(() => {
         if (pageProbeSent) return
-        if (!document.querySelector('[class*="_pageHead"]')) return
+        const top = document.elementFromPoint(Math.round(window.innerWidth * 0.5), 120)
+        const inSettings = top && top.closest && top.closest('[class*="_page"]')
+        if (!inSettings) return
         pageProbeSent = true
         clearInterval(pageTimer)
         setTimeout(probeSend, 900)

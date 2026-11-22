@@ -285,6 +285,15 @@ html[data-dsh-glass="1"] [class*="_centerCol"] {
 html[data-dsh-glass="1"] [class*="_centerCol"] > * {
   background: transparent !important;
 }
+/* 应用在中心列左边画了 .5px 的 border-left，在标签行下面画了 border-bottom——
+   底色清零之后这两条线就是仅剩的分界，一并去掉。 */
+html[data-dsh-glass="1"] [class*="_centerCol"] {
+  border-left: none !important;
+  border-right: none !important;
+}
+html[data-dsh-glass="1"] [class*="_centerCol"] [class*="_tabs"] {
+  border-bottom: none !important;
+}
 /* Real frosted glass: every surface blurs the pixels behind it, then gets the
    rim highlight and shadow that make it read as a pane instead of a tint.
    Only surfaces are listed (not every element): each backdrop-filter samples
@@ -857,6 +866,25 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       ]
       for (const [name, selector] of targets) {
         let el = document.querySelector(selector)
+        if (name === 'center' && el && el.parentElement) {
+          for (const sibling of el.parentElement.children) {
+            if (sibling === el) continue
+            const sibStyle = getComputedStyle(sibling)
+            const sibRect = sibling.getBoundingClientRect()
+            out.push({
+              name: 'sibling',
+              d: 0,
+              tag: sibling.tagName.toLowerCase(),
+              cls: String(sibling.className || '').slice(0, 60),
+              bg: sibStyle.backgroundColor,
+              opacity: sibStyle.opacity,
+              filter: '',
+              blend: sibStyle.mixBlendMode === 'normal' ? '' : sibStyle.mixBlendMode,
+              x: Math.round(sibRect.left),
+              w: Math.round(sibRect.width),
+            })
+          }
+        }
         let depth = 0
         while (el && depth < 5) {
           const style = getComputedStyle(el)

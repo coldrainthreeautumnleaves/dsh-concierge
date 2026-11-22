@@ -198,14 +198,40 @@ html[data-dsh-glass="1"] #dsh-concierge-glass {
 
    只留一套机制：**裁剪**。内容不内缩、壁纸不内缩、_frame 不加 margin，
    页面和壁纸用同一个切口，所以不会出现两套基准对不齐的缝。
-   裁剪作用于元素自己的绘制（含背景和 fixed 后代），祖先铺什么都到不了外圈。 */
+   裁剪作用于元素自己的绘制（含背景和 fixed 后代），祖先铺什么都到不了外圈。
+   几何只在这里定义一次，边距和圆角要调就改这两个值。 */
+html[data-dsh-edge="1"] {
+  --dsh-edge: 10px;
+  --dsh-edge-radius: 16px;
+}
 html[data-dsh-edge="1"],
 html[data-dsh-edge="1"] body,
 html[data-dsh-edge="1"] #root { background: transparent !important; }
 html[data-dsh-edge="1"] #root,
 html[data-dsh-edge="1"] #dsh-concierge-glass,
 html[data-dsh-edge="1"] #dsh-concierge-frost {
-  clip-path: inset(10px round 14px);
+  clip-path: inset(var(--dsh-edge) round var(--dsh-edge-radius));
+}
+/* 让窗口浮起来。阴影必须由**没被裁剪**的元素来画：挂在 #root 上会和内容一起
+   被裁掉，所以放在 body 的伪元素上，几何和上面那个切口完全对齐。
+   外阴影落进亚克力那圈，内阴影是一条 1px 高光，给玻璃一个边缘。 */
+html[data-dsh-edge="1"] body::before {
+  content: '';
+  position: fixed;
+  inset: var(--dsh-edge);
+  border-radius: var(--dsh-edge-radius);
+  box-shadow:
+    0 18px 48px rgba(0, 0, 0, 0.30),
+    0 2px 8px rgba(0, 0, 0, 0.16),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.34);
+  pointer-events: none;
+  z-index: 2147483000;
+}
+html[data-dsh-edge="1"][data-dsh-glass-scheme="dark"] body::before {
+  box-shadow:
+    0 18px 48px rgba(0, 0, 0, 0.52),
+    0 2px 8px rgba(0, 0, 0, 0.34),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.14);
 }
 /* The wallpaper stays SHARP. Frost comes from each panel blurring what is
    behind it (backdrop-filter); pre-blurring the wallpaper leaves nothing to

@@ -279,6 +279,12 @@ html[data-dsh-glass="1"] [data-windows-titlebar] [class*="_frame"] {
 html[data-dsh-glass="1"] [class*="_centerCol"] {
   border-radius: 0 !important;
 }
+/* 聊天区标题栏（会话标题 + 右侧图标 + 对话/轨迹/统计那排标签）是中心列的直接子元素，
+   它自己带一层应用底色，侧边栏和会话区清零之后它就显出来了。这里让中心列的所有
+   直接子元素都不铺底色，整列和壁纸同一层，标题栏和内容之间不再有分界。 */
+html[data-dsh-glass="1"] [class*="_centerCol"] > * {
+  background: transparent !important;
+}
 /* Real frosted glass: every surface blurs the pixels behind it, then gets the
    rim highlight and shadow that make it read as a pane instead of a tint.
    Only surfaces are listed (not every element): each backdrop-filter samples

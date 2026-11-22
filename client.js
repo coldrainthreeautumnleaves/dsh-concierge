@@ -2800,7 +2800,11 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
   display: flex; flex-direction: column; gap: 16px;
   margin: 12px; padding: 16px 16px 24px;
   border-radius: var(--uc-r-card);
-  background: rgba(var(--dsh-tint-rgb, 248, 250, 252), 0.88);
+  /* 玻璃下这块面板要比卡片**更透**。原来这里是 0.88，而卡片用的是 layer-1
+     （约 0.72）——面板比卡片还实，卡片压在面板上就成了「比底更暗的一块」，
+     层级是反的。改成 0.55，和应用的 bg-base（0.58）同一档：面板让壁纸透出来，
+     卡片再亮一档浮在上面。原生皮肤有自己的覆盖，不受影响。 */
+  background: rgba(var(--dsh-tint-rgb, 248, 250, 252), 0.55);
   box-shadow: inset 0 1px 0 var(--uc-highlight);
   color: var(--dsw-alias-label-primary);
   font-size: var(--uc-fs-body); line-height: 1.5;
@@ -2888,6 +2892,13 @@ html:not([data-dsh-glass="1"]) .uc-root {
 .uc-stats-card { gap: 0; }
 .uc-stats-card .uc-stat { background: transparent; border: 0; box-shadow: none; border-radius: 0; }
 .uc-stats-card .uc-stat + .uc-stat { border-left: 1px solid var(--uc-sep); }
+/* 玻璃下卡片的边改用 l2（灰 0.18）：l1 是白 0.6，压在本来就是白色的卡面上
+   等于没有边，卡片只能靠投影分辨。原生保持 l1。 */
+html[data-dsh-glass="1"] .uc-card,
+html[data-dsh-glass="1"] .uc-stat,
+html[data-dsh-glass="1"] .uc-hero {
+  border-color: var(--dsw-alias-border-l2);
+}
 
 .uc-card { border-radius: var(--uc-r-card); background: var(--uc-surface-1); border: 1px solid var(--dsw-alias-border-l1); overflow: hidden; box-shadow: var(--dsw-shadow-lv1), inset 0 1px 0 var(--uc-highlight); animation: uc-fade .15s ease; }
 .uc-card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--uc-sep); flex-wrap: wrap; }

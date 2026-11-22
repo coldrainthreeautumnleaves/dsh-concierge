@@ -1,4 +1,4 @@
-﻿/**
+/**
  * dsh-concierge — Client half.
  * A dashboard-style settings page plus a top notification strip.
  */
@@ -611,19 +611,50 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
 
     // 页面上「纯白实底」的元素：这类方块压在玻璃上最扎眼（右下角那个百分比徽标就是
     // 一例），列出来才能定位到具体是哪个 token / 类名没跟着色温走。
+    // 「亮底」元素：不要求恰好纯白，alpha > 0.5 且 RGB 都 > 245 就算；顺便带上
+    // background-image 和屏幕坐标——渐变、半透明白、以及能按位置对号入座的方块
+    // 都能被抓到。
     function collectWhiteBoxes() {
       if (typeof document === 'undefined') return []
       const found = []
       for (const el of document.querySelectorAll('body *')) {
-        if (found.length >= 20) break
+        if (found.length >= 24) break
         const style = getComputedStyle(el)
         const bg = style.backgroundColor
-        if (bg !== 'rgb(255, 255, 255)' && bg !== 'rgba(255, 255, 255, 1)') continue
+        const m = /^rgba?\(([^)]+)\)$/.exec(bg)
+        let nearWhite = false
+        if (m) {
+          const parts = m[1].split(',').map((v) => Number(v.trim()))
+          const alpha = parts.length > 3 ? parts[3] : 1
+          const [r, g, b] = parts
+          nearWhite = alpha > 0.5 && r > 240 && g > 240 && b > 240
+        }
+        const img = style.backgroundImage && style.backgroundImage !== 'none' ? style.backgroundImage : ''
+        if (!nearWhite && !img) continue
         const rect = el.getBoundingClientRect()
-        if (rect.width < 4 || rect.height < 4) continue
+        if (rect.width < 8 || rect.height < 8) continue
+        // 伪元素也会画底色（应用里就有把底和模糊写在 ::before 上的写法）
+        let pseudo = ''
+        for (const name of ['::before', '::after']) {
+          const ps = getComputedStyle(el, name)
+          const pb = ps.backgroundColor
+          const pm = /^rgba?\(([^)]+)\)$/.exec(pb)
+          if (!pm) continue
+          const pp = pm[1].split(',').map((v) => Number(v.trim()))
+          const pa = pp.length > 3 ? pp[3] : 1
+          if (pa > 0.5 && pp[0] > 240 && pp[1] > 240 && pp[2] > 240) {
+            pseudo = `${name} ${pb}`
+            break
+          }
+        }
         found.push({
           tag: el.tagName.toLowerCase(),
           cls: String(el.className || '').slice(0, 70),
+          bg,
+          img: img.slice(0, 70),
+          pseudo,
+          x: Math.round(rect.left),
+          y: Math.round(rect.top),
           w: Math.round(rect.width),
           h: Math.round(rect.height),
         })
@@ -1069,6 +1100,12 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         '--dsw-menu-backdrop-filter': pair('none', 'none'),
         '--dsw-alias-border-l1': pair('rgba(255, 255, 255, 0.6)', 'rgba(255, 255, 255, 0.12)'),
         '--dsw-alias-border-l2': pair('rgba(120, 130, 150, 0.18)', 'rgba(255, 255, 255, 0.18)'),
+        // 滚动条默认是浅灰白，压在玻璃上很扎眼（应用自己的 --dsh-scrollbar-thumb 就是
+        // 引用这两个 token 的）。改成同色温的半透明。
+        '--dsw-alias-scrollbar-bg-l1': pair('rgba(var(--dsh-tint-rgb), 0.3)', 'rgba(255, 255, 255, 0.2)'),
+        '--dsw-alias-scrollbar-bg-l2': pair('rgba(var(--dsh-tint-rgb), 0.42)', 'rgba(255, 255, 255, 0.28)'),
+        '--dsw-alias-scrollbar-hover-l1': pair('rgba(var(--dsh-tint-rgb), 0.55)', 'rgba(255, 255, 255, 0.36)'),
+        '--dsw-alias-scrollbar-hover-l2': pair('rgba(var(--dsh-tint-rgb), 0.66)', 'rgba(255, 255, 255, 0.44)'),
         '--dsw-alias-label-primary': pair('#1a1d23', '#e8ebf1'),
         '--dsw-alias-label-secondary': pair('#5d6470', '#9aa3b2'),
         // 说明文字、未选中菜单项用的是应用自己的三级/说明色，默认是按**纯白底**调的

@@ -2049,6 +2049,8 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       changelogTitle: '更新日志',
       changelogHint: '点版本号展开或收起',
       changelogCount: '{n} 条',
+      changelogCollapse: '收起',
+      changelogExpandAll: '展开全部 {n} 版',
       changelogEmpty: '还没有更新日志',
       searchPlugins: '查找插件：名称或标题',
       typerTitle: '打字机',
@@ -2292,6 +2294,8 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       changelogTitle: 'Changelog',
       changelogHint: 'Click a version to expand or collapse',
       changelogCount: '{n} changes',
+      changelogCollapse: 'Collapse',
+      changelogExpandAll: 'Show all {n} versions',
       changelogEmpty: 'No changelog yet',
       searchPlugins: 'Find a plugin by name or title',
       typerTitle: 'Typewriter',
@@ -2452,6 +2456,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
 .uc-log-chevron[data-open="1"] { transform: rotate(90deg); }
 .uc-log-version { font-size: 12.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .uc-log-group { margin: 16px 0 4px; font-size: 11.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--dsw-alias-label-tertiary); }
+.uc-log-more { margin: 6px 0 2px 18px; padding: 2px 0; border: 0; background: none; color: var(--dsw-alias-label-secondary); font: inherit; font-size: 12px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
 .uc-log-count { margin-left: auto; font-size: 11px; color: var(--dsw-alias-label-secondary); }
 .uc-log-items { margin: 0 0 10px; padding: 0 8px 0 26px; display: flex; flex-direction: column; gap: 5px; font-size: 11.5px; line-height: 1.6; color: var(--dsw-alias-label-secondary); }
 .uc-hintbox { margin: 2px 0 0; padding: 10px 12px; border: 1px solid var(--dsw-alias-border-l1); border-left: 3px solid var(--uc-accent); border-radius: 10px; background: var(--dsw-alias-bg-layer-1); }
@@ -4303,10 +4308,24 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
                   // 宿主那份解析器只有重启后才生效，所以这里不依赖它给的 group 标记：
                   // 只要标题不是 x.y.z，就按主题分组渲染。
                   if (entry.group || !/^\d+\.\d+\.\d+$/.test(String(entry.version || ''))) {
+                    const key = `g:${entry.version}`
+                    const isIndex = String(entry.version).includes('版本索引')
+                    const open = openVersions[key] !== undefined ? openVersions[key] : !isIndex
+                    const total = entry.items.length
+                    const shown = isIndex && !open ? entry.items.slice(0, 8) : entry.items
+                    const toggle = () => setOpenVersions({ ...openVersions, [key]: !open })
                     return h('div', { className: 'uc-log-entry', key: `g${index}` },
-                      h('div', { className: 'uc-log-group' }, entry.version),
-                      entry.items.length
-                        ? h('ul', { className: 'uc-log-items' }, entry.items.map((item, itemIndex) => h('li', { key: itemIndex }, item)))
+                      h('button', { type: 'button', className: 'uc-log-head', onClick: toggle },
+                        h('span', { className: 'uc-log-chevron', 'data-open': open ? '1' : '0' }, '▸'),
+                        h('span', { className: 'uc-log-version' }, entry.version),
+                        h('span', { className: 'uc-log-count' }, t('changelogCount', { n: total })),
+                      ),
+                      shown.length
+                        ? h('ul', { className: 'uc-log-items' }, shown.map((item, itemIndex) => h('li', { key: itemIndex }, item)))
+                        : null,
+                      isIndex && total > 8
+                        ? h('button', { type: 'button', className: 'uc-log-more', onClick: toggle },
+                            open ? t('changelogCollapse') : t('changelogExpandAll', { n: total }))
                         : null,
                     )
                   }

@@ -2805,11 +2805,15 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
 }
 /* 原生皮肤（以及外观关掉时）不套玻璃色温：面板底色用官方层级色。
    --dsh-tint-rgb 只在玻璃皮肤下定义，这里若继续用带兜底的写法，
-   整块会回退成浅蓝 (232,240,250)，在纯白皮肤上很明显。 */
+   整块会回退成浅蓝 (232,240,250)，在纯白皮肤上很明显。
+
+   注意这里用的是 layer-2 而不是 bg-base：原生的页面本身就是 bg-base（纯白），
+   面板再用同一个值，卡片（layer-1 白）压上去就完全看不见边界——玻璃下是
+   「有色面板 + 更亮卡片」，原生要保住同一个层级关系，面板就得比页面深一档。 */
 html:not([data-dsh-glass="1"]) .uc-root {
   --uc-surface-1: var(--dsw-alias-bg-layer-1);
   --uc-surface-2: var(--dsw-alias-bg-layer-2);
-  background: var(--dsw-alias-bg-base);
+  background: var(--dsw-alias-bg-layer-2);
 }
 .uc-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; min-width: 0; }
 .uc-kicker { font-size: var(--uc-fs-small); letter-spacing: .08em; text-transform: uppercase; color: var(--dsw-alias-label-secondary); margin-bottom: 8px; }

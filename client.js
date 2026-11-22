@@ -601,6 +601,25 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
     const probeEvents = []
     let probeReportTimer = 0
     let probeSentAt = 0
+    let probeSentBlurs = false
+
+    function collectBlurringElements() {
+      if (typeof document === 'undefined') return []
+      const found = []
+      for (const el of document.querySelectorAll('body *')) {
+        if (found.length >= 24) break
+        const style = getComputedStyle(el)
+        const blur = style.backdropFilter || style.webkitBackdropFilter
+        if (blur && blur !== 'none') {
+          found.push({
+            tag: el.tagName.toLowerCase(),
+            cls: String(el.className || '').slice(0, 90),
+            blur,
+          })
+        }
+      }
+      return found
+    }
 
     function probeLongFrame(elapsed) {
       if (!(elapsed >= 40)) return
@@ -621,6 +640,12 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         lightGlass: look.lightGlass,
         skin: look.skin,
         enabled: look.enabled,
+      }
+      // 第一次上报顺带把「页面上还有哪些元素在模糊」列出来——一次加载只做一遍，
+      // 用来确认 backdrop-filter 到底还剩在谁身上。
+      if (!probeSentBlurs) {
+        probeSentBlurs = true
+        payload.blurs = collectBlurringElements()
       }
       fetch(`${API}/perf-report`, {
         method: 'POST',
@@ -794,6 +819,10 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         requestAnimationFrame(tick)
       }
       requestAnimationFrame(tick)
+      // 加载 4 秒后补一份诊断：即使没有长帧、没有流式，也能拿到「谁还在模糊」的清单。
+      setTimeout(() => {
+        if (!probeSentBlurs) probeSend()
+      }, 4000)
       setInterval(() => {
         let rows = 0
         let streaming = false

@@ -691,31 +691,79 @@ async function handleStartupBoost(request, response) {
 // DWMWCP_DONOTROUND = 1，DWMWCP_ROUND = 2。和 dsh-win11-material 的做法一致：
 // 插件跑在 Host 进程里，能调 Win32/DWM，只是动不了窗口构造参数。
 //
-// DWMWA_BORDER_COLOR = 34：Windows 11 会给窗口画一圈 1px 边框。开了「真透明留边」
-// 之后，这圈边框和内容的圆角边会并排成两条线——留边那 10px 在中间，看起来就是
-// 「窗口边框 + 内边框」。把它设成 DWMWA_COLOR_NONE（0xFFFFFFFE）就没有外框了，
-// 只剩内容自己那条圆角边。关掉留边时设回 DWMWA_COLOR_DEFAULT（0xFFFFFFFF）。
-const WINDOW_CORNER_SCRIPT = (square, borderless) => [
+// DWMWA_BORDER_COLOR = 34：Windows 11 会给窗口画一圈 1px 边框。开了「无边框窗口」
+// 之后这圈边框和内容的边会并排成两条线，把它设成 DWMWA_COLOR_NONE（0xFFFFFFFE）
+// 就没有外框了。关掉时设回 DWMWA_COLOR_DEFAULT（0xFFFFFFFF）。
+//
+// 找窗口不用 MainWindowHandle：启动早期它可能是 0，而且 DevTools 也算主窗口。
+// 这里枚举该进程的所有可见顶层窗口，取面积最大的那个（DevTools 和对话框都小得多），
+// 这个做法抄自 dsh-transparent，它踩过「标题为空时匹配不到」的坑。
+//
+// watch：应用在启动收尾时还会 show / setBounds / 改状态，Electron 每次都会重写窗口
+// 样式，把这里设的 DWM 属性冲掉。所以第一次应用之后盯一段时间，每 1.5 秒重设一次。
+const WINDOW_CORNER_SCRIPT = (square, borderless, watch) => [
   "$ErrorActionPreference = 'Stop'",
   'Add-Type -TypeDefinition @"',
   'using System;',
   'using System.Runtime.InteropServices;',
-  'public class DshDwmCorner {',
-  '  [DllImport("dwmapi.dll")]',
-  '  public static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int value, int size);',
+  'public class DshDwmWindow {',
+  '  public delegate bool EnumProc(IntPtr h, IntPtr l);',
+  '  public struct RECT { public int Left; public int Top; public int Right; public int Bottom; }',
+  '  [DllImport("user32.dll")] public static extern bool EnumWindows(EnumProc cb, IntPtr l);',
+  '  [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr h);',
+  '  [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out RECT r);',
+  '  [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);',
+  '  [DllImport("dwmapi.dll")] public static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int value, int size);',
   '}',
   '"@',
-  "$p = Get-Process -Name 'DeepSeek Harness' -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 } | Select-Object -First 1",
-  "if ($null -eq $p) { Write-Output 'no-window'; exit 0 }",
-  `$v = ${square ? 1 : 2}`,
-  '$hr = [DshDwmCorner]::DwmSetWindowAttribute($p.MainWindowHandle, 33, [ref]$v, 4)',
-  // 0xFFFFFFFE 会超过 int 上限，用负的等价值传进去（unchecked (int)）。
-  `$b = ${borderless ? -2 : -1}`,
-  '$hr2 = [DshDwmCorner]::DwmSetWindowAttribute($p.MainWindowHandle, 34, [ref]$b, 4)',
-  "Write-Output ('hr=' + $hr + ' border=' + $hr2)",
+  "$procs = @(Get-Process -Name 'DeepSeek Harness' -ErrorAction SilentlyContinue)",
+  "if ($procs.Count -eq 0) { Write-Output 'no-window'; exit 0 }",
+  '$global:pids = @($procs | ForEach-Object { $_.Id })',
+  '$global:found = [IntPtr]::Zero',
+  '$global:best = 0',
+  '$cb = [DshDwmWindow+EnumProc]{',
+  '  param($h, $l)',
+  '  if (-not [DshDwmWindow]::IsWindowVisible($h)) { return $true }',
+  '  $p = 0',
+  '  [void][DshDwmWindow]::GetWindowThreadProcessId($h, [ref]$p)',
+  '  if ($global:pids -notcontains $p) { return $true }',
+  '  $r = New-Object DshDwmWindow+RECT',
+  '  if (-not [DshDwmWindow]::GetWindowRect($h, [ref]$r)) { return $true }',
+  '  $ww = $r.Right - $r.Left',
+  '  $hh = $r.Bottom - $r.Top',
+  '  if ($ww -lt 700 -or $hh -lt 500) { return $true }',
+  '  $area = $ww * $hh',
+  '  if ($area -gt $global:best) { $global:best = $area; $global:found = $h }',
+  '  return $true',
+  '}',
+  '[void][DshDwmWindow]::EnumWindows($cb, [IntPtr]::Zero)',
+  '$w = $global:found',
+  "if ($w -eq [IntPtr]::Zero) { Write-Output 'no-window'; exit 0 }",
+  `$corner = ${square ? 1 : 2}`,
+  // 0xFFFFFFFE / 0xFFFFFFFF 超过 int 上限，用负的等价值（unchecked (int)）。
+  `$border = ${borderless ? -2 : -1}`,
+  'function Apply-DshDwm {',
+  '  $v = $corner',
+  '  $hr1 = [DshDwmWindow]::DwmSetWindowAttribute($w, 33, [ref]$v, 4)',
+  '  $b = $border',
+  '  $hr2 = [DshDwmWindow]::DwmSetWindowAttribute($w, 34, [ref]$b, 4)',
+  "  Write-Output ('hr=' + $hr1 + ' border=' + $hr2)",
+  '}',
+  'Apply-DshDwm',
+  `$watch = ${watch}`,
+  'if ($watch -gt 0) {',
+  '  $end = (Get-Date).AddSeconds($watch)',
+  '  while ((Get-Date) -lt $end) {',
+  '    Start-Sleep -Milliseconds 1500',
+  '    $v = $corner',
+  '    [void][DshDwmWindow]::DwmSetWindowAttribute($w, 33, [ref]$v, 4)',
+  '    $b = $border',
+  '    [void][DshDwmWindow]::DwmSetWindowAttribute($w, 34, [ref]$b, 4)',
+  '  }',
+  '}',
 ].join('\n')
 
-function runPowerShellCommand(script) {
+function runPowerShellCommand(script, timeoutMs = 8000) {
   return new Promise((resolve) => {
     let child
     try {
@@ -740,7 +788,7 @@ function runPowerShellCommand(script) {
         /* already gone */
       }
       resolve({ ok: false, error: 'timeout' })
-    }, 8000)
+    }, timeoutMs)
     child.stdout.on('data', (chunk) => { out += chunk })
     child.stderr.on('data', (chunk) => { err += chunk })
     child.on('error', (error) => {
@@ -769,11 +817,19 @@ async function handleWindowCorners(request, response) {
     const body = await readNodeJson(request)
     const square = body && body.square === true
     const borderless = body && body.borderless === true
-    const result = await runPowerShellCommand(WINDOW_CORNER_SCRIPT(square, borderless))
+    // 盯多久（秒）。只让第一次调用带这个值：之后每次改设置再起一个 15 秒的
+    // PowerShell 进程没有意义，还会叠起来。
+    const rawWatch = body && Number(body.watch)
+    const watch = Number.isFinite(rawWatch) ? Math.max(0, Math.min(30, Math.round(rawWatch))) : 0
+    const result = await runPowerShellCommand(
+      WINDOW_CORNER_SCRIPT(square, borderless, watch),
+      (watch + 8) * 1000,
+    )
     sendNodeJson(response, {
       ok: result.ok,
       square,
       borderless,
+      watch,
       output: result.output || '',
       error: result.error || '',
     }, result.ok ? 200 : 500)

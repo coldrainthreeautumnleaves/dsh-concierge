@@ -1873,6 +1873,9 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
     // 同时把「要不要那圈 1px 窗口边框」一起传下去：开留边时去掉它，窗口边框和
     // 内容圆角边才会合成一条线，而不是中间夹着 10px 的两条边。
     let appliedWindowChrome = null
+    // 只有页面加载后的第一次请求带 watch：应用在启动收尾时会重写窗口样式，把
+    // DWM 属性冲掉，需要盯一段时间；之后改设置再起一个 15 秒的进程只会叠起来。
+    let windowChromeWatched = false
 
     function applyWindowCorners(force = false) {
       if (typeof fetch !== 'function') return
@@ -1880,14 +1883,20 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       const key = `${look.squareWindow}:${look.edgeGlass ? 1 : 0}`
       if (!force && appliedWindowChrome === key) return
       appliedWindowChrome = key
+      const wantWatch = !windowChromeWatched
       fetch(`${API}/window-corners`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ square: look.squareWindow, borderless: look.edgeGlass === true }),
+        body: JSON.stringify({
+          square: look.squareWindow,
+          borderless: look.edgeGlass === true,
+          watch: wantWatch ? 15 : 0,
+        }),
       })
         .then((response) => response.json())
         .then((body) => {
           if (!body || body.ok !== true) appliedWindowChrome = null
+          else if (wantWatch) windowChromeWatched = true
         })
         .catch(() => { appliedWindowChrome = null })
     }

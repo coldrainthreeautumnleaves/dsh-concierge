@@ -365,6 +365,7 @@ html[data-dsh-glass="1"] :is(
   [class*="_hovercard"],
   [class*="_menu"],
   [class*="_portal_"] > *,
+  [data-composer-dock],
   [data-composer-dock] > *,
   [data-composer-dock] [class*="_root"],
   .uc-card,
@@ -387,6 +388,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] :is(
   [class*="_hovercard"],
   [class*="_menu"],
   [class*="_portal_"] > *,
+  [data-composer-dock],
   [data-composer-dock] > *,
   [data-composer-dock] [class*="_root"],
   .uc-card,
@@ -563,6 +565,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
     let probeReportTimer = 0
     let probeSentAt = 0
     let probeBlurList = null
+    let probeComposerTree = null
 
     function collectBlurringElements() {
       if (typeof document === 'undefined') return []
@@ -580,6 +583,29 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         }
       }
       return found
+    }
+
+    // 输入区那棵子树的结构：标签、类名、计算出来的底色、定位。用来确认「实底到底
+    // 挂在哪一层」，不用再靠猜类名。
+    function collectComposerTree() {
+      if (typeof document === 'undefined') return []
+      const dock = document.querySelector('[data-composer-dock]')
+      if (!dock) return []
+      const rows = []
+      const walk = (el, depth) => {
+        if (rows.length >= 26 || depth > 4) return
+        const style = getComputedStyle(el)
+        rows.push({
+          d: depth,
+          tag: el.tagName.toLowerCase(),
+          cls: String(el.className || '').slice(0, 60),
+          bg: style.backgroundColor,
+          pos: style.position,
+        })
+        for (const child of el.children) walk(child, depth + 1)
+      }
+      walk(dock, 0)
+      return rows
     }
 
     function probeLongFrame(elapsed) {
@@ -605,6 +631,8 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       // 是覆盖写的，只发一次等于被后面的报告冲掉，等于没发。
       if (probeBlurList === null) probeBlurList = collectBlurringElements()
       payload.blurs = probeBlurList
+      if (probeComposerTree === null) probeComposerTree = collectComposerTree()
+      payload.composer = probeComposerTree
       fetch(`${API}/perf-report`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },

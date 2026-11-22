@@ -2862,6 +2862,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       const [openGuide, setOpenGuide] = React.useState(false)
       const [openLogAll, setOpenLogAll] = React.useState(false)
       const [openLogCard, setOpenLogCard] = React.useState(false)
+      const [openAbout, setOpenAbout] = React.useState(false)
       const [rollbackName, setRollbackName] = React.useState(null)
       const [rollbackData, setRollbackData] = React.useState(null)
       const [rollbackLoading, setRollbackLoading] = React.useState(false)
@@ -4335,11 +4336,17 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         ) : null,
 
         tab === 'about' ? h('section', { className: 'uc-card' },
-          h('div', { className: 'uc-card-head' },
-            h('div', { className: 'uc-card-title' }, t('aboutTitle')),
-            h('span', { className: 'uc-chip uc-chip-ok' }, aboutData ? `v${aboutData.version}` : '…'),
+          h('button', {
+            type: 'button',
+            className: 'uc-log-head',
+            onClick: () => setOpenAbout(!openAbout),
+          },
+            h('span', { className: 'uc-log-chevron', 'data-open': openAbout ? '1' : '0' }, '▸'),
+            h('span', { className: 'uc-log-version' }, t('aboutTitle')),
+            h('span', { className: 'uc-log-count' }, `dsh-concierge · ${aboutData ? `v${aboutData.version}` : '…'}${aboutData && aboutData.license ? ` · ${aboutData.license}` : ''}`),
           ),
-          h('div', { className: 'uc-about' },
+          openAbout
+            ? h('div', { className: 'uc-about' },
             h('p', null, t('aboutIntro')),
             aboutData && aboutData.description
               ? h('p', { className: 'uc-about-desc' }, aboutData.description)
@@ -4353,7 +4360,8 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
               }, t('aboutRepo')),
               aboutData && aboutData.license ? h('span', { className: 'uc-about-license' }, aboutData.license) : null,
             ),
-          ),
+              )
+            : null,
         ) : null,
 
         // 「关于」页第一块：功能介绍与结论，默认收起，和下面的版本日志分开。

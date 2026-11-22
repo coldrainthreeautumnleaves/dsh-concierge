@@ -1,0 +1,20 @@
+changelog:
+  exclude:
+    labels:
+      - dependencies
+      - skip-changelog
+  categories:
+    - title: 新增
+      labels:
+        - enhancement
+        - feature
+    - title: 修复
+      labels:
+        - bug
+        - fix
+    - title: 文档
+      labels:
+        - documentation
+    - title: 其他变更
+      labels:
+        - '*'

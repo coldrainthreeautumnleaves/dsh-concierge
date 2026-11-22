@@ -6,6 +6,13 @@
 
 ## [Unreleased]
 
+## [0.6.2] - 2026-11-22
+
+> 启动器支持命令行开关，用来试 GPU/合成层的 resize 白闪
+
+### Changed
+
+- 工具: `launch-with-patch.cmd` 增加 `FLAGS` 一行，切换 `--enable-features` / `--use-angle` / `--disable-gpu-compositing` 不用改 asar
 ## [0.6.1] - 2026-11-22
 
 > 新增带补丁自检的启动器：应用更新后自动重打

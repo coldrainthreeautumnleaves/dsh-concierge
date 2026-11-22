@@ -2049,6 +2049,22 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       changelogTitle: '更新日志',
       changelogHint: '点版本号展开或收起',
       changelogCount: '{n} 条',
+      aboutDesignTitle: '功能介绍与结论',
+      aboutDesignHint: '点开查看',
+      aboutDesignSkinTitle: '皮肤与材质',
+      aboutDesignSkin1: '玻璃：预模糊层画模糊，静态元素只栅格化一次',
+      aboutDesignSkin2: '原生材质：窗口透明，由 DWM 画 Acrylic，需先给 app.asar 打补丁',
+      aboutDesignPerfTitle: '性能',
+      aboutDesignPerf1: '玻璃皮肤里没有 backdrop-filter',
+      aboutDesignPerf2: '不透明面板才能被合成器剔除',
+      aboutDesignPerf3: '实测：滚动 110、流式 117、原生材质 115–116（120Hz）',
+      aboutDesignFloatTitle: '浮层',
+      aboutDesignFloat1: '盖在内容上的面给不透明底；玻璃感只留侧边栏和会话区',
+      aboutDesignProbeTitle: '诊断',
+      aboutDesignProbe1: 'perf-report.json 里的 blurs / whites / band / composer / floating',
+      aboutDesignPitTitle: '踩过的坑',
+      aboutDesignPit1: '通配类名决定不了谁该不透明：_panel、_root 各误伤一次',
+      aboutDesignPit2: 'dock 是容器不是面板；tooltip 不是 role="tooltip"',
       changelogCollapse: '收起',
       changelogExpandAll: '展开全部 {n} 版',
       changelogEmpty: '还没有更新日志',
@@ -2294,6 +2310,22 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       changelogTitle: 'Changelog',
       changelogHint: 'Click a version to expand or collapse',
       changelogCount: '{n} changes',
+      aboutDesignTitle: 'About the design',
+      aboutDesignHint: 'Click to expand',
+      aboutDesignSkinTitle: 'Skins',
+      aboutDesignSkin1: 'Glass: a pre-blurred layer, rasterised once for static elements',
+      aboutDesignSkin2: 'Native: transparent window, Acrylic drawn by DWM (needs the asar patch)',
+      aboutDesignPerfTitle: 'Performance',
+      aboutDesignPerf1: 'No backdrop-filter anywhere in the glass skin',
+      aboutDesignPerf2: 'Only opaque panels can be culled by the compositor',
+      aboutDesignPerf3: 'Measured: scroll 110, streaming 117, native 115-116 (120Hz)',
+      aboutDesignFloatTitle: 'Floating surfaces',
+      aboutDesignFloat1: 'Anything over content gets an opaque backing; glass stays on the sidebar and chat',
+      aboutDesignProbeTitle: 'Diagnostics',
+      aboutDesignProbe1: 'blurs / whites / band / composer / floating in perf-report.json',
+      aboutDesignPitTitle: 'Pitfalls',
+      aboutDesignPit1: 'Wildcard class names cannot decide what is opaque: _panel and _root each bit once',
+      aboutDesignPit2: 'The dock is a container, not a panel; tooltips are not role="tooltip"',
       changelogCollapse: 'Collapse',
       changelogExpandAll: 'Show all {n} versions',
       changelogEmpty: 'No changelog yet',
@@ -2457,6 +2489,8 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
 .uc-log-version { font-size: 12.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .uc-log-group { margin: 16px 0 4px; font-size: 11.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--dsw-alias-label-tertiary); }
 .uc-log-more { margin: 6px 0 2px 18px; padding: 2px 0; border: 0; background: none; color: var(--dsw-alias-label-secondary); font: inherit; font-size: 12px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.uc-design { padding: 4px 18px 10px; }
+.uc-design-group { margin-top: 10px; }
 .uc-log-count { margin-left: auto; font-size: 11px; color: var(--dsw-alias-label-secondary); }
 .uc-log-items { margin: 0 0 10px; padding: 0 8px 0 26px; display: flex; flex-direction: column; gap: 5px; font-size: 11.5px; line-height: 1.6; color: var(--dsw-alias-label-secondary); }
 .uc-hintbox { margin: 2px 0 0; padding: 10px 12px; border: 1px solid var(--dsw-alias-border-l1); border-left: 3px solid var(--uc-accent); border-radius: 10px; background: var(--dsw-alias-bg-layer-1); }
@@ -2806,6 +2840,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       }, [])
       const [aboutData, setAboutData] = React.useState(null)
       const [openVersions, setOpenVersions] = React.useState({})
+      const [openGuide, setOpenGuide] = React.useState(false)
       const [rollbackName, setRollbackName] = React.useState(null)
       const [rollbackData, setRollbackData] = React.useState(null)
       const [rollbackLoading, setRollbackLoading] = React.useState(false)
@@ -4294,6 +4329,35 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
               aboutData && aboutData.license ? h('span', { className: 'uc-about-license' }, aboutData.license) : null,
             ),
           ),
+        ) : null,
+
+        // 「关于」页第一块：功能介绍与结论，默认收起，和下面的版本日志分开。
+        tab === 'about' ? h('section', { className: 'uc-card' },
+          h('button', {
+            type: 'button',
+            className: 'uc-log-head',
+            onClick: () => setOpenGuide(!openGuide),
+          },
+            h('span', { className: 'uc-log-chevron', 'data-open': openGuide ? '1' : '0' }, '▸'),
+            h('span', { className: 'uc-log-version' }, t('aboutDesignTitle')),
+            h('span', { className: 'uc-log-count' }, t('aboutDesignHint')),
+          ),
+          openGuide
+            ? h('div', { className: 'uc-design' },
+                [
+                  ['aboutDesignSkinTitle', ['aboutDesignSkin1', 'aboutDesignSkin2']],
+                  ['aboutDesignPerfTitle', ['aboutDesignPerf1', 'aboutDesignPerf2', 'aboutDesignPerf3']],
+                  ['aboutDesignFloatTitle', ['aboutDesignFloat1']],
+                  ['aboutDesignProbeTitle', ['aboutDesignProbe1']],
+                  ['aboutDesignPitTitle', ['aboutDesignPit1', 'aboutDesignPit2']],
+                ].map(([titleKey, itemKeys]) =>
+                  h('div', { key: titleKey, className: 'uc-design-group' },
+                    h('div', { className: 'uc-log-group' }, t(titleKey)),
+                    h('ul', { className: 'uc-log-items' }, itemKeys.map((key) => h('li', { key }, t(key)))),
+                  ),
+                ),
+              )
+            : null,
         ) : null,
 
         tab === 'about' ? h('section', { className: 'uc-card' },

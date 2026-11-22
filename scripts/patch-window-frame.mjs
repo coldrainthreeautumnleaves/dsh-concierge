@@ -40,7 +40,11 @@ const asarPath = process.env.DSH_ASAR || defaultAsar()
 const stagedPath = `${asarPath}.frame.new`
 const backupPath = `${asarPath}.frame.bak`
 
-const ANCHOR = 'backgroundMaterial: "acrylic"'
+// 主窗口的构造（压缩过的代码，冒号后没有空格）：
+//   backgroundMaterial:"acrylic",titleBarStyle:"hidden",titleBarOverlay:{...}
+// 注意欢迎窗口那处写的是 `backgroundMaterial: "acrylic"`（带空格），不是这里。
+const ANCHOR = 'backgroundMaterial:"acrylic",titleBarStyle:"hidden"'
+const AFTER = 'backgroundMaterial:"acrylic"'
 const INSERT = ',thickFrame:!1,roundedCorners:!1'
 
 const align4 = (n) => (n + 3) & ~3
@@ -83,14 +87,27 @@ function findByOffset(node, offset, dir = []) {
   return null
 }
 
+/** 读出 lib/main.js 的文本和条目。 */
+function mainJsOf(asar) {
+  const parsed = JSON.parse(asar.json)
+  const entry = parsed.files && parsed.files.lib && parsed.files.lib.files
+    ? parsed.files.lib.files['main.js']
+    : null
+  if (!entry) return null
+  const start = asar.dataStart + Number(entry.offset)
+  const text = asar.buf.subarray(start, start + Number(entry.size)).toString('latin1')
+  return { entry, parsed, text }
+}
+
 if (!fs.existsSync(asarPath)) {
   console.error(`找不到 app.asar：${asarPath}`)
   process.exit(1)
 }
 
 if (flag('--check')) {
-  const { json } = readAsar(asarPath)
-  const patched = json.includes('thickFrame:!1')
+  const asar = readAsar(asarPath)
+  const main = mainJsOf(asar)
+  const patched = main ? main.text.includes('backgroundMaterial:"acrylic",thickFrame:!1') : false
   console.log(`asar: ${asarPath}`)
   console.log(`thickFrame 补丁：${patched ? '已应用' : '未应用'}`)
   console.log(`备份：${fs.existsSync(backupPath) ? backupPath : '（无）'}`)
@@ -141,49 +158,43 @@ if (flag('--apply')) {
 
 // 默认：生成 app.asar.frame.new
 const asar = readAsar(asarPath)
-if (asar.json.includes('thickFrame:!1')) {
+const main = mainJsOf(asar)
+if (!main) {
+  console.error('asar 里没有 lib/main.js。')
+  process.exit(1)
+}
+if (main.text.includes('backgroundMaterial:"acrylic",thickFrame:!1')) {
   console.log('补丁已经在里面了，无需重复打。')
   process.exit(0)
 }
 
-const data = asar.buf.subarray(asar.dataStart)
-const anchorIndex = data.indexOf(Buffer.from(ANCHOR, 'latin1'))
-if (anchorIndex < 0) {
-  console.error('没找到 backgroundMaterial: "acrylic"，应用版本可能变了。')
+const anchorInFile = main.text.indexOf(ANCHOR)
+if (anchorInFile < 0) {
+  console.error('没找到主窗口的 backgroundMaterial:"acrylic",titleBarStyle:"hidden"，应用版本可能变了。')
   process.exit(1)
 }
 
-const parsed = JSON.parse(asar.json)
-const found = findByOffset(parsed, anchorIndex)
-if (!found) {
-  console.error('找到了锚点，但定位不到它属于哪个文件。')
-  process.exit(1)
-}
-
-const fileStart = found.start
-const fileSize = Number(found.entry.size)
-const original = data.subarray(fileStart, fileStart + fileSize)
-const anchorInFile = anchorIndex - fileStart
-
-// 在锚点后面插入两个构造参数。
+const insertAt = anchorInFile + AFTER.length
+const original = Buffer.from(main.text, 'latin1')
 const patched = Buffer.concat([
-  original.subarray(0, anchorInFile + ANCHOR.length),
+  original.subarray(0, insertAt),
   Buffer.from(INSERT, 'latin1'),
-  original.subarray(anchorInFile + ANCHOR.length),
+  original.subarray(insertAt),
 ])
 
 // 把新文件追加到数据区末尾，只改它自己的 offset/size。
-found.entry.offset = String(data.length)
-found.entry.size = patched.length
-delete found.entry.integrity
+const dataLength = asar.buf.length - asar.dataStart
+main.entry.offset = String(dataLength)
+main.entry.size = patched.length
+delete main.entry.integrity
 
 const next = buildAsar(
-  { buf: asar.buf, json: JSON.stringify(parsed), dataStart: asar.dataStart },
+  { buf: asar.buf, json: JSON.stringify(main.parsed), dataStart: asar.dataStart },
   patched,
 )
 
 fs.writeFileSync(stagedPath, next)
-console.log(`目标文件: ${found.path}（原 ${fileSize} 字节 → ${patched.length} 字节）`)
+console.log(`目标: lib/main.js（原 ${main.entry.size === undefined ? '?' : original.length} 字节 → ${patched.length} 字节）`)
 console.log(`已生成 ${stagedPath}（${next.length} 字节）`)
 console.log('')
 console.log('下一步：完全退出 DSH，然后双击 scripts\\apply-window-frame.cmd')

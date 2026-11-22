@@ -6,6 +6,16 @@
 
 ## [Unreleased]
 
+## [0.12.6] - 2026-11-22
+
+> 补丁打错了窗口：之前改的是欢迎窗口
+
+### Fixed
+
+- 工具: `patch-window-frame.mjs` 的锚点改成主窗口那处 `backgroundMaterial:"acrylic",titleBarStyle:"hidden"`（压缩代码，冒号后无空格）。之前用的是带空格的 `backgroundMaterial: "acrylic"`，只匹配到**欢迎窗口**，主窗口的 11px 依然存在
+- 工具: `--check` 改成读 `lib/main.js` 的内容判断，之前看的是 header JSON，永远报「未应用」
+- 工具: 新增 `verify-frame-patch.mjs`，打印打完补丁后主窗口那段构造代码
+
 ## [0.12.5] - 2026-11-22
 
 > 新增「去掉 11px 缩放边框」的 asar 补丁

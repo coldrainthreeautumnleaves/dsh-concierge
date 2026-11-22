@@ -476,10 +476,21 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       }
     }
 
+    // 三个属性每秒都会被重算一次。赋值同一个字符串在 Chromium 里仍算一次属性变更，
+    // 而我们的 CSS 到处是 `html[data-dsh-*]` 前缀选择器，等于每秒让整页样式失效一次
+    // —— 滚动/流式正好撞上 React 在渲染的时候，就是那几帧 100ms 的来源。所以记下
+    // 上次写进去的值，没变就一个字都不写。
+    let writtenPerfAttr = null
+    let writtenStreamAttr = null
+    let writtenGlassAutoAttr = null
+
     function applyPerfStreaming() {
       if (typeof document === 'undefined') return
       const root = document.documentElement
-      if (perf.streaming) root.dataset.dshStream = '1'
+      const want = perf.streaming === true
+      if (want === writtenStreamAttr) return
+      writtenStreamAttr = want
+      if (want) root.dataset.dshStream = '1'
       else delete root.dataset.dshStream
     }
 
@@ -548,8 +559,11 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       if (typeof document === 'undefined') return
       const root = document.documentElement
       const mode = perf.forced || perf.low ? 'low' : perf.longActive ? 'long' : ''
-      if (mode) root.dataset.dshPerf = mode
-      else delete root.dataset.dshPerf
+      if (mode !== writtenPerfAttr) {
+        writtenPerfAttr = mode
+        if (mode) root.dataset.dshPerf = mode
+        else delete root.dataset.dshPerf
+      }
       const next = mode || 'normal'
       if (perf.mode !== next) perfUpdate({ mode: next })
     }
@@ -559,7 +573,10 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
     function applyGlassAuto() {
       if (typeof document === 'undefined') return
       const root = document.documentElement
-      if (perf.glassAuto && look.enabled && look.skin === 'glass') root.dataset.dshGlassAuto = '1'
+      const want = perf.glassAuto && look.enabled && look.skin === 'glass'
+      if (want === writtenGlassAutoAttr) return
+      writtenGlassAutoAttr = want
+      if (want) root.dataset.dshGlassAuto = '1'
       else delete root.dataset.dshGlassAuto
     }
 

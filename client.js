@@ -1147,6 +1147,16 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       payload.band = probeBand
       payload.resize = resizeSamples.slice()
       payload.floating = floatingLog.slice()
+      // 临时探针：把页面顶部几处的元素层级和背景色带回来，用来定位「横带」是谁画的。
+      // 按 Ctrl+Alt+H 触发一次上报。
+      payload.hits = [30, 90, 230].map((y) => {
+        const x = Math.round(window.innerWidth * 0.5)
+        const chain = document.elementsFromPoint(x, y).slice(0, 6).map((el) => {
+          const cs = getComputedStyle(el)
+          return `${el.tagName.toLowerCase()}.${String(el.className || '').split(' ')[0].slice(0, 40)}|bg=${cs.backgroundColor}|img=${cs.backgroundImage === 'none' ? '-' : 'yes'}`
+        })
+        return { x, y, chain }
+      })
       fetch(`${API}/perf-report`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -1155,6 +1165,17 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
     }
 
     installResizeProbe()
+
+    // 临时调试：Ctrl+Alt+H 立刻上报一次（带上页面顶部三处的元素层级）。
+    if (typeof window !== 'undefined' && !window.__dshHitProbe) {
+      window.__dshHitProbe = true
+      window.addEventListener('keydown', (event) => {
+        if (event.ctrlKey && event.altKey && String(event.key).toLowerCase() === 'h') {
+          event.preventDefault()
+          probeSend()
+        }
+      })
+    }
 
     function scheduleProbeSend(delay) {
       if (probeReportTimer) clearTimeout(probeReportTimer)

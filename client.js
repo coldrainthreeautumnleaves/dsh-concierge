@@ -244,6 +244,19 @@ html[data-dsh-edge="1"] #dsh-concierge-glass {
   border-radius: var(--dsh-edge-radius);
   overflow: hidden;
 }
+/* 全屏 / 改尺寸的过渡期（约 200ms）把根层铺实。窗口是真透明的，新露出的区域在
+   下一帧提交前会露出桌面；铺成和壁纸同色的实色之后整帧重新判定为不透明，
+   合成器就能拉伸上一帧，露出来的是内容。 */
+html[data-dsh-edge="1"][data-dsh-edge-settle="1"],
+html[data-dsh-edge="1"][data-dsh-edge-settle="1"] body,
+html[data-dsh-edge="1"][data-dsh-edge-settle="1"] #root {
+  background-color: #eef3fa !important;
+}
+html[data-dsh-edge="1"][data-dsh-edge-settle="1"][data-dsh-glass-scheme="dark"],
+html[data-dsh-edge="1"][data-dsh-edge-settle="1"][data-dsh-glass-scheme="dark"] body,
+html[data-dsh-edge="1"][data-dsh-edge-settle="1"][data-dsh-glass-scheme="dark"] #root {
+  background-color: #0e1116 !important;
+}
 /* The wallpaper stays SHARP. Frost comes from each panel blurring what is
    behind it (backdrop-filter); pre-blurring the wallpaper leaves nothing to
    blur, so panels read as tinted boxes instead of glass. */
@@ -1930,6 +1943,30 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       )
     }
 
+    // 全屏 / 改尺寸的过渡期：窗口是真透明的，新露出的区域在下一帧提交前会露出
+    // 桌面。这段时间给根层铺一块和壁纸一致的实色，整帧重新判定为「不透明」，
+    // 合成器就能拉伸上一帧，露出来的是内容而不是桌面；200ms 后自动放开。
+    // 和 B1 的「拖动时降级」无关：那个开关管壁纸重绘成本，这个管透明窗口。
+    let edgeSettleOn = false
+    let edgeSettleTimer = 0
+    function installEdgeResizeGuard() {
+      if (edgeSettleOn || typeof window === 'undefined') return
+      edgeSettleOn = true
+      window.addEventListener(
+        'resize',
+        () => {
+          if (!look.enabled || !look.edgeGlass) return
+          document.documentElement.dataset.dshEdgeSettle = '1'
+          if (edgeSettleTimer) clearTimeout(edgeSettleTimer)
+          edgeSettleTimer = setTimeout(() => {
+            edgeSettleTimer = 0
+            delete document.documentElement.dataset.dshEdgeSettle
+          }, 200)
+        },
+        { passive: true },
+      )
+    }
+
     function applyLook() {
       promoteLookCss()
       if (lookDispose) {
@@ -1950,6 +1987,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         delete root.dataset.dshNative
         delete root.dataset.dshGlassScheme
         delete root.dataset.dshEdge
+        delete root.dataset.dshEdgeSettle
         delete root.dataset.dshSkin
         applyGrainImage()
       }
@@ -1988,8 +2026,12 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         // 仍要采样一次）。会话区那块已经换成预模糊层，和这个开关无关。
         root.dataset.dshSimpleWallpaper = look.simpleWallpaper ? '1' : '0'
         root.dataset.dshResizeDegrade = look.resizeDegrade ? '1' : '0'
-        if (look.edgeGlass) root.dataset.dshEdge = '1'
-        else delete root.dataset.dshEdge
+        if (look.edgeGlass) {
+          root.dataset.dshEdge = '1'
+          installEdgeResizeGuard()
+        } else {
+          delete root.dataset.dshEdge
+        }
         // WCO 遮罩的颜色由 preload 的探针读 token、经 IPC 送出；探针只监听 head 和
         // body 的 style，而切换留边只改了 html 的 data 属性，不会触发它重发。
         // 这里轻推一下 body 的 style，让探针重新读一次（值没变时它自己会 dedupe）。

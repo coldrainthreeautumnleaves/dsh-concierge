@@ -256,18 +256,24 @@ html[data-dsh-glass="1"] [class*="_centerCol"] {
    ::before 一层（这一层背后只有静态壁纸），它只算一次，上面的文字照常重排。
    同一招（模糊单独成层 + isolation）在 unsloth PR #16942 里把设置面板滚动的
    CPU 压掉了 10–22 倍。 */
-html[data-dsh-glass="1"]:not([data-dsh-glass-light="1"]) [data-conversation-region="chat"] {
+/* 会话区改成**不透明**。半透明面板每帧都要和壁纸混合，而且半透明会挡住 Chromium
+   的遮挡剔除——它必须先把底下的壁纸画出来再盖上去。不透明之后这块走纯色 quad
+   快路径，底下那层壁纸也能被剔掉。玻璃感留给面积小的侧边栏和顶栏。
+   颜色取壁纸同色系的实色，仍然是「雾面」而不是纯白。 */
+html[data-dsh-glass="1"] [data-conversation-region="chat"],
+html[data-dsh-glass="1"] [class*="_centerCol"] {
+  background: linear-gradient(180deg, #e9eff9 0%, #e2eaf6 100%);
+}
+html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] [data-conversation-region="chat"],
+html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] [class*="_centerCol"] {
+  background: linear-gradient(180deg, #121822 0%, #0f151d 100%);
+}
+/* 面板已经不透明，模糊没有东西可糊，整层去掉——留着只是白花一次合成。 */
+html[data-dsh-glass="1"] [data-conversation-region="chat"] {
   isolation: isolate;
 }
-html[data-dsh-glass="1"]:not([data-dsh-glass-light="1"]) [data-conversation-region="chat"]::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  will-change: transform;
-  backdrop-filter: blur(12px) saturate(150%);
-  -webkit-backdrop-filter: blur(12px) saturate(150%);
+html[data-dsh-glass="1"] [data-conversation-region="chat"]::before {
+  content: none;
 }
 /* 视频壁纸每帧都是新画面：会话区那块模糊背后一直在变，等于每帧重算整屏。
    静态壁纸才缓存得住，所以视频模式下这块不模糊——壁纸本身在动，面板半透明

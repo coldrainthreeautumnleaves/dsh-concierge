@@ -350,6 +350,13 @@ html[data-dsh-glass="1"] [class*="_frame"] {
 html[data-dsh-glass="1"] [data-windows-titlebar] [class*="_frame"] {
   background: transparent !important;
 }
+/* 标题栏那 40px 是 frame 的 ::before（应用拿它做拖拽区），默认铺一层
+   --dsw-specific-sidebar-fill。它和下面各列是两种材质，交界处会横出一条线，
+   正好压在页面标题上。这里让它彻底透明，上下都露出同一块画布。 */
+html[data-dsh-glass="1"] [data-windows-titlebar] [class*="_frame"]::before,
+html[data-dsh-skin="native"] [data-windows-titlebar] [class*="_frame"]::before {
+  background: transparent !important;
+}
 /* 底部那一行（grid-column: 1/-1，横贯整窗）自带 --dsw-alias-bg-base 的浅底。
    窗口缩放时这一行的行高会滞后，它被拉高就铺出一条横贯整窗的浅色带——
    也就是录屏里那条「露底」。让它透明之后，任何滞后露出来的都是壁纸，不是浅色块。

@@ -6,6 +6,15 @@
 
 ## [Unreleased]
 
+## [0.13.4] - 2026-11-22
+
+> 设置页页头和搜索行不再自己刷底色
+
+### Fixed
+
+- 外观: 玻璃下把 `header._pageHead`、`_page`、`_pageBody`、`_tabSearchRow` 的 `background` / `background-image` / `box-shadow` / `border-bottom` 全部归零，伪元素也一并清掉。页头是自定义组件（三个部件用 `--plugin-part-y` 内联定位、跟滚动收放），自带底色，和内容区两种材质，交界处就是那条硬台阶
+- 依据: 用户贴出的 DOM 显示 `header.V7pFBG_pageHead` 结构，页头 + 搜索行都在中心列里
+
 ## [0.13.3] - 2026-11-22
 
 > 探针改用尺寸判定，并 dump 设置页子树

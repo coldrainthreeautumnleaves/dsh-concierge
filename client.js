@@ -401,11 +401,21 @@ html[data-dsh-glass="1"] [class*="_centerCol"]:has([data-conversation-region="ch
 html[data-dsh-glass="1"] [class*="_centerCol"]:not(:has([data-conversation-region="chat"])) {
   background: var(--dsw-alias-bg-base) !important;
 }
-/* 设置页的页头（_pageHead）挂着一个「渐隐」伪元素，用来在滚动时把标题压下去。
-   它和内容区是两个材质，交界处就是那条硬台阶——探针抓不到伪元素，但元素链在
-   90px 和 230px 处的底色完全一样，只剩这一种可能。玻璃下把它清掉。 */
-html[data-dsh-glass="1"] [class*="_pageHead"]::before,
-html[data-dsh-glass="1"] [class*="_pageHead"]::after,
+/* 设置页的页头（header._pageHead）是一套自定义组件：三个部件用内联变量
+   --plugin-part-y 定位，会跟着滚动收放。这类页头自带底色/渐变，否则滚动时
+   文字会透出来——而它和下面的内容区是两种材质，交界处就是那条硬台阶。
+   玻璃下把页头、页体、搜索行全部归零，整页只留中心列那一层 bg-base。 */
+html[data-dsh-glass="1"] header[class*="_pageHead"],
+html[data-dsh-glass="1"] [class*="_page"],
+html[data-dsh-glass="1"] [class*="_pageBody"],
+html[data-dsh-glass="1"] [class*="_tabSearchRow"] {
+  background: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  border-bottom: none !important;
+}
+html[data-dsh-glass="1"] header[class*="_pageHead"]::before,
+html[data-dsh-glass="1"] header[class*="_pageHead"]::after,
 html[data-dsh-glass="1"] [class*="_page"]::before,
 html[data-dsh-glass="1"] [class*="_page"]::after,
 html[data-dsh-glass="1"] [class*="_pageBody"]::before,

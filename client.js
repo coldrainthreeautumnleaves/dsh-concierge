@@ -391,6 +391,13 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] :is(
 ) {
   background-color: rgba(16, 20, 28, 0.96) !important;
 }
+/* 控制台外壳：降到半透明，让后面透一点出来；内容由内窗口承载。 */
+html[data-dsh-glass="1"] [data-shell-overlay="true"] [data-slot] > * {
+  background-color: rgba(var(--dsh-tint-rgb), 0.76) !important;
+}
+html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] [data-shell-overlay="true"] [data-slot] > * {
+  background-color: rgba(16, 20, 28, 0.78) !important;
+}
 /* tooltip 单独处理：它的文字色 token 就是白色（--dsw-alias-tooltip-label =
    neutral-bluish-00），刷成浅底会变成白字压浅底，整行看不见。tooltip 本来就该是
    深色小浮条，所以这里保持深底白字，不参与上面那条浅色实底。 */
@@ -2379,9 +2386,12 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
   --uc-press: color-mix(in srgb, var(--uc-surface-2) 92%, var(--dsw-alias-label-primary));
   --uc-sep: color-mix(in srgb, var(--uc-accent) 8%, transparent);
   --uc-highlight: color-mix(in srgb, var(--dsw-alias-label-on-color) 7%, transparent);
-  --uc-pad: 16px;
-  display: flex; flex-direction: column; gap: 16px; padding: 8px 0 32px;
-  max-width: 720px; color: var(--dsw-alias-label-primary);
+  display: flex; flex-direction: column; gap: 16px;
+  margin: 12px; padding: 16px 16px 24px;
+  border-radius: var(--uc-r-card);
+  background: rgba(var(--dsh-tint-rgb, 232, 240, 250), 0.88);
+  box-shadow: inset 0 1px 0 var(--uc-highlight);
+  color: var(--dsw-alias-label-primary);
   font-size: var(--uc-fs-body); line-height: 1.5;
 }
 .uc-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }

@@ -6,6 +6,18 @@
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-11-22
+
+> 找到留边发白的真正原因：主进程在运行时把窗口底色刷成了不透明
+
+### Added
+
+- 工具: `scripts/patch-window-clear.mjs`（配 `scripts/apply-window-clear.cmd`）。DSH 的窗口构造参数本来是 `backgroundColor:"#00000000"` + `backgroundMaterial:"acrylic"`，但主进程在 `nativeTheme` 更新和「进入工作区」时又调了 `window.setBackgroundColor(chromeFallbackFill())`——浅色下就是 `#f9fafb`，正好是留边那圈的颜色。这个补丁把那三处调用等长替换成透明色，让窗口底色保持透明，亚克力才透得出来
+
+### Changed
+
+- 文档: 说明窗口底色是主进程运行时改的，CSS 改不到，必须打这个补丁
+
 ## [0.9.0] - 2026-11-22
 
 > 留边推倒重做：改用 body 的透明 border 内缩，不再用 clip-path

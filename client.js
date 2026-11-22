@@ -214,7 +214,9 @@ html[data-dsh-glass="1"] #dsh-concierge-glass {
    那 10px 什么都不画，露出亚克力。border-radius 让裁出来的角是圆的。
    几何只在这里定义一次，边距和圆角要调就改这两个值。 */
 html[data-dsh-edge="1"] {
-  --dsh-edge: 10px;
+  /* 0 = 内容铺满窗口，只保留圆角和无边框。想要「留一圈露出桌面」就把它调大
+     （10px 是之前试过的值），但那样窗口边缘会多出一条 10px 的亚克力带。 */
+  --dsh-edge: 0px;
   --dsh-edge-radius: 16px;
   /* 顶部 40px 是 Windows 的 WCO 遮罩，颜色来自这个 token。玻璃皮肤给的是
      alpha 0.004——几乎透明但不是零，它会在顶部盖一层极淡的白，和左右下三边
@@ -2370,8 +2372,8 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       lookSimpleWallpaperHint: '砍掉壁纸的三层径向光斑，换窗口缩放时更轻的重绘；关掉恢复原样',
       lookResizeDegrade: '拖动时降级',
       lookResizeDegradeHint: '拖窗口期间把壁纸换成纯色，松手 150ms 后恢复，减少缩放时的填充条',
-      lookEdgeGlass: '真透明留边（试验）',
-      lookEdgeGlassHint: '四周留 10px 露出窗口的 Acrylic：透出桌面壁纸的模糊。需要 Windows 11 且开启透明效果',
+      lookEdgeGlass: '无边框圆角（真透明）',
+      lookEdgeGlassHint: '去掉窗口那圈 1px 边框，内容铺满窗口、四角圆角；窗口本身透明，圆角处透出桌面',
       lookEdgeDebug: '留边调试（品红 / 绿）',
       lookEdgeDebugHint: '外圈涂品红、内容涂绿，用来看边界在哪一层、有没有缝；调完记得关',
       lookNative: '原生材质',
@@ -2645,8 +2647,8 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       lookSimpleWallpaperHint: 'Drops the three radial light spots so resizing repaints less; turn off to restore',
       lookResizeDegrade: 'Degrade while resizing',
       lookResizeDegradeHint: 'Paints the wallpaper flat while the window is being dragged, restores 150ms after',
-      lookEdgeGlass: 'Real transparency margin (experimental)',
-      lookEdgeGlassHint: 'Leaves 10px around the window showing the Acrylic backdrop: the blurred desktop wallpaper. Needs Windows 11 with transparency effects on',
+      lookEdgeGlass: 'Borderless rounded window',
+      lookEdgeGlassHint: 'Drops the 1px window frame and lets the content fill the window with rounded corners; the window itself is transparent, so the corners show the desktop',
       lookEdgeDebug: 'Edge debug (magenta / green)',
       lookEdgeDebugHint: 'Paints the ring magenta and the content green so you can see which layer the seam belongs to; turn it off afterwards',
       lookNative: 'Native material',

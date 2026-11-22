@@ -818,17 +818,35 @@ async function readChangelog() {
     const text = await readFile(path.join(PLUGIN_DIR, 'CHANGELOG.md'), 'utf8')
     const entries = []
     let current = null
+    let section = null
     for (const line of text.split(/\r?\n/)) {
+      // 「## [0.2.8] - 2026-11-22」「## [0.2.6 – 0.2.7] - …」「## [Unreleased]」
       const heading = /^##\s+(.+?)\s*$/.exec(line)
       if (heading) {
         const title = heading[1].trim()
-        // 只有 x.y.z 形式的标题算版本；其余是主题分组标题，渲染成分隔线。
-        current = { version: title, items: [], group: !/^\d+\.\d+\.\d+$/.test(title) }
+        const m = /^\[?([^\]]+?)\]?(?:\s+-\s+(.+))?$/.exec(title)
+        const version = m ? m[1].trim() : title
+        const date = m && m[2] ? m[2].trim() : ''
+        current = { version, date, sections: [] }
         entries.push(current)
+        section = null
+        continue
+      }
+      // 「### Added」这类分组
+      const sub = /^###\s+(.+?)\s*$/.exec(line)
+      if (sub && current) {
+        section = { title: sub[1].trim(), items: [] }
+        current.sections.push(section)
         continue
       }
       const item = /^[-*]\s+(.+?)\s*$/.exec(line)
-      if (item && current) current.items.push(item[1].trim())
+      if (item && current) {
+        if (!section) {
+          section = { title: '', items: [] }
+          current.sections.push(section)
+        }
+        section.items.push(item[1].trim())
+      }
     }
     return entries
   } catch {

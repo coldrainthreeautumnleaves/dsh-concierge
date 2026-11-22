@@ -2049,6 +2049,12 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       changelogTitle: '更新日志',
       changelogHint: '点版本号展开或收起',
       changelogCount: '{n} 条',
+      changelogFullLink: '查看完整更新日志',
+      changelogHint: '最近 3 版 · 完整日志见仓库',
+      logAdded: '新增',
+      logChanged: '变更',
+      logFixed: '修复',
+      logRemoved: '删除',
       aboutDesignTitle: '功能介绍',
       aboutDesignHint: '点开查看',
       aboutDesignUpdateTitle: '更新',
@@ -2314,6 +2320,12 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       changelogTitle: 'Changelog',
       changelogHint: 'Click a version to expand or collapse',
       changelogCount: '{n} changes',
+      changelogFullLink: 'View the full changelog',
+      changelogHint: 'Last 3 releases · full log in the repository',
+      logAdded: 'Added',
+      logChanged: 'Changed',
+      logFixed: 'Fixed',
+      logRemoved: 'Removed',
       aboutDesignTitle: 'Features',
       aboutDesignHint: 'Click to expand',
       aboutDesignUpdateTitle: 'Updates',
@@ -2498,6 +2510,10 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
 .uc-log-group { margin: 16px 0 4px; font-size: 11.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--dsw-alias-label-tertiary); }
 .uc-log-more { margin: 6px 0 2px 18px; padding: 2px 0; border: 0; background: none; color: var(--dsw-alias-label-secondary); font: inherit; font-size: 12px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
 .uc-design { padding: 4px 18px 10px; }
+.uc-log-date { margin-left: 8px; font-size: 11.5px; color: var(--dsw-alias-label-tertiary); font-variant-numeric: tabular-nums; }
+.uc-log-sections { padding: 2px 0 4px 18px; }
+.uc-log-section + .uc-log-section { margin-top: 8px; }
+.uc-log-full { display: inline-block; margin: 10px 0 2px 18px; font-size: 12px; color: var(--dsw-alias-label-secondary); text-decoration: underline; text-underline-offset: 3px; }
 .uc-design-group { margin-top: 10px; }
 .uc-log-count { margin-left: auto; font-size: 11px; color: var(--dsw-alias-label-secondary); }
 .uc-log-items { margin: 0 0 10px; padding: 0 8px 0 26px; display: flex; flex-direction: column; gap: 5px; font-size: 11.5px; line-height: 1.6; color: var(--dsw-alias-label-secondary); }
@@ -4377,52 +4393,66 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
           h('div', { className: 'uc-log' },
             !aboutData || !Array.isArray(aboutData.changelog) || aboutData.changelog.length === 0
               ? h('div', { className: 'uc-empty' }, t('changelogEmpty'))
-              : aboutData.changelog.map((entry, index) => {
-                  // 宿主那份解析器只有重启后才生效，所以这里不依赖它给的 group 标记：
-                  // 只要标题不是 x.y.z，就按主题分组渲染。
-                  if (entry.group || !/^\d+\.\d+\.\d+$/.test(String(entry.version || ''))) {
-                    const key = `g:${entry.version}`
-                    const isIndex = String(entry.version).includes('版本索引')
-                    const open = openVersions[key] !== undefined ? openVersions[key] : !isIndex
-                    const total = entry.items.length
-                    const shown = isIndex && !open ? entry.items.slice(0, 8) : entry.items
-                    const toggle = () => setOpenVersions({ ...openVersions, [key]: !open })
-                    return h('div', { className: 'uc-log-entry', key: `g${index}` },
-                      h('button', { type: 'button', className: 'uc-log-head', onClick: toggle },
+              : (() => {
+                  // 设置页只放最近 3 条摘要；完整历史在仓库的 CHANGELOG.md 里。
+                  // 宿主那份解析器重启后才更新，所以这里同时兼容旧形状（items 平铺）和新形状（sections 分组）。
+                  const SECTION_KEYS = { Added: 'logAdded', Changed: 'logChanged', Fixed: 'logFixed', Removed: 'logRemoved' }
+                  const normalized = aboutData.changelog
+                    .map((entry) => {
+                      let version = String(entry.version || '')
+                      let date = entry.date || ''
+                      const m = /^\[?([^\]]+?)\]?(?:\s+-\s+(.+))?$/.exec(version)
+                      if (m) {
+                        version = m[1].trim()
+                        if (!date && m[2]) date = m[2].trim()
+                      }
+                      const sections = Array.isArray(entry.sections) && entry.sections.length
+                        ? entry.sections
+                        : Array.isArray(entry.items) && entry.items.length
+                          ? [{ title: '', items: entry.items }]
+                          : []
+                      return { version, date, sections }
+                    })
+                    .filter((entry) => entry.sections.some((section) => section.items.length))
+                    .slice(0, 3)
+                  if (normalized.length === 0) return h('div', { className: 'uc-empty' }, t('changelogEmpty'))
+                  return normalized.map((entry, index) => {
+                    const open = openVersions[entry.version] !== undefined ? openVersions[entry.version] : index === 0
+                    const total = entry.sections.reduce((sum, section) => sum + section.items.length, 0)
+                    return h('div', { className: 'uc-log-entry', key: entry.version },
+                      h('button', {
+                        type: 'button',
+                        className: 'uc-log-head',
+                        onClick: () => setOpenVersions({ ...openVersions, [entry.version]: !open }),
+                      },
                         h('span', { className: 'uc-log-chevron', 'data-open': open ? '1' : '0' }, '▸'),
-                        h('span', { className: 'uc-log-version' }, entry.version),
+                        h('span', { className: 'uc-log-version' }, `v${entry.version}`),
+                        entry.date ? h('span', { className: 'uc-log-date' }, entry.date) : null,
                         h('span', { className: 'uc-log-count' }, t('changelogCount', { n: total })),
                       ),
-                      shown.length
-                        ? h('ul', { className: 'uc-log-items' }, shown.map((item, itemIndex) => h('li', { key: itemIndex }, item)))
-                        : null,
-                      isIndex && total > 8
-                        ? h('button', { type: 'button', className: 'uc-log-more', onClick: toggle },
-                            open ? t('changelogCollapse') : t('changelogExpandAll', { n: total }))
+                      open
+                        ? h('div', { className: 'uc-log-sections' },
+                            entry.sections.map((section, sectionIndex) =>
+                              h('div', { key: sectionIndex, className: 'uc-log-section' },
+                                section.title
+                                  ? h('div', { className: 'uc-log-group' }, SECTION_KEYS[section.title] ? t(SECTION_KEYS[section.title]) : section.title)
+                                  : null,
+                                h('ul', { className: 'uc-log-items' }, section.items.map((item, itemIndex) => h('li', { key: itemIndex }, item))),
+                              ),
+                            ),
+                          )
                         : null,
                     )
-                  }
-                  const open = openVersions[entry.version] !== undefined ? openVersions[entry.version] : index === 0
-                  return h('div', { className: 'uc-log-entry', key: entry.version },
-                    h('button', {
-                      type: 'button',
-                      className: 'uc-log-head',
-                      onClick: () => setOpenVersions({ ...openVersions, [entry.version]: !open }),
-                    },
-                      h('span', { className: 'uc-log-chevron', 'data-open': open ? '1' : '0' }, '▸'),
-                      h('span', { className: 'uc-log-version' }, `v${entry.version}`),
-                      h('span', { className: 'uc-log-count' }, t('changelogCount', { n: entry.items.length })),
-                    ),
-                    open
-                      ? h('ul', { className: 'uc-log-items' },
-                          entry.items.map((item, itemIndex) => h('li', { key: itemIndex }, item)),
-                        )
-                      : null,
-                  )
-                }),
+                  })
+                })(),
+            h('a', {
+              className: 'uc-log-full',
+              href: 'https://github.com/coldrainthreeautumnleaves/dsh-concierge/blob/main/CHANGELOG.md',
+              target: '_blank',
+              rel: 'noreferrer',
+            }, t('changelogFullLink')),
           ),
         ) : null,
-
         h('footer', { className: 'uc-foot' },
           h('span', null, t('autoHint')),
           h('span', null, data ? relativeTime(data.checkedAt, t) : ''),

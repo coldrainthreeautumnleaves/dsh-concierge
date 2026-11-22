@@ -2690,6 +2690,14 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
   color: var(--dsw-alias-label-primary);
   font-size: var(--uc-fs-body); line-height: 1.5;
 }
+/* 原生皮肤（以及外观关掉时）不套玻璃色温：面板底色用官方层级色。
+   --dsh-tint-rgb 只在玻璃皮肤下定义，这里若继续用带兜底的写法，
+   整块会回退成浅蓝 (232,240,250)，在纯白皮肤上很明显。 */
+html:not([data-dsh-glass="1"]) .uc-root {
+  --uc-surface-1: var(--dsw-alias-bg-layer-1);
+  --uc-surface-2: var(--dsw-alias-bg-layer-2);
+  background: var(--dsw-alias-bg-base);
+}
 .uc-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; min-width: 0; }
 .uc-kicker { font-size: var(--uc-fs-small); letter-spacing: .08em; text-transform: uppercase; color: var(--dsw-alias-label-secondary); margin-bottom: 8px; }
 .uc-title { margin: 0 0 4px; font-size: var(--uc-fs-page); font-weight: 650; letter-spacing: -.01em; min-width: 0; overflow: hidden; text-overflow: ellipsis; }

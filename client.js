@@ -2377,6 +2377,8 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
   --uc-surface-2: color-mix(in srgb, var(--dsw-alias-bg-layer-2) 97%, var(--uc-accent));
   --uc-hover: color-mix(in srgb, var(--uc-surface-1) 96%, color-mix(in srgb, var(--dsw-alias-label-on-color) 90%, var(--uc-accent)));
   --uc-press: color-mix(in srgb, var(--uc-surface-2) 92%, var(--dsw-alias-label-primary));
+  --uc-sep: color-mix(in srgb, var(--uc-accent) 8%, transparent);
+  --uc-highlight: color-mix(in srgb, var(--dsw-alias-label-on-color) 7%, transparent);
   --uc-pad: 16px;
   display: flex; flex-direction: column; gap: 16px; padding: 8px 0 32px;
   max-width: 720px; color: var(--dsw-alias-label-primary);
@@ -2413,7 +2415,10 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
 .uc-hero-meta { display: flex; align-items: center; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
 .uc-hero-actions { position: relative; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 
-.uc-chip { font-size: var(--uc-fs-small); padding: 4px 8px; border-radius: 999px; background: var(--uc-surface-2); color: var(--dsw-alias-label-secondary); white-space: nowrap; }
+.uc-chip { font-size: var(--uc-fs-small); padding: 2px 6px; border-radius: 4px; background: color-mix(in srgb, var(--uc-accent) 10%, transparent); color: color-mix(in srgb, var(--uc-accent) 72%, var(--dsw-alias-label-primary)); white-space: nowrap; }
+.uc-chip-ok { background: color-mix(in srgb, var(--dsw-alias-state-success-primary) 12%, transparent); color: var(--dsw-alias-state-success-primary); }
+.uc-chip-warn { background: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 14%, transparent); color: var(--dsw-alias-state-warn-primary); }
+.uc-chip-err { background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 12%, transparent); color: var(--dsw-alias-state-error-primary); }
 .uc-chip-ok { color: var(--dsw-alias-state-success-primary); }
 .uc-chip-warn { color: var(--dsw-alias-state-warn-primary); }
 .uc-chip-err { color: var(--dsw-alias-state-error-primary); }
@@ -2435,7 +2440,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
 .uc-stat-value-hot { color: var(--dsw-alias-state-warn-primary); }
 .uc-stat-label { margin-top: 4px; font-size: var(--uc-fs-small); color: var(--dsw-alias-label-secondary); }
 
-.uc-card { border-radius: var(--uc-r-card); background: var(--uc-surface-1); overflow: hidden; }
+.uc-card { border-radius: var(--uc-r-card); background: var(--uc-surface-1); overflow: hidden; box-shadow: inset 0 1px 0 var(--uc-highlight); animation: uc-fade .15s ease; }
 .uc-card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 16px 8px; flex-wrap: wrap; }
 .uc-card-actions { display: flex; align-items: center; gap: 8px; }
 .uc-card-title { font-size: var(--uc-fs-title); font-weight: 600; }
@@ -2462,6 +2467,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
 .uc-version-spacer { flex: 1; }
 
 .uc-row { display: flex; align-items: center; gap: 12px; padding: 12px 16px; }
+.uc-row + .uc-row { border-top: 1px solid var(--uc-sep); }
 .uc-row { transition: background-color .12s ease; }
 .uc-row:hover { background: var(--uc-hover); }
 .uc-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--dsw-alias-state-idle-primary); }
@@ -2484,7 +2490,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
 .uc-muted { font-size: var(--uc-fs-small); color: var(--dsw-alias-label-secondary); }
 
 .uc-empty { padding: 32px 16px; display: flex; flex-direction: column; align-items: center; gap: 8px; color: var(--dsw-alias-label-secondary); font-size: var(--uc-fs-body); }
-.uc-empty-icon { width: 32px; height: 32px; border-radius: 50%; background: var(--uc-surface-2); display: flex; align-items: center; justify-content: center; color: var(--dsw-alias-state-success-primary); }
+.uc-empty-icon { width: 32px; height: 32px; border-radius: var(--uc-r-control); background: color-mix(in srgb, var(--uc-accent) 8%, transparent); display: flex; align-items: center; justify-content: center; color: var(--uc-accent); }
 
 .uc-notice { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-radius: var(--uc-r-card); background: var(--uc-surface-2); font-size: var(--uc-fs-body); }
 .uc-notice-ok { color: var(--dsw-alias-state-success-primary); }
@@ -2497,7 +2503,8 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
 
 .uc-select { border: 1px solid var(--dsw-alias-border-l2); border-radius: var(--uc-r-control); background: var(--uc-surface-1); color: var(--dsw-alias-label-primary); font-size: var(--uc-fs-body); padding: 4px 8px; }
 
-.uc-row-setting { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 12px 0; }
+.uc-row-setting { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--uc-sep); }
+.uc-row-setting:last-of-type { border-bottom: none; }
 .uc-row-text { min-width: 0; }
 .uc-row-title { font-size: var(--uc-fs-body); font-weight: 500; color: var(--dsw-alias-label-primary); }
 .uc-row-hint { margin-top: 4px; font-size: var(--uc-fs-small); line-height: 1.5; color: var(--dsw-alias-label-secondary); }
@@ -2527,6 +2534,10 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
 .uc-guide-steps { margin: 0; padding-left: 16px; font-size: var(--uc-fs-small); line-height: 1.6; color: var(--dsw-alias-label-secondary); }
 .uc-guide-actions { display: flex; gap: 8px; margin-top: 12px; }
 
+.uc-collapse { display: grid; grid-template-rows: 0fr; opacity: 0; transition: grid-template-rows .2s cubic-bezier(.4, 0, .2, 1), opacity .2s ease; }
+.uc-collapse[data-open="1"] { grid-template-rows: 1fr; opacity: 1; }
+.uc-collapse > * { min-height: 0; overflow: hidden; }
+@keyframes uc-fade { from { opacity: 0; } to { opacity: 1; } }
 .uc-about { display: flex; flex-direction: column; gap: 8px; padding: 8px 16px 16px; }
 .uc-about p { margin: 0; font-size: var(--uc-fs-body); line-height: 1.6; }
 .uc-about-desc { color: var(--dsw-alias-label-secondary); font-size: var(--uc-fs-small); }
@@ -4360,8 +4371,9 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
             h('span', { className: 'uc-log-version' }, t('aboutTitle')),
             h('span', { className: 'uc-log-count' }, `dsh-concierge · ${aboutData ? `v${aboutData.version}` : '…'}${aboutData && aboutData.license ? ` · ${aboutData.license}` : ''}`),
           ),
-          openAbout
-            ? h('div', { className: 'uc-about' },
+          h('div', { className: 'uc-collapse', 'data-open': openAbout ? '1' : '0' },
+            h('div', { className: 'uc-collapse-inner' },
+            h('div', { className: 'uc-about' },
             h('p', null, t('aboutIntro')),
             aboutData && aboutData.description
               ? h('p', { className: 'uc-about-desc' }, aboutData.description)
@@ -4375,8 +4387,9 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
               }, t('aboutRepo')),
               aboutData && aboutData.license ? h('span', { className: 'uc-about-license' }, aboutData.license) : null,
             ),
-              )
-            : null,
+            ),
+            ),
+          ),
         ) : null,
 
         // 「关于」页第一块：功能介绍与结论，默认收起，和下面的版本日志分开。
@@ -4390,8 +4403,9 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
             h('span', { className: 'uc-log-version' }, t('aboutDesignTitle')),
             h('span', { className: 'uc-log-count' }, t('aboutDesignHint')),
           ),
-          openGuide
-            ? h('div', { className: 'uc-design' },
+          h('div', { className: 'uc-collapse', 'data-open': openGuide ? '1' : '0' },
+            h('div', { className: 'uc-collapse-inner' },
+            h('div', { className: 'uc-design' },
                 [
                   ['aboutDesignUpdateTitle', ['aboutDesignUpdate1', 'aboutDesignUpdate2']],
                   ['aboutDesignPluginTitle', ['aboutDesignPlugin1', 'aboutDesignPlugin2']],
@@ -4405,8 +4419,9 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
                     h('ul', { className: 'uc-log-items' }, itemKeys.map((key) => h('li', { key }, t(key)))),
                   ),
                 ),
-              )
-            : null,
+              ),
+            ),
+          ),
         ) : null,
 
         tab === 'about' ? h('section', { className: 'uc-card' },

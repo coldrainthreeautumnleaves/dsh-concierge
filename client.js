@@ -1,4 +1,4 @@
-/**
+﻿/**
  * dsh-concierge — Client half.
  * A dashboard-style settings page plus a top notification strip.
  */
@@ -566,6 +566,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
     let probeSentAt = 0
     let probeBlurList = null
     let probeComposerTree = null
+    let probeWhiteBoxes = null
 
     function collectBlurringElements() {
       if (typeof document === 'undefined') return []
@@ -608,6 +609,28 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       return rows
     }
 
+    // 页面上「纯白实底」的元素：这类方块压在玻璃上最扎眼（右下角那个百分比徽标就是
+    // 一例），列出来才能定位到具体是哪个 token / 类名没跟着色温走。
+    function collectWhiteBoxes() {
+      if (typeof document === 'undefined') return []
+      const found = []
+      for (const el of document.querySelectorAll('body *')) {
+        if (found.length >= 20) break
+        const style = getComputedStyle(el)
+        const bg = style.backgroundColor
+        if (bg !== 'rgb(255, 255, 255)' && bg !== 'rgba(255, 255, 255, 1)') continue
+        const rect = el.getBoundingClientRect()
+        if (rect.width < 4 || rect.height < 4) continue
+        found.push({
+          tag: el.tagName.toLowerCase(),
+          cls: String(el.className || '').slice(0, 70),
+          w: Math.round(rect.width),
+          h: Math.round(rect.height),
+        })
+      }
+      return found
+    }
+
     function probeLongFrame(elapsed) {
       if (!(elapsed >= 40)) return
       probeLongFrames.push({ at: Date.now(), ms: Math.round(elapsed) })
@@ -633,6 +656,8 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       payload.blurs = probeBlurList
       if (probeComposerTree === null) probeComposerTree = collectComposerTree()
       payload.composer = probeComposerTree
+      if (probeWhiteBoxes === null) probeWhiteBoxes = collectWhiteBoxes()
+      payload.whites = probeWhiteBoxes
       fetch(`${API}/perf-report`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },

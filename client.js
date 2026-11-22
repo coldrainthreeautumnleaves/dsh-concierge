@@ -166,6 +166,14 @@ html[data-dsh-glass="1"] body { background: transparent !important; }
    area). Panels only keep a light blur where depth reads best: overlays.
    It is a real element (not body::before) so no ancestor stacking context can
    swallow it. */
+/* 玻璃的统一色温：所有面板、侧边栏、顶栏的半透明底都从这一个值派生，
+   避免「有的面是纯白、有的是冷调」这种不一致。 */
+html[data-dsh-glass="1"] {
+  --dsh-tint-rgb: 232, 240, 250;
+}
+html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] {
+  --dsh-tint-rgb: 20, 24, 32;
+}
 #dsh-concierge-glass { display: none; }
 html[data-dsh-glass="1"] #dsh-concierge-glass {
   display: block;
@@ -222,7 +230,7 @@ html[data-dsh-glass="1"] #dsh-concierge-top {
   pointer-events: none;
   backdrop-filter: blur(12px) saturate(150%);
   -webkit-backdrop-filter: blur(12px) saturate(150%);
-  background: rgba(255, 255, 255, 0.42);
+  background: rgba(var(--dsh-tint-rgb), 0.42);
 }
 html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-top {
   background: rgba(21, 27, 43, 0.48);
@@ -233,7 +241,7 @@ html[data-dsh-glass="1"][data-fullscreen] #dsh-concierge-top { display: none; }
    包含块换成侧边栏，弹层会错位（dsh-glass-skin 的 README 也提到这一点）。
    壁纸是柔和的冷调渐变，不糊也看不出锯齿。 */
 html[data-dsh-glass="1"] [class*="_sidebarCol"] {
-  background: rgba(245, 247, 252, 0.42) !important;
+  background: rgba(var(--dsh-tint-rgb), 0.42) !important;
 }
 html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] [class*="_sidebarCol"] {
   background: rgba(18, 22, 30, 0.52) !important;

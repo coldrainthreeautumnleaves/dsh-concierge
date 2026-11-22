@@ -1,4 +1,4 @@
-﻿/**
+/**
  * dsh-concierge — Client half.
  * A dashboard-style settings page plus a top notification strip.
  */
@@ -2719,6 +2719,9 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       }, [])
 
       React.useEffect(() => {
+        // 只拉一次会让版本号停在面板第一次挂载的那一刻（设置页常驻不卸载，
+        // 于是永远显示旧版本）。改成每次切到「关于」都重新拉一遍。
+        if (tab !== 'about') return undefined
         let alive = true
         fetch(`${API}/about`, { cache: 'no-store' })
           .then((response) => response.json())
@@ -2729,7 +2732,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         return () => {
           alive = false
         }
-      }, [])
+      }, [tab])
 
       const [boostState, setBoostState] = React.useState(null)
       const [boostBusy, setBoostBusy] = React.useState(false)

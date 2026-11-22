@@ -236,6 +236,21 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-top {
   background: rgba(21, 27, 43, 0.88);
 }
 html[data-dsh-glass="1"][data-fullscreen] #dsh-concierge-top { display: none; }
+
+/* 主窗口：外壳内缩 12px 当玻璃壳，内容仍在壳里。结构由 shell 探针确认：
+   #root > div > [class*="_frame"]（1280×822，position: relative）。 */
+html[data-dsh-glass="1"] #root > div > [class*="_frame"] {
+  margin: 12px;
+  width: calc(100% - 24px) !important;
+  height: calc(100% - 24px) !important;
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(var(--dsh-tint-rgb), 0.76) !important;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--dsw-alias-label-on-color) 7%, transparent);
+}
+html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #root > div > [class*="_frame"] {
+  background: rgba(16, 20, 28, 0.78) !important;
+}
 /* 侧边栏：从「压回实色」改成半透明，和聊天区一样透出壁纸。这里**不加**
    backdrop-filter——侧边栏里挂着 fixed 定位的弹层，给容器加 filter 会把它们的
    包含块换成侧边栏，弹层会错位（dsh-glass-skin 的 README 也提到这一点）。

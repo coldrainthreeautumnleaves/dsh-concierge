@@ -204,6 +204,40 @@ html[data-dsh-glass="1"] #dsh-concierge-glass {
   background-size: 140px 140px, auto, auto, auto, auto;
   background-repeat: repeat, no-repeat, no-repeat, no-repeat, no-repeat;
 }
+/* B7：把壁纸提升成独立合成层。窗口 resize 时 Chromium 缩放这一层，
+   而不是在新尺寸上重新栅格化那四个径向渐变——填充带的宽度会明显收窄。 */
+#dsh-concierge-glass > div:first-child { will-change: transform; }
+
+/* B6：简化壁纸。四个径向渐变是 resize 重绘的大头，砍掉之后只留一条线性渐变
+   加颗粒，观感少了三层光斑，色温不变。默认开，外观页可以关回去。 */
+html[data-dsh-simple-wallpaper="1"] #dsh-concierge-glass > div:first-child {
+  background-image:
+    var(--dsh-grain, none),
+    linear-gradient(165deg, #dbe4f3 0%, #d5dfef 50%, #d9e9ea 100%);
+  background-size: 140px 140px, auto;
+  background-repeat: repeat, no-repeat;
+}
+html[data-dsh-simple-wallpaper="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-glass > div:first-child {
+  background-image:
+    var(--dsh-grain, none),
+    linear-gradient(165deg, #10151d 0%, #121a24 50%, #0c1417 100%);
+  background-size: 140px 140px, auto;
+  background-repeat: repeat, no-repeat;
+}
+
+/* B1：拖动窗口期间把壁纸和预模糊层换成一块纯色。填充带是「新帧没提交前」
+   露出的窗口表面色，页面变轻之后新帧提交更快，带子就短到看不见。
+   默认关，外观页打开。 */
+html[data-dsh-resize-degrade="1"][data-dsh-resizing="1"] #dsh-concierge-glass > div:first-child {
+  background-image: linear-gradient(165deg, #ccd8ee 0%, #ccd8ee 100%) !important;
+}
+html[data-dsh-resize-degrade="1"][data-dsh-resizing="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-glass > div:first-child {
+  background-image: linear-gradient(165deg, #141a22 0%, #141a22 100%) !important;
+}
+html[data-dsh-resize-degrade="1"][data-dsh-resizing="1"] #dsh-concierge-frost {
+  display: none !important;
+}
+
 html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-glass > div:first-child {
   background-image:
     var(--dsh-grain, none),
@@ -1366,6 +1400,10 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       transparency: 43,
       // 窗口外框直角：走宿主侧的 DWM 调用，和构造参数无关。
       squareWindow: true,
+      // 简化壁纸（砍掉三层径向光斑），换来 resize 时更轻的重绘。
+      simpleWallpaper: true,
+      // 拖动窗口期间临时把壁纸和预模糊层降级成纯色。
+      resizeDegrade: true,
       // 背景：预设渐变 / 图片 / 视频（Wallpaper Engine 导出的 mp4/webm 走视频）
       wall: { mode: 'preset', src: '' },
     }
@@ -1582,6 +1620,8 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
           look.transparency = Math.max(0, Math.min(100, Math.round(parsed.transparency)))
         }
         if (typeof parsed.squareWindow === 'boolean') look.squareWindow = parsed.squareWindow
+        if (typeof parsed.simpleWallpaper === 'boolean') look.simpleWallpaper = parsed.simpleWallpaper
+        if (typeof parsed.resizeDegrade === 'boolean') look.resizeDegrade = parsed.resizeDegrade
         // 0.1.87 删掉了「关掉浮层模糊」：旧存档里那条键顺手清掉，别一直躺着。
         if (Object.prototype.hasOwnProperty.call(parsed, 'lightGlass')) saveLookPrefs()
         // 旧版本把原生材质做成玻璃皮肤下的一个开关，现在它是一套独立皮肤。
@@ -1696,6 +1736,8 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
           codeFont: look.codeFont,
           grain: look.grain,
           squareWindow: look.squareWindow,
+          simpleWallpaper: look.simpleWallpaper,
+          resizeDegrade: look.resizeDegrade,
         }))
       } catch {
         /* storage unavailable */
@@ -1785,6 +1827,29 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       return value === 'glass' || value === 'native'
     }
 
+    // 拖动窗口期间把壁纸和预模糊层换成纯色（B1）。
+    // 渲染进程没有 will-resize（那是主进程的 BrowserWindow 事件），所以只挂 resize；
+    // 结束判定用 150ms debounce：最后一次 resize 之后再等 150ms 才恢复。
+    let resizeDegradeOn = false
+    let resizeDegradeTimer = 0
+    function installResizeDegrade() {
+      if (resizeDegradeOn || typeof window === 'undefined') return
+      resizeDegradeOn = true
+      window.addEventListener(
+        'resize',
+        () => {
+          if (!look.enabled || !isGlassSkin() || !look.resizeDegrade) return
+          document.documentElement.dataset.dshResizing = '1'
+          if (resizeDegradeTimer) clearTimeout(resizeDegradeTimer)
+          resizeDegradeTimer = setTimeout(() => {
+            resizeDegradeTimer = 0
+            delete document.documentElement.dataset.dshResizing
+          }, 150)
+        },
+        { passive: true },
+      )
+    }
+
     function applyLook() {
       if (lookDispose) {
         try {
@@ -1839,6 +1904,9 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         else delete root.dataset.dshNative
         // 关掉浮层模糊：只影响弹窗/菜单/提示条那几处（它们背后是静止的，但每帧
         // 仍要采样一次）。会话区那块已经换成预模糊层，和这个开关无关。
+        root.dataset.dshSimpleWallpaper = look.simpleWallpaper ? '1' : '0'
+        root.dataset.dshResizeDegrade = look.resizeDegrade ? '1' : '0'
+        installResizeDegrade()
         applyGrainImage()
         applyFrostLayer()
         applyWindowCorners()
@@ -2202,6 +2270,10 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       lookTransparency: '透明度',
       lookSquareWindow: '窗口直角',
       lookSquareWindowHint: '去掉窗口外框的系统圆角（DWM 画的），只影响这个窗口',
+      lookSimpleWallpaper: '简化壁纸',
+      lookSimpleWallpaperHint: '砍掉壁纸的三层径向光斑，换窗口缩放时更轻的重绘；关掉恢复原样',
+      lookResizeDegrade: '拖动时降级',
+      lookResizeDegradeHint: '拖窗口期间把壁纸换成纯色，松手 150ms 后恢复，减少缩放时的填充条',
       lookNative: '原生材质',
       lookNativeHint: '窗口透明，由 Windows 画 Acrylic；需先给 app.asar 打补丁',
       lookWall: '背景',
@@ -2469,6 +2541,10 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       lookTransparency: 'Transparency',
       lookSquareWindow: 'Square window',
       lookSquareWindowHint: 'Drops the Windows 11 corner rounding on this window frame',
+      lookSimpleWallpaper: 'Simple wallpaper',
+      lookSimpleWallpaperHint: 'Drops the three radial light spots so resizing repaints less; turn off to restore',
+      lookResizeDegrade: 'Degrade while resizing',
+      lookResizeDegradeHint: 'Paints the wallpaper flat while the window is being dragged, restores 150ms after',
       lookNative: 'Native material',
       lookNativeHint: 'Transparent window, Acrylic drawn by Windows (needs the asar patch)',
       lookWall: 'Background',
@@ -4133,6 +4209,22 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
                       look.squareWindow = !look.squareWindow
                       saveLookPrefs()
                       applyWindowCorners(true)
+                      lookUpdate()
+                    }))
+                  : null,
+                isGlassSkin(lookSnapshot.skin)
+                  ? settingRow(t('lookSimpleWallpaper'), t('lookSimpleWallpaperHint'), switchControl(lookSnapshot.simpleWallpaper, () => {
+                      look.simpleWallpaper = !look.simpleWallpaper
+                      saveLookPrefs()
+                      applyLook()
+                      lookUpdate()
+                    }))
+                  : null,
+                isGlassSkin(lookSnapshot.skin)
+                  ? settingRow(t('lookResizeDegrade'), t('lookResizeDegradeHint'), switchControl(lookSnapshot.resizeDegrade, () => {
+                      look.resizeDegrade = !look.resizeDegrade
+                      saveLookPrefs()
+                      applyLook()
                       lookUpdate()
                     }))
                   : null,

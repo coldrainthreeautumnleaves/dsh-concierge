@@ -5259,11 +5259,11 @@ html:not([data-dsh-glass="1"]) .uc-root {
     const SIDE_CSS = `
 .uc-help { position: relative; display: flex; }
 .uc-help-btn { appearance: none; border: none; background: transparent; color: var(--dsw-alias-label-secondary); height: 28px; padding: 0 8px; border-radius: 8px; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; font-size: 12px; white-space: nowrap; }
-.uc-help-btn:hover { background: var(--uc-surface-2); color: var(--dsw-alias-label-primary); }
-.uc-help-menu { position: fixed; padding: 6px; border: 1px solid var(--dsw-alias-border-l2); border-radius: 12px; background: var(--dsw-alias-bg-overlay); box-shadow: 0 16px 40px rgba(0,0,0,.28), 0 2px 6px rgba(0,0,0,.1); display: flex; flex-direction: column; gap: 2px; z-index: 1000; animation: uc-pop .16s ease-out; }
+.uc-help-btn:hover { background: var(--uc-surface-2, var(--dsw-alias-bg-layer-2)); color: var(--dsw-alias-label-primary); }
+.uc-help-menu { position: fixed; padding: 6px; border: 1px solid var(--dsw-alias-border-l2); border-radius: 12px; background: var(--dsw-menu-surface-fill, var(--dsw-alias-bg-layer-1)); box-shadow: 0 16px 40px rgba(0,0,0,.28), 0 2px 6px rgba(0,0,0,.1); display: flex; flex-direction: column; gap: 2px; z-index: 1000; animation: uc-pop .16s ease-out; }
 @keyframes uc-pop { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 .uc-help-item { appearance: none; border: none; background: transparent; color: var(--dsw-alias-label-primary); text-align: left; padding: 8px 10px; border-radius: 8px; font-size: 12px; cursor: pointer; display: flex; align-items: flex-start; gap: 10px; }
-.uc-help-item:hover:not(:disabled) { background: var(--uc-hover); }
+.uc-help-item:hover:not(:disabled) { background: var(--uc-hover, var(--dsw-alias-bg-layer-2)); }
 .uc-help-item:disabled { opacity: .5; cursor: default; }
 .uc-help-icon { flex: none; width: 16px; height: 16px; margin-top: 1px; color: var(--dsw-alias-label-secondary); }
 .uc-help-item:hover:not(:disabled) .uc-help-icon { color: var(--dsw-alias-label-primary); }

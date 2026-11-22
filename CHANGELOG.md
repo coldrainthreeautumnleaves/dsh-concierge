@@ -6,6 +6,15 @@
 
 ## [Unreleased]
 
+## [0.11.2] - 2026-11-22
+
+> 「刷新与重启」弹层的底色改用菜单面
+
+### Fixed
+
+- 界面: `.uc-help-menu` 的底色从 `--dsw-alias-bg-overlay` 换成 `--dsw-menu-surface-fill`（带兜底）。`bg-overlay` 是盖在内容上的一层暗色罩，单独当面板用就是一块灰（实测 `#E9ECF2`），和旁边的侧边栏 `#F9FAFB` 对不上
+- 界面: 弹层里两处 hover 用的 `--uc-surface-2` / `--uc-hover` 只在 `.uc-root` 里定义，侧边栏这个位置取不到值，补了官方层级色兜底
+
 ## [0.11.1] - 2026-11-22
 
 > 卡片加了投影和卡头分隔线

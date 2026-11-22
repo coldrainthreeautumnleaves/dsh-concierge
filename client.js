@@ -369,38 +369,17 @@ html[data-dsh-glass="1"] [class*="_centerCol"] [class*="_tabs"] {
    颜色取壁纸同色系的实色，仍然是「雾面」而不是纯白。 */
 /* 玻璃皮肤这里**不铺底色**：会话区保持半透明，壁纸从下面透出来，这才是那套
    调过的观感。0.1.72 为了帧率把它做成了实色，代价是玻璃感没了——现在两条路
-   分开：想要观感用「玻璃」，想要帧率用「原生材质」。 */
-html[data-dsh-glass="1"]:not([data-dsh-native="1"]) [data-conversation-region="chat"],
-html[data-dsh-glass="1"]:not([data-dsh-native="1"]) [class*="_centerCol"] {
+   分开：想要观感用「玻璃」，想要官方纯色底用「原生」。 */
+html[data-dsh-glass="1"] [data-conversation-region="chat"],
+html[data-dsh-glass="1"] [class*="_centerCol"] {
   background: transparent;
-}
-/* 原生材质模式（窗口底色透明、由 DWM 画 Acrylic/Mica）：页面不能再画壁纸，也不能
-   留不透明底色，否则材质整个被盖住。所有面只留半透明色层。
-   这一档要配合 app.asar 补丁使用，没打补丁就打开会让窗口变成全透。 */
-html[data-dsh-glass="1"][data-dsh-native="1"],
-html[data-dsh-glass="1"][data-dsh-native="1"] body {
-  background: transparent !important;
-}
-html[data-dsh-glass="1"][data-dsh-native="1"] #dsh-concierge-glass {
-  display: none !important;
-}
-/* 原生材质下会话区完全透明会露出应用自己的白底 token，整块发白、和侧边栏的冷调
-   脱节。这里铺一层同色系的半透明冷调：Acrylic 仍然透得出来，但整块和侧边栏是
-   同一个色温。alpha 跟着「透明度」走，用户还能自己调。 */
-html[data-dsh-glass="1"][data-dsh-native="1"] [data-conversation-region="chat"],
-html[data-dsh-glass="1"][data-dsh-native="1"] [class*="_centerCol"] {
-  background: var(--dsh-native-chat-tint, rgba(214, 227, 245, 0.45)) !important;
-}
-html[data-dsh-glass="1"][data-dsh-native="1"][data-dsh-glass-scheme="dark"] [data-conversation-region="chat"],
-html[data-dsh-glass="1"][data-dsh-native="1"][data-dsh-glass-scheme="dark"] [class*="_centerCol"] {
-  background: rgba(15, 21, 30, 0.5) !important;
 }
 /* 局部预模糊层：会话区上方盖一份「壁纸的模糊副本」，按会话区的 rect 裁剪。
    关键在于 filter: blur() 作用在**静止元素**上只栅格化一次，之后每帧只是一次普通
    贴图；而 backdrop-filter 是每帧重新采样背后像素。壁纸是静态的，模糊结果永远
    不变，天然适合烘一次。 */
 #dsh-concierge-frost { display: none; }
-html[data-dsh-glass="1"]:not([data-dsh-native="1"]) #dsh-concierge-frost {
+html[data-dsh-glass="1"] #dsh-concierge-frost {
   display: block;
   position: fixed;
   overflow: hidden;
@@ -1395,7 +1374,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
     const LOOK_STORAGE_KEY = 'dsh-concierge:look'
     const look = {
       enabled: false,
-      skin: 'soft',
+      skin: 'glass',
       brand: 'default',
       preference: 'system',
       fontStep: 0,
@@ -1478,12 +1457,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         '--dsw-specific-menu': fill(0.52, 0.58),
         '--dsw-alias-menu-group-header-fill': fill(0.26, 0.3),
         '--dsw-alias-hovercard-bg': fill(0.56, 0.62),
-        // 原生材质皮肤下会话区那层冷调：alpha 跟着「透明度」滑杆走，这样整块既能
-        // 透出 DWM 画的 Acrylic，又能和侧边栏保持同一色温。
-        '--dsh-native-chat-tint': pair(
-          `rgba(214, 227, 245, ${scale(0.36)})`,
-          `rgba(15, 21, 30, ${scale(0.4)})`,
-        ),
         // 悬浮卡（会话卡片那种）有自己的 label token，默认是给「深底卡片」准备的
         // 近白色。底被改成半透明白之后，字就白压白了——这里跟着改成正文那组深色。
         '--dsw-alias-hovercard-label-primary': pair('#1a1d23', '#e8ebf1'),
@@ -1584,9 +1557,9 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         },
       },
       glass: { tokens: glassTokens() },
-      // 原生材质：同一套玻璃 token，区别只在「谁画模糊」——玻璃是页面自己糊，
-      // 原生材质是把窗口底色交给 DWM（Acrylic/Mica）。需要 app.asar 补丁。
-      native: { tokens: glassTokens() },
+      // 原生：不覆盖任何 token，也不挂壁纸/模糊层，就是官方自己的纯色底。
+      // 选它就是「关掉皮肤、只保留字体和品牌色」的那一档。
+      native: { tokens: {} },
       ocean: {
         tokens: {
           '--dsw-specific-sidebar-fill': { light: '#eaf3fb', dark: '#0d1822' },
@@ -1614,6 +1587,9 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         const parsed = JSON.parse(raw)
         if (typeof parsed.enabled === 'boolean') look.enabled = parsed.enabled
         if (typeof parsed.skin === 'string' && parsed.skin in LOOK_SKINS) look.skin = parsed.skin
+        // 皮肤只剩「玻璃」和「原生」两档：旧的柔和 / 墨色 / 海洋存档统一落到玻璃，
+        // 否则下拉框会因为找不到匹配项而显示成空白。
+        if (look.skin !== 'glass' && look.skin !== 'native') look.skin = 'glass'
         if (typeof parsed.brand === 'string' && parsed.brand in LOOK_BRANDS) look.brand = parsed.brand
         if (typeof parsed.preference === 'string' && LOOK_PREFERENCES.includes(parsed.preference)) look.preference = parsed.preference
         if (LOOK_FONT_STEPS.includes(parsed.fontStep)) look.fontStep = parsed.fontStep
@@ -1825,11 +1801,10 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         .catch(() => { appliedSquareWindow = null })
     }
 
-    // 「原生材质」和「玻璃」是同一套 token、同一套 CSS，区别只在谁画模糊：
-    // 玻璃让页面自己 backdrop-filter，原生材质把窗口底色交给 DWM。
+    // 只有「玻璃」会挂壁纸、预模糊和整套半透明 token。「原生」走官方默认样式：
+    // 不挂层、不覆盖 token，所以下面所有玻璃专属的开关都用这个判断。
     function isGlassSkin(skin) {
-      const value = skin || look.skin
-      return value === 'glass' || value === 'native'
+      return (skin || look.skin) === 'glass'
     }
 
     // 拖动窗口期间把壁纸和预模糊层换成纯色（B1）。
@@ -1900,13 +1875,9 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       } catch {
         lookDispose = null
       }
-      // 玻璃系皮肤（玻璃 / 原生材质）额外挂一层壁纸 + backdrop-filter
+      // 只有玻璃皮肤挂壁纸 + 预模糊层；原生走官方默认样式，不挂任何层。
       if (isGlassSkin() && root) {
         root.dataset.dshGlass = '1'
-        // 原生材质：窗口底色透明，由 DWM 画 Acrylic/Mica，页面不能再自己画壁纸，
-        // 否则把材质整个盖住。需要 app.asar 补丁。
-        if (look.skin === 'native') root.dataset.dshNative = '1'
-        else delete root.dataset.dshNative
         // 关掉浮层模糊：只影响弹窗/菜单/提示条那几处（它们背后是静止的，但每帧
         // 仍要采样一次）。会话区那块已经换成预模糊层，和这个开关无关。
         root.dataset.dshSimpleWallpaper = look.simpleWallpaper ? '1' : '0'
@@ -2270,7 +2241,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       lookSkinInk: '墨色',
       lookSkinOcean: '海洋',
       lookSkinGlass: '玻璃',
-      lookSkinNative: '原生材质（Acrylic）',
+      lookSkinNative: '原生（纯白）',
       lookGrain: '颗粒',
       lookTransparency: '透明度',
       lookSquareWindow: '窗口直角',
@@ -2392,7 +2363,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       aboutDesignInstallTitle: '安装来源',
       aboutDesignInstall1: 'GitHub 来源、从 npm 安装、GitHub Token、插件与配置目录',
       aboutDesignLookTitle: '外观',
-      aboutDesignLook1: '皮肤：玻璃（预模糊）/ 原生材质（DWM Acrylic）',
+      aboutDesignLook1: '皮肤：玻璃（预模糊）/ 原生（官方纯色底）',
       aboutDesignLook2: '主题、品牌色、字号、代码字体、透明度、颗粒、窗口直角、背景',
       aboutDesignLook3: '打字机：逐字显示、流式节流、速度',
       aboutDesignPerfTitle2: '性能',
@@ -2541,7 +2512,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       lookSkinInk: 'Ink',
       lookSkinOcean: 'Ocean',
       lookSkinGlass: 'Glass',
-      lookSkinNative: 'Native material (Acrylic)',
+      lookSkinNative: 'Native (plain white)',
       lookGrain: 'Grain',
       lookTransparency: 'Transparency',
       lookSquareWindow: 'Square window',
@@ -2663,7 +2634,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       aboutDesignInstallTitle: 'Sources',
       aboutDesignInstall1: 'GitHub sources, npm install, GitHub token, plugin and config folders',
       aboutDesignLookTitle: 'Appearance',
-      aboutDesignLook1: 'Skins: Glass (pre-blurred) or Native (DWM Acrylic)',
+      aboutDesignLook1: 'Skins: Glass (pre-blurred) or Native (official solid colours)',
       aboutDesignLook2: 'Theme, brand colour, font size, code font, transparency, grain, square corners, background',
       aboutDesignLook3: 'Typewriter: reveal, streaming throttle, speed',
       aboutDesignPerfTitle2: 'Performance',
@@ -4110,9 +4081,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
                       lookUpdate()
                     },
                   },
-                    h('option', { value: 'soft' }, t('lookSkinSoft')),
-                    h('option', { value: 'ink' }, t('lookSkinInk')),
-                    h('option', { value: 'ocean' }, t('lookSkinOcean')),
                     h('option', { value: 'glass' }, t('lookSkinGlass')),
                     h('option', { value: 'native' }, t('lookSkinNative')),
                   )),

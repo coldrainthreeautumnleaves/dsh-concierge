@@ -159,17 +159,17 @@ html[data-dsh-noanim="1"] [data-animating] {
    代价是窗口缩放时新露出的区域先画成这块颜色——就是那条横贯整窗的浅色带
    （实测 RGB(239,242,251)，和 #f0f3fc 的 (240,243,252) 是同一块）。
    透明之后那块露出的是壁纸层/窗口底色，不再是白板。 */
-html[data-dsh-glass="1"] { background-color: #dbe4f3 !important; }
-html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] { background-color: #10151d !important; }
+html[data-dsh-glass="1"] { background-color: #eef3fa !important; }
+html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] { background-color: #0e1116 !important; }
 html[data-dsh-glass="1"] body,
 html[data-dsh-glass="1"] #root { background: transparent !important; }
 /* 根层必须不透明。Chromium 只在「整帧判定为不透明」时才允许在窗口尺寸跳变时拉伸上一帧；
    非不透明的帧只能等下一次提交，那一两帧就露出窗口表面色。全屏切换是一次性大跳，
    所以特别明显。这个底色必须和壁纸基色一致，否则壁纸没铺满的地方会露出异色。 */
-html[data-dsh-glass="1"] body { background-color: #dbe4f3 !important; }
-html[data-dsh-glass="1"] #root { background-color: #dbe4f3 !important; }
-html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] body { background-color: #10151d !important; }
-html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #root { background-color: #10151d !important; }
+html[data-dsh-glass="1"] body { background-color: #eef3fa !important; }
+html[data-dsh-glass="1"] #root { background-color: #eef3fa !important; }
+html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] body { background-color: #0e1116 !important; }
+html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #root { background-color: #0e1116 !important; }
 /* The frost lives on the wallpaper itself: one blurred layer covers every
    translucent surface, instead of paying a backdrop-filter per panel (each one
    reads the pixels behind it and runs a blur kernel, so the cost scales with
@@ -179,10 +179,10 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #root { background-color:
 /* 玻璃的统一色温：所有面板、侧边栏、顶栏的半透明底都从这一个值派生，
    避免「有的面是纯白、有的是冷调」这种不一致。 */
 html[data-dsh-glass="1"] {
-  --dsh-tint-rgb: 232, 240, 250;
+  --dsh-tint-rgb: 248, 250, 252;
 }
 html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] {
-  --dsh-tint-rgb: 20, 24, 32;
+  --dsh-tint-rgb: 26, 28, 32;
 }
 #dsh-concierge-glass { display: none; }
 html[data-dsh-glass="1"] #dsh-concierge-glass {
@@ -204,10 +204,10 @@ html[data-dsh-glass="1"] #dsh-concierge-glass {
   --dsh-grain: none;
   background-image:
     var(--dsh-grain, none),
-    radial-gradient(900px 700px at 8% 0%, rgba(111, 154, 216, 1) 0%, rgba(111, 154, 216, 0) 60%),
-    radial-gradient(820px 640px at 96% 4%, rgba(154, 143, 208, 0.92) 0%, rgba(154, 143, 208, 0) 62%),
-    radial-gradient(940px 720px at 80% 104%, rgba(95, 176, 184, 0.95) 0%, rgba(95, 176, 184, 0) 62%),
-    linear-gradient(165deg, #dbe4f3 0%, #d5dfef 50%, #d9e9ea 100%);
+    radial-gradient(900px 700px at 8% 0%, rgba(122, 162, 214, 0.55) 0%, rgba(122, 162, 214, 0) 60%),
+    radial-gradient(820px 640px at 92% 6%, rgba(150, 180, 222, 0.35) 0%, rgba(150, 180, 222, 0) 62%),
+    radial-gradient(940px 720px at 78% 100%, rgba(214, 206, 196, 0.30) 0%, rgba(214, 206, 196, 0) 62%),
+    linear-gradient(165deg, #eef3fa 0%, #e7eef7 50%, #eaf1f1 100%);
   background-size: 140px 140px, auto, auto, auto, auto;
   background-repeat: repeat, no-repeat, no-repeat, no-repeat, no-repeat;
 }
@@ -218,14 +218,14 @@ html[data-dsh-glass="1"] #dsh-concierge-glass {
 html[data-dsh-simple-wallpaper="1"] #dsh-concierge-glass > div:first-child {
   background-image:
     var(--dsh-grain, none),
-    linear-gradient(165deg, #dbe4f3 0%, #d5dfef 50%, #d9e9ea 100%);
+    linear-gradient(165deg, #eef3fa 0%, #e7eef7 50%, #eaf1f1 100%);
   background-size: 140px 140px, auto;
   background-repeat: repeat, no-repeat;
 }
 html[data-dsh-simple-wallpaper="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-glass > div:first-child {
   background-image:
     var(--dsh-grain, none),
-    linear-gradient(165deg, #10151d 0%, #121a24 50%, #0c1417 100%);
+    linear-gradient(165deg, #0e1116 0%, #121a24 50%, #0c1417 100%);
   background-size: 140px 140px, auto;
   background-repeat: repeat, no-repeat;
 }
@@ -234,10 +234,10 @@ html[data-dsh-simple-wallpaper="1"][data-dsh-glass-scheme="dark"] #dsh-concierge
    露出的窗口表面色，页面变轻之后新帧提交更快，带子就短到看不见。
    默认关，外观页打开。 */
 html[data-dsh-resize-degrade="1"][data-dsh-resizing="1"] #dsh-concierge-glass > div:first-child {
-  background-image: linear-gradient(165deg, #ccd8ee 0%, #ccd8ee 100%) !important;
+  background-image: linear-gradient(165deg, #e7eef7 0%, #e7eef7 100%) !important;
 }
 html[data-dsh-resize-degrade="1"][data-dsh-resizing="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-glass > div:first-child {
-  background-image: linear-gradient(165deg, #141a22 0%, #141a22 100%) !important;
+  background-image: linear-gradient(165deg, #121a24 0%, #121a24 100%) !important;
 }
 html[data-dsh-resize-degrade="1"][data-dsh-resizing="1"] #dsh-concierge-frost {
   display: none !important;
@@ -246,10 +246,10 @@ html[data-dsh-resize-degrade="1"][data-dsh-resizing="1"] #dsh-concierge-frost {
 html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-glass > div:first-child {
   background-image:
     var(--dsh-grain, none),
-    radial-gradient(900px 700px at 8% 0%, rgba(46, 74, 118, 1) 0%, rgba(46, 74, 118, 0) 60%),
-    radial-gradient(820px 640px at 96% 4%, rgba(74, 62, 118, 0.92) 0%, rgba(74, 62, 118, 0) 62%),
-    radial-gradient(940px 720px at 80% 104%, rgba(26, 84, 92, 0.95) 0%, rgba(26, 84, 92, 0) 62%),
-    linear-gradient(165deg, #10151d 0%, #121a24 50%, #0c1417 100%);
+    radial-gradient(900px 700px at 8% 0%, rgba(52, 86, 140, 0.55) 0%, rgba(52, 86, 140, 0) 60%),
+    radial-gradient(820px 640px at 92% 6%, rgba(44, 64, 96, 0.40) 0%, rgba(44, 64, 96, 0) 62%),
+    radial-gradient(940px 720px at 78% 100%, rgba(70, 66, 62, 0.28) 0%, rgba(70, 66, 62, 0) 62%),
+    linear-gradient(165deg, #0e1116 0%, #121a24 50%, #0c1417 100%);
 }
 /* 颗粒现在是壁纸层背景里的第一层（--dsh-grain），不再是独立元素：多一个全屏
    元素就多一个全屏合成层，每帧都要和壁纸混一次。强度仍然烘进 SVG 自己的
@@ -288,7 +288,7 @@ html[data-dsh-glass="1"] .dsh-console-modal {
   box-shadow: inset 0 1px 0 color-mix(in srgb, var(--dsw-alias-label-on-color) 7%, transparent), 0 20px 60px rgba(0, 0, 0, .18) !important;
 }
 html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .dsh-console-modal {
-  background: rgba(16, 20, 28, 0.74) !important;
+  background: rgba(26, 28, 32, 0.74) !important;
 }
 html[data-dsh-glass="1"] div:has(> aside.dsh-console-modal) {
   background: rgba(0, 0, 0, 0.12) !important;
@@ -390,7 +390,7 @@ html[data-dsh-glass="1"] #dsh-concierge-frost {
   /* 壁纸是蓝→紫→青三段，会话区正好压在青段上：模糊一糊，整块就被染成薄荷绿，
      而侧边栏压在蓝紫段上偏紫蓝——同一个壁纸两处取到的色相本来就不一样。
      所以在模糊层上再盖一层统一色温，把局部色相拉回中性。 */
-  background: rgba(var(--dsh-tint-rgb), 0.45);
+  background: rgba(var(--dsh-tint-rgb), 0.32);
 }
 #dsh-concierge-frost > div {
   position: absolute;
@@ -398,23 +398,24 @@ html[data-dsh-glass="1"] #dsh-concierge-frost {
   height: 100vh;
   background-image:
     var(--dsh-grain, none),
-    radial-gradient(900px 700px at 8% 0%, rgba(111, 154, 216, 1) 0%, rgba(111, 154, 216, 0) 60%),
-    radial-gradient(820px 640px at 96% 4%, rgba(154, 143, 208, 0.92) 0%, rgba(154, 143, 208, 0) 62%),
-    radial-gradient(940px 720px at 80% 104%, rgba(95, 176, 184, 0.95) 0%, rgba(95, 176, 184, 0) 62%),
-    linear-gradient(165deg, #dbe4f3 0%, #d5dfef 50%, #d9e9ea 100%);
+    radial-gradient(900px 700px at 8% 0%, rgba(122, 162, 214, 0.55) 0%, rgba(122, 162, 214, 0) 60%),
+    radial-gradient(820px 640px at 92% 6%, rgba(150, 180, 222, 0.35) 0%, rgba(150, 180, 222, 0) 62%),
+    radial-gradient(940px 720px at 78% 100%, rgba(214, 206, 196, 0.30) 0%, rgba(214, 206, 196, 0) 62%),
+    linear-gradient(165deg, #eef3fa 0%, #e7eef7 50%, #eaf1f1 100%);
   background-size: 140px 140px, auto, auto, auto, auto;
   background-repeat: repeat, no-repeat, no-repeat, no-repeat, no-repeat;
-  /* 降饱和是关键：模糊只负责「糊」，颜色交给上面那层统一色温，
-     这样会话区不会跟着壁纸的青色走。 */
-  filter: blur(18px) saturate(0.32) brightness(1.04);
+  /* 源色已经是低饱和，这里只做轻微收口：不再用 0.32 硬压，
+     否则饱和色被压成灰，玻璃就「脏」了。 */
+  filter: blur(28px) saturate(0.62) brightness(1.02);
 }
 html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-frost > div {
   background-image:
     var(--dsh-grain, none),
-    radial-gradient(900px 700px at 8% 0%, rgba(46, 74, 118, 1) 0%, rgba(46, 74, 118, 0) 60%),
-    radial-gradient(820px 640px at 96% 4%, rgba(74, 62, 118, 0.92) 0%, rgba(74, 62, 118, 0) 62%),
-    radial-gradient(940px 720px at 80% 104%, rgba(26, 84, 92, 0.95) 0%, rgba(26, 84, 92, 0) 62%),
-    linear-gradient(165deg, #10151d 0%, #121a24 50%, #0c1417 100%);
+    radial-gradient(900px 700px at 8% 0%, rgba(52, 86, 140, 0.55) 0%, rgba(52, 86, 140, 0) 60%),
+    radial-gradient(820px 640px at 92% 6%, rgba(44, 64, 96, 0.40) 0%, rgba(44, 64, 96, 0) 62%),
+    radial-gradient(940px 720px at 78% 100%, rgba(70, 66, 62, 0.28) 0%, rgba(70, 66, 62, 0) 62%),
+    linear-gradient(165deg, #0e1116 0%, #121a24 50%, #0c1417 100%);
+  filter: blur(28px) saturate(0.55) brightness(0.98);
 }
 /* 会话区磨砂现在由上面那层预模糊负责，::before 不再挂 backdrop-filter。 */
 html[data-dsh-glass="1"] [data-conversation-region="chat"] {
@@ -468,20 +469,20 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] :is(
   .uc-banner,
   .uc-help-menu
 ) {
-  background-color: rgba(16, 20, 28, 0.96) !important;
+  background-color: rgba(26, 28, 32, 0.96) !important;
 }
 /* 控制台外壳：降到半透明，让后面透一点出来；内容由内窗口承载。 */
 html[data-dsh-glass="1"] [data-shell-overlay="true"] [data-slot] > * {
   background-color: rgba(var(--dsh-tint-rgb), 0.76) !important;
 }
 html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] [data-shell-overlay="true"] [data-slot] > * {
-  background-color: rgba(16, 20, 28, 0.78) !important;
+  background-color: rgba(26, 28, 32, 0.78) !important;
 }
 /* tooltip 单独处理：它的文字色 token 就是白色（--dsw-alias-tooltip-label =
    neutral-bluish-00），刷成浅底会变成白字压浅底，整行看不见。tooltip 本来就该是
    深色小浮条，所以这里保持深底白字，不参与上面那条浅色实底。 */
 html[data-dsh-glass="1"] [role="tooltip"] {
-  background-color: rgba(20, 24, 32, 0.94) !important;
+  background-color: rgba(26, 28, 32, 0.94) !important;
   border: 1px solid rgba(255, 255, 255, 0.14);
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
@@ -1379,7 +1380,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       preference: 'system',
       fontStep: 0,
       codeFont: 'default',
-      grain: 0.06,
+      grain: 0.03,
       // 0 = 最实，100 = 最透；玻璃皮肤用它整体缩放各表面的 alpha
       transparency: 43,
       // 窗口外框直角：走宿主侧的 DWM 调用，和构造参数无关。
@@ -1390,7 +1391,10 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       resizeDegrade: true,
       // 背景：预设渐变 / 图片 / 视频（Wallpaper Engine 导出的 mp4/webm 走视频）
       wall: { mode: 'preset', src: '' },
+      // 存档版本：配色方案改版时用来做一次性迁移
+      lookRev: 0,
     }
+    const LOOK_REV = 2
     const LOOK_WALL_MODES = ['preset', 'image', 'video']
     const LOOK_PREFERENCES = ['system', 'light', 'dark']
     const LOOK_FONT_STEPS = [-1, 0, 1]
@@ -1427,36 +1431,37 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
     // 卡片、菜单、悬浮卡、提示、输入框、侧边栏、工具条、边框。
     function glassTokens(transparency = look.transparency) {
       const pair = (light, dark) => ({ light, dark })
-      // transparency 0 → ×1.8（更实），100 → ×0.4（更透）
-      const factor = 1.8 - (Math.max(0, Math.min(100, transparency)) / 100) * 1.4
+      // transparency 0 → ×1.25（更实），100 → ×0.55（更透）。默认 43 落在 ×0.95，
+      // 也就是下面那组基准 alpha 的 95%，和 Windows Acrylic 的 0.8 量级对齐。
+      const factor = 1.25 - (Math.max(0, Math.min(100, transparency)) / 100) * 0.7
       const scale = (alpha) => Math.max(0.04, Math.min(1, alpha * factor)).toFixed(3)
-      // 面板底色不要用纯白：壁纸是蓝绿调，白盖上去会变成灰白、和壁纸脱节。
-      // 用壁纸同色系的冷调，半透明叠上去才是「同一个色温的玻璃」。
+      // tint 用中性近白 / 近黑，不再偏蓝：壁纸本身已经是冷调，再叠冷色会发青发闷。
+      // 层级只靠亮度台阶区分，彩色只留给品牌色。
       const fill = (lightAlpha, darkAlpha) => pair(
-        `rgba(232, 240, 250, ${scale(lightAlpha)})`,
-        `rgba(20, 24, 32, ${scale(darkAlpha)})`,
+        `rgba(248, 250, 252, ${scale(lightAlpha)})`,
+        `rgba(26, 28, 32, ${scale(darkAlpha)})`,
       )
       return {
-        '--dsw-alias-bg-base': fill(0.3, 0.32),
-        '--dsw-alias-bg-layer-1': fill(0.5, 0.52),
+        '--dsw-alias-bg-base': fill(0.58, 0.6),
+        '--dsw-alias-bg-layer-1': fill(0.76, 0.78),
         // 设置面板用的就是 layer-2，太薄了字会糊在壁纸上，这里给足不透明度
-        '--dsw-alias-bg-layer-2': fill(0.62, 0.66),
-        '--dsw-alias-bg-layer-3': fill(0.55, 0.6),
-        '--dsw-alias-bg-overlay': fill(0.55, 0.6),
+        '--dsw-alias-bg-layer-2': fill(0.86, 0.88),
+        '--dsw-alias-bg-layer-3': fill(0.8, 0.82),
+        '--dsw-alias-bg-overlay': fill(0.8, 0.82),
         '--dsw-alias-bg-mask-1': fill(0.2, 0.3),
         '--dsw-alias-bg-mask-2': fill(0.28, 0.38),
         '--dsw-alias-bg-mask-3': fill(0.36, 0.46),
-        '--dsw-alias-card-fill': fill(0.34, 0.38),
-        '--dsw-alias-card-fill-hover': fill(0.44, 0.48),
-        '--dsw-alias-card-tile-fill': fill(0.3, 0.34),
-        '--dsw-alias-settings-card-fill': fill(0.7, 0.72),
+        '--dsw-alias-card-fill': fill(0.65, 0.67),
+        '--dsw-alias-card-fill-hover': fill(0.72, 0.74),
+        '--dsw-alias-card-tile-fill': fill(0.62, 0.64),
+        '--dsw-alias-settings-card-fill': fill(0.95, 0.97),
         '--dsw-alias-settings-card-stroke': pair('rgba(255, 255, 255, 0.6)', 'rgba(255, 255, 255, 0.12)'),
-        '--dsw-alias-onboarding-card-fill': fill(0.34, 0.38),
-        '--dsw-alias-onboarding-secondary-fill': fill(0.28, 0.32),
-        '--dsw-menu-surface-fill': fill(0.52, 0.58),
-        '--dsw-specific-menu': fill(0.52, 0.58),
-        '--dsw-alias-menu-group-header-fill': fill(0.26, 0.3),
-        '--dsw-alias-hovercard-bg': fill(0.56, 0.62),
+        '--dsw-alias-onboarding-card-fill': fill(0.65, 0.67),
+        '--dsw-alias-onboarding-secondary-fill': fill(0.58, 0.6),
+        '--dsw-menu-surface-fill': fill(0.92, 0.94),
+        '--dsw-specific-menu': fill(0.92, 0.94),
+        '--dsw-alias-menu-group-header-fill': fill(0.55, 0.57),
+        '--dsw-alias-hovercard-bg': fill(0.9, 0.92),
         // 悬浮卡（会话卡片那种）有自己的 label token，默认是给「深底卡片」准备的
         // 近白色。底被改成半透明白之后，字就白压白了——这里跟着改成正文那组深色。
         '--dsw-alias-hovercard-label-primary': pair('#1a1d23', '#e8ebf1'),
@@ -1603,6 +1608,16 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         if (typeof parsed.squareWindow === 'boolean') look.squareWindow = parsed.squareWindow
         if (typeof parsed.simpleWallpaper === 'boolean') look.simpleWallpaper = parsed.simpleWallpaper
         if (typeof parsed.resizeDegrade === 'boolean') look.resizeDegrade = parsed.resizeDegrade
+        // 0.7.3 重做了玻璃配色：透明度映射和颗粒基准都换了。旧存档里的滑杆值
+        // （排查时常见透明度 100、颗粒 7%）在新配色下会明显不对，一次性回落到新默认。
+        if ((parsed.lookRev || 0) < LOOK_REV) {
+          look.transparency = 43
+          look.grain = 0.03
+          look.lookRev = LOOK_REV
+          saveLookPrefs()
+        } else {
+          look.lookRev = parsed.lookRev
+        }
         // 0.1.87 删掉了「关掉浮层模糊」：旧存档里那条键顺手清掉，别一直躺着。
         if (Object.prototype.hasOwnProperty.call(parsed, 'lightGlass')) saveLookPrefs()
         // 旧版本把原生材质做成玻璃皮肤下的一个开关，现在它是一套独立皮肤。
@@ -1719,6 +1734,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
           squareWindow: look.squareWindow,
           simpleWallpaper: look.simpleWallpaper,
           resizeDegrade: look.resizeDegrade,
+          lookRev: LOOK_REV,
         }))
       } catch {
         /* storage unavailable */
@@ -2685,7 +2701,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
   display: flex; flex-direction: column; gap: 16px;
   margin: 12px; padding: 16px 16px 24px;
   border-radius: var(--uc-r-card);
-  background: rgba(var(--dsh-tint-rgb, 232, 240, 250), 0.88);
+  background: rgba(var(--dsh-tint-rgb, 248, 250, 252), 0.88);
   box-shadow: inset 0 1px 0 var(--uc-highlight);
   color: var(--dsw-alias-label-primary);
   font-size: var(--uc-fs-body); line-height: 1.5;

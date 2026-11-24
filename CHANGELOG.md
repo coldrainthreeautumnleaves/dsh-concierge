@@ -6,6 +6,18 @@
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-11-24
+
+> 顶栏那 40px 是系统画的，改用客户端补丁改色
+
+### Added
+
+- 工具: `patch-titlebar-color.mjs`（配 `apply-titlebar-color.cmd`）。顶栏那 40px 是 Windows 按主进程给的 `titleBarOverlay.color` 自己刷的，CSS 碰不到；把 `chromeFallbackFill()` 的返回值从 `"#1b1b1c" : "#f9fafb"` 换成 `"#0e1116" : "#eef3fa"`（等长替换 3 处，asar 头不用动）
+
+### Changed
+
+- 外观: 删掉调试用的洋红 / 青色标记（`frame` / `frame::before`），确认了那条不属于页面
+
 ## [0.13.9] - 2026-11-24
 
 > 顶栏选择器同时覆盖 html / body 两种挂法

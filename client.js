@@ -213,6 +213,21 @@ html[data-dsh-glass="1"] body,
 html[data-dsh-glass="1"] #root {
   background: transparent !important;
 }
+/* TEMP DEBUG：版本徽标。看到它就说明这份 CSS 真的在跑；看不到说明浏览器里
+   还是旧 bundle。定位完立刻删。 */
+html[data-dsh-glass="1"] #root::after {
+  content: "concierge 0.17.2";
+  position: fixed;
+  left: 10px;
+  top: 10px;
+  z-index: 99999;
+  padding: 4px 7px;
+  border-radius: 6px;
+  background: #ff00ff;
+  color: #fff;
+  font: 600 11px/1.2 ui-monospace, Consolas, monospace;
+  pointer-events: none;
+}
 /* 无边框窗口。窗口本身是 backgroundColor #00000000 + backgroundMaterial acrylic，
    DWM 一直在窗口后面画桌面壁纸的模糊——只是被页面铺满的不透明底盖住了。
 

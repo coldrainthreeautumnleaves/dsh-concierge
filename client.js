@@ -347,17 +347,27 @@ html[data-dsh-glass="1"] [class*="_frame"] {
   --dsh-windows-content-radius: 0px !important;
 }
 
-/* 窗口框架自身不再刷底色：标题栏那 40px 露出的是和会话区一样的壁纸。 */
-html[data-dsh-glass="1"] [data-windows-titlebar] [class*="_frame"] {
-  background: transparent !important;
-}
 /* 标题栏那 40px 是 frame 的 ::before（应用拿它做拖拽区），默认铺一层
    --dsw-specific-sidebar-fill。它和下面各列是两种材质，交界处会横出一条线，
    正好压在页面标题上。完全透明也不行——那 40px 会露出窗口后面的桌面，接缝
    只是换了颜色。正确做法是让它和列用同一个底：bg-base。 */
-html[data-dsh-glass="1"] [data-windows-titlebar] [class*="_frame"]::before,
 html[data-dsh-skin="native"] [data-windows-titlebar] [class*="_frame"]::before {
   background: var(--dsw-alias-bg-base) !important;
+}
+/* 顶栏这条背后没有壁纸层（玻璃层在 #root 下面），只铺 bg-base 会直接露出桌面，
+   整条发蓝；下面的内容背后有壁纸（不透明渐变），发白。这里把壁纸渐变和 bg-base
+   一起画出来，顶栏和内容才真正同色。 */
+html[data-dsh-glass="1"] [data-windows-titlebar] [class*="_frame"],
+html[data-dsh-glass="1"] [data-windows-titlebar] [class*="_frame"]::before {
+  background:
+    linear-gradient(var(--dsw-alias-bg-base), var(--dsw-alias-bg-base)),
+    linear-gradient(165deg, var(--dsh-canvas) 0%, #e7eef7 50%, #eaf1f1 100%) !important;
+}
+html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] [data-windows-titlebar] [class*="_frame"],
+html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] [data-windows-titlebar] [class*="_frame"]::before {
+  background:
+    linear-gradient(var(--dsw-alias-bg-base), var(--dsw-alias-bg-base)),
+    linear-gradient(165deg, var(--dsh-canvas) 0%, #121a24 50%, #0c1417 100%) !important;
 }
 /* 颜色切换（浅/深、切皮肤、改主题）不要硬跳：主要表面给一段短过渡。
    只挂在顶层容器上，流式输出时不会每帧重算。

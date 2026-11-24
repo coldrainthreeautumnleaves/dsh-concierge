@@ -416,6 +416,14 @@ html[data-dsh-glass="1"] [class*="_bottomRow"] {
   background: var(--dsw-alias-bg-base) !important;
   --dsw-specific-menu: rgba(var(--dsh-tint-rgb), 0.55);
 }
+/* 输入框座位（composerSeat）自带一条渐隐：
+     linear-gradient(180deg, transparent 0, var(--dsw-alias-bg-base) 36px)
+   玻璃下 bg-base 只有 0.55 不透明度，所以这条渐变的「实色端」照样半透明，
+   壁纸从底下透上来，整块发青（实测从 #E2E8EA 渐变到 #CCE8EB）。
+   会话区本身就是 bg-base，这里直接用同一个平色，接缝自然消失。 */
+html[data-dsh-glass="1"] [class*="_composerSeat"] {
+  background: var(--dsw-alias-bg-base) !important;
+}
 html[data-dsh-glass="1"] [class*="_centerCol"] {
   border-radius: 0 !important;
 }

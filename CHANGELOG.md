@@ -6,6 +6,14 @@
 
 ## [Unreleased]
 
+## [0.14.5] - 2026-11-24
+
+> 输入框座位不再透出壁纸
+
+### Fixed
+
+- 外观: `_composerSeat` 的渐隐（`linear-gradient(180deg, transparent 0, var(--dsw-alias-bg-base) 36px)`）在玻璃下失效——`bg-base` 只有 0.55 不透明度，渐变的「实色端」照样半透明，壁纸从底下透上来，整块发青（实测从 `#E2E8EA` 渐变到 `#CCE8EB`）。改成和会话区同一个平色 `var(--dsw-alias-bg-base)`
+
 ## [0.14.4] - 2026-11-24
 
 > 底栏和会话区用同一个底

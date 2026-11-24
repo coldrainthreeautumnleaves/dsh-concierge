@@ -336,12 +336,12 @@ html[data-dsh-glass="1"] div:has(> aside.dsh-console-modal) {
 html[data-dsh-glass="1"] [class*="_sidebarCol"] {
   background: var(--dsw-alias-bg-base) !important;
   border-right: none !important;
-  box-shadow: inset -1px 0 0 var(--dsw-alias-border-l1);
+  box-shadow: inset -1px 0 0 var(--dsw-alias-border-l2);
 }
 html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] [class*="_sidebarCol"] {
   background: var(--dsw-alias-bg-base) !important;
   border-right: none !important;
-  box-shadow: inset -1px 0 0 var(--dsw-alias-border-l1);
+  box-shadow: inset -1px 0 0 var(--dsw-alias-border-l2);
 }
 /* 官方 Windows 布局在内容列左上角留 16px 圆角（--dsh-windows-content-radius），
    壁纸铺满整窗之后，那个圆角会切出一块露壁纸的缺口，看着就是「一块空的」。

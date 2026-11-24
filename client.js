@@ -2265,16 +2265,35 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
     function startBackgroundCheck(t) {
       if (backgroundStarted || typeof setInterval !== 'function') return
       backgroundStarted = true
-      let lastNotice = 0
+      // 节流时间持久化：以前存在内存里，重启就重置，于是每次启动都会再弹一次。
+      const NOTICE_KEY = 'dsh-concierge:noticeAt'
+      const readNotice = () => {
+        try {
+          return Number(localStorage.getItem(NOTICE_KEY)) || 0
+        } catch {
+          return 0
+        }
+      }
+      const writeNotice = (at) => {
+        try {
+          localStorage.setItem(NOTICE_KEY, String(at))
+        } catch {
+          /* storage unavailable */
+        }
+      }
+      let lastNotice = readNotice()
       const tick = async () => {
         try {
           const response = await fetch(`${API}/status`, { signal: AbortSignal.timeout(30000) })
           const body = await response.json().catch(() => null)
           if (!body || !body.summary) return
+          // 宿主开着自动更新时不要提示「发现新版本」：它会被自动装掉，弹了反而吵。
+          if (body.auto) return
           const updatable = Number(body.summary.updatable) || 0
           if (updatable <= 0) return
           if (Date.now() - lastNotice < 60 * 60 * 1000) return
           lastNotice = Date.now()
+          writeNotice(lastNotice)
           bannerStore.set({
             kind: 'update',
             title: t('foundUpdates', { n: updatable }),
@@ -3228,6 +3247,18 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         ignoreListeners.add(listener)
         return () => ignoreListeners.delete(listener)
       }, [])
+      // 把开关同步给宿主：自动安装现在由宿主的定时器执行，不依赖这个页面开着。
+      React.useEffect(() => {
+        try {
+          fetch(`${API}/auto`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ enabled: autoUpdate }),
+          }).catch(() => {})
+        } catch {
+          /* bridge unavailable */
+        }
+      }, [autoUpdate])
       const [autoUpdate, setAutoUpdate] = React.useState(() => {
         try {
           return typeof localStorage === 'undefined' || localStorage.getItem('dsh-concierge:auto') !== '0'
@@ -3236,7 +3267,13 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         }
       })
       const autoKeyRef = React.useRef('')
-      const announceRef = React.useRef('')
+      const announceRef = React.useRef((() => {
+        try {
+          return localStorage.getItem('dsh-concierge:announced') || ''
+        } catch {
+          return ''
+        }
+      })())
       const lockRef = React.useRef(false)
       const [desktopState, setDesktopState] = React.useState(null)
       const [appDismissed, setAppDismissed] = React.useState(false)
@@ -3879,6 +3916,11 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         const key = `${appNew ? appVersion : ''}|${pending.map((row) => `${row.name}@${row.latest}`).join(',')}`
         if (announceRef.current === key) return
         announceRef.current = key
+        try {
+          localStorage.setItem('dsh-concierge:announced', key)
+        } catch {
+          /* storage unavailable */
+        }
         const parts = []
         if (appNew) parts.push(`DeepSeek Harness ${data.app.current} → ${appVersion}`)
         if (pending.length > 0) parts.push(t('bannerPlugins', { n: pending.length }))

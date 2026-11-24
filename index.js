@@ -261,7 +261,91 @@ export function apply(ctx) {
     targets: new Map(),
     // One in-flight update per package, so a second request cannot race the first.
     updating: new Set(),
+    autoEnabled: true,
+    autoBusy: false,
+    lastAuto: null,
+    autoTimer: null,
   }
+
+  // 自动更新的开关存在磁盘上：以前它只是页面里的一个 localStorage 标志，
+  // 宿主完全不知道——所以「自动更新」必须等你打开更新页才发生。
+  const autoFile = path.join(homedir(), '.dsh', 'update-center', 'auto.json')
+  const readAuto = async () => {
+    try {
+      const parsed = JSON.parse(await readFile(autoFile, 'utf8'))
+      state.autoEnabled = !parsed || parsed.enabled !== false
+    } catch {
+      state.autoEnabled = true
+    }
+    return state.autoEnabled
+  }
+  const writeAuto = async (enabled) => {
+    state.autoEnabled = Boolean(enabled)
+    try {
+      await mkdir(path.dirname(autoFile), { recursive: true })
+      await writeFile(autoFile, JSON.stringify({ enabled: state.autoEnabled }), 'utf8')
+    } catch {
+      /* 写不进去就只留在内存里，不因此禁用功能 */
+    }
+    return state.autoEnabled
+  }
+  void readAuto()
+
+  // 宿主侧定时检查：不依赖任何页面开着。启动 90 秒后先跑一次（避开启动高峰），
+  // 之后每 30 分钟一次。
+  const autoTick = async () => {
+    if (!state.autoEnabled || state.autoBusy) return
+    state.autoBusy = true
+    try {
+      const data = await getStatus(ctx, state, true)
+      const rows = (data.plugins || []).filter((row) => row.updateAvailable)
+      if (!rows.length) return
+      const results = []
+      for (const row of rows) {
+        const result = await runUpdate(ctx, state, row.name)
+        results.push({
+          name: row.name,
+          ok: Boolean(result && result.ok),
+          error: result && result.error ? String(result.error) : null,
+        })
+      }
+      state.lastAuto = { at: Date.now(), results }
+    } catch {
+      /* 下一轮再试 */
+    } finally {
+      state.autoBusy = false
+    }
+  }
+  ctx.effect(() => {
+    const first = setTimeout(autoTick, 90 * 1000)
+    const loop = setInterval(autoTick, 30 * 60 * 1000)
+    state.autoTimer = loop
+    return () => {
+      clearTimeout(first)
+      clearInterval(loop)
+      state.autoTimer = null
+    }
+  }, 'dsh-concierge: auto update loop')
+
+  ctx.effect(
+    () => ctx.webServer.register({
+      kind: 'exact',
+      path: `${ROUTE}/auto`,
+      handler: withGuard(ctx, async (request, response) => {
+        if (request.method === 'GET') {
+          return sendNodeJson(response, { ok: true, enabled: state.autoEnabled, lastAuto: state.lastAuto }, 200)
+        }
+        try {
+          const body = await readNodeJson(request)
+          const enabled = await writeAuto(!body || body.enabled !== false)
+          return sendNodeJson(response, { ok: true, enabled }, 200)
+        } catch (error) {
+          return sendNodeJson(response, { ok: false, error: messageOf(error) }, 400)
+        }
+      }),
+    }),
+    'dsh-concierge: auto update route',
+  )
 
   ctx.effect(
     () => ctx.webServer.register({
@@ -1879,6 +1963,8 @@ async function scan(ctx, state) {
     plugins,
     sources,
     pending: { disabled: pending },
+    auto: state.autoEnabled,
+    lastAuto: state.lastAuto,
     summary: {
       total: plugins.length,
       updatable,

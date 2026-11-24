@@ -122,3 +122,26 @@ html[data-dsh-glass="1"],
 html[data-dsh-glass="1"] body,
 html[data-dsh-glass="1"] #root { background: transparent !important; }
 ```
+
+## 九、先看报错，再谈样式（今天最贵的一条）
+
+**症状**：设置页「界面没了」——面板区域一片空，只剩遮罩盖着聊天，后面的文字隐约可见。
+
+**误判路径**（走了两个多小时）：以为是面板背景变透 → 调 `--dsw-alias-bg-layer-2` → 补 `bg-l1`/`bg-l2`/`bg-elevated` → 加 `solid()` 免缩放 → 涂实遮罩。全打偏。
+
+**真因**：
+
+```js
+React.useEffect(() => { … }, [autoUpdate])              // 先用
+const [autoUpdate, setAutoUpdate] = React.useState(…)   // 后声明
+```
+
+`const` 在初始化前处于暂时性死区（TDZ），渲染到这里直接抛
+`Cannot access 'autoUpdate' before initialization`——**整个组件崩掉**，所以那块什么都没渲染。看起来像「样式变透了」，实际是「组件没了」。
+
+**教训**：
+
+1. 改完先看浏览器控制台有没有红字。有报错就别动样式——样式救不了崩溃的组件；
+2. 「界面变透 / 变空 / 少一块」优先怀疑**渲染失败**，而不是颜色；
+3. 只改过一处却出问题，先查自己改的那一处，别去翻无关的 token；
+4. 同一个症状连试三次没解决，就换方法——今天的三层补丁加起来不如一行挪位置。

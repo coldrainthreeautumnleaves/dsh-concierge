@@ -507,10 +507,15 @@ html[data-dsh-glass="1"] #dsh-concierge-frost {
   pointer-events: none;
   /* 把布局/绘制范围锁在这块矩形里：外面的变化不会让它重绘 */
   contain: strict;
-  /* 壁纸是蓝→紫→青三段，会话区正好压在青段上：模糊一糊，整块就被染成薄荷绿，
-     而侧边栏压在蓝紫段上偏紫蓝——同一个壁纸两处取到的色相本来就不一样。
-     所以在模糊层上再盖一层统一色温，把局部色相拉回中性。 */
-  background: rgba(var(--dsh-tint-rgb), 0.32);
+  /* 兜底色用壁纸本身，不用中性白纱。
+     子层（模糊壁纸）不透明，正常情况下完全盖住这里；但静止时 GPU 可能把那个
+     大模糊层丢掉，那时露出来的就是这里的底色。原来是 rgba(tint, 0.32) 的中性
+     白——压在桌面上就是一块去饱和的灰，正是「静止时发灰」的来源。
+     换成壁纸渐变之后，子层掉了也只是少一层模糊，不会变色。 */
+  background: linear-gradient(165deg, var(--dsh-canvas) 0%, #e7eef7 50%, #eaf1f1 100%);
+}
+html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-frost {
+  background: linear-gradient(165deg, var(--dsh-canvas) 0%, #121a24 50%, #0c1417 100%);
 }
 #dsh-concierge-frost > div {
   position: absolute;

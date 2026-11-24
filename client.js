@@ -273,13 +273,30 @@ html[data-dsh-edge="1"][data-dsh-edge-settle="1"] #root {
      整条声明会被丢弃，表现为「这一层什么都不画」。单层最不容易出错。 */
   background: linear-gradient(160deg, #ffe6f2 0%, #e8efff 46%, #efe6ff 100%);
 }
+/* 彩色光斑用伪元素各铺一层：每个元素只有**一条** background，不会像多层
+   background-image 那样一处不合法就整条丢弃（0.17.4 之前就是这么白的）。 */
+#dsh-concierge-glass > div:first-child::before,
+#dsh-concierge-glass > div:first-child::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+#dsh-concierge-glass > div:first-child::before {
+  background: radial-gradient(1150px 860px at 14% -8%, rgba(255, 224, 240, 0.95) 0%, rgba(255, 224, 240, 0) 58%);
+}
+#dsh-concierge-glass > div:first-child::after {
+  background: radial-gradient(1000px 780px at 90% 2%, rgba(212, 228, 255, 0.95) 0%, rgba(212, 228, 255, 0) 60%);
+}
 
 html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-glass > div:first-child {
-  background-image:
-    radial-gradient(900px 700px at 8% 0%, rgba(52, 86, 140, 0.55) 0%, rgba(52, 86, 140, 0) 60%),
-    radial-gradient(820px 640px at 92% 6%, rgba(44, 64, 96, 0.40) 0%, rgba(44, 64, 96, 0) 62%),
-    radial-gradient(940px 720px at 78% 100%, rgba(70, 66, 62, 0.28) 0%, rgba(70, 66, 62, 0) 62%),
-    linear-gradient(165deg, var(--dsh-canvas) 0%, #121a24 50%, #0c1417 100%);
+  background: linear-gradient(160deg, #12161f 0%, #0f141c 46%, #141220 100%);
+}
+html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-glass > div:first-child::before {
+  background: radial-gradient(1150px 860px at 14% -8%, rgba(72, 44, 78, 0.75) 0%, rgba(72, 44, 78, 0) 58%);
+}
+html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-glass > div:first-child::after {
+  background: radial-gradient(1000px 780px at 90% 2%, rgba(36, 56, 92, 0.8) 0%, rgba(36, 56, 92, 0) 60%);
 }
 /* 颗粒现在是壁纸层背景里的第一层（--dsh-grain），不再是独立元素：多一个全屏
    元素就多一个全屏合成层，每帧都要和壁纸混一次。强度仍然烘进 SVG 自己的
@@ -443,10 +460,10 @@ html[data-dsh-glass="1"] [class*="_bottomRow"] {
    阶段 0 实测：第 5 层 = [data-composer-seat]）。 */
 html[data-dsh-glass="1"] [data-composer-seat],
 html[data-dsh-glass="1"] [class*="_composerSeat"] {
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0, #fbfcff 36px) !important;
+  background: linear-gradient(180deg, rgba(239, 234, 249, 0) 0, #efeaf9 36px) !important;
 }
 html[data-dsh-glass="1"] [class*="_composerStack"] {
-  background: #fbfcff !important;
+  background: #efeaf9 !important;
 }
 /* 玻璃的边界靠「棱」，不靠「白」：填充降下来之后，用 1px 内高光把卡片和底分开。
    参考 art-direction 的故障对照表——「Milky plastic slab（奶白塑料）」的修法就是

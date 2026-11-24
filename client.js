@@ -216,7 +216,7 @@ html[data-dsh-glass="1"] #root {
 /* TEMP DEBUG：版本徽标。看到它就说明这份 CSS 真的在跑；看不到说明浏览器里
    还是旧 bundle。定位完立刻删。 */
 html[data-dsh-glass="1"] #root::after {
-  content: "concierge 0.17.2";
+  content: "concierge 0.17.3";
   position: fixed;
   left: 10px;
   top: 10px;
@@ -227,6 +227,17 @@ html[data-dsh-glass="1"] #root::after {
   color: #fff;
   font: 600 11px/1.2 ui-monospace, Consolas, monospace;
   pointer-events: none;
+}
+/* TEMP DEBUG：壁纸层判别。父层绿、子层洋红：
+   看到绿 = 父层在画、子层没画（渐变或尺寸问题）；
+   看到洋红 = 子层在画，那就是渐变被别的东西盖住；
+   两个都没有 = 这一层被隐藏或裁剪掉了。 */
+html[data-dsh-glass="1"] #dsh-concierge-glass {
+  background: #00ff00 !important;
+}
+html[data-dsh-glass="1"] #dsh-concierge-glass > div:first-child {
+  background-image: none !important;
+  background-color: #ff00ff !important;
 }
 /* 无边框窗口。窗口本身是 backgroundColor #00000000 + backgroundMaterial acrylic，
    DWM 一直在窗口后面画桌面壁纸的模糊——只是被页面铺满的不透明底盖住了。

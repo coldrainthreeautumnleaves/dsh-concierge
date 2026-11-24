@@ -1,6 +1,18 @@
 # 玻璃皮肤的背景层：谁在画、怎么改
 
-这份笔记记的是「改了半天没生效」踩过的坑。写于 2026-11-24，对应版本 `0.15.4`。
+这份笔记记的是「改了半天没生效」踩过的坑。写于 2026-11-24，对应版本 `0.17.6`。
+
+## 零、改完先确认：这一版到底跑起来没有
+
+**这个 profile 没有 HMR**（`~/.dsh/profiles/desktop/node_modules/@deepseek-ai` 下没有 hmr 包），客户端改动**必须完整重启**：
+
+| 改了什么 | 生效方式 |
+|---|---|
+| 宿主半（`index.js`、路由） | 重启 |
+| **客户端半（`client.js`、样式）** | **重启**（刷新只是重新请求同一个旧 bundle） |
+| 配置 / patch | 热生效 |
+
+判断「到底加载的是不是这一版」最快的办法：临时加一条一眼能看见的 CSS（比如窗口左上角一块洋红方块写版本号），重启后看它有没有出现。别靠感觉判断。
 
 ## 一、颜色有两个入口，只有一个能改
 
@@ -76,6 +88,37 @@ html[data-dsh-glass="1"] [class*="_composerSeat"] {
 
 ## 六、排查顺序（下次别再猜）
 
-1. **先确认插件加载了**：Client 的 `Slots.listSubTree` 查一个槽位的 `occupants`，看 `active` 是不是 `true`。控制台里 `import failed` 可能只是历史消息；
-2. 再确认 token 生效：token 在 `body` 内联样式里，`getComputedStyle` 查 body 上的变量值；
-3. 最后才改 CSS——而且要认准上面那张表的钩子，别用类名猜。
+1. **先确认这一版跑起来了**：加一条显眼的临时 CSS（洋红方块 + 版本号），重启看它出现没有。没出现就别往下查——你改的根本不是跑的那份代码；
+2. **再确认插件加载了**：Client 的 `Slots.listSubTree` 查一个槽位的 `occupants`，看 `active` 是不是 `true`。控制台里 `import failed` 可能只是历史消息；
+3. 再确认 token 生效：token 在 `body` 内联样式里，`getComputedStyle` 查 body 上的变量值；
+4. 最后才改 CSS——而且要认准上面那张表的钩子，别用类名猜。
+
+## 七、两个「整条声明被丢弃」的坑（都踩过）
+
+CSS 里一个值不合法，坏的不是那一个值，是**整条声明**。玻璃皮肤上踩过两次，症状都是「改了完全没反应」：
+
+1. **多层 `background-image` 里混进非法层**：壁纸层原本是
+   ```css
+   background-image: var(--dsh-grain, none), radial-gradient(…), radial-gradient(…), linear-gradient(…);
+   ```
+   颗粒是 SVG data URI（带引号和逗号），`var()` 一替换进去，整条 `background-image` 被判非法 → 全部丢弃 → 壁纸永远不画。`background-color` 是另一条属性，所以「纯色能画、渐变画不了」。
+   **结论：壁纸层用单层 `background`；要叠多层就用伪元素，每个元素只一条 `background`。**
+
+2. **`element.style.backgroundImage = ''` 清不掉内联样式**：CSSOM 会忽略空值。清内联必须用 `removeProperty('background-image')`。否则上一次写进去的 `url(坏壁纸)` 会一直盖住样式表里的渐变，图片又加载失败 → 那一层什么都不画 → 露出窗口底色。
+
+## 八、body 有不透明背景
+
+应用 boot 时写：
+
+```js
+const LIGHT_BACKGROUND = "#fff";   // 深色 #151517
+body { background-color: #fff }
+```
+
+壁纸层是 `z-index: -1`，**正好被 body 那层不透明背景盖住**。玻璃皮肤必须让开：
+
+```css
+html[data-dsh-glass="1"],
+html[data-dsh-glass="1"] body,
+html[data-dsh-glass="1"] #root { background: transparent !important; }
+```

@@ -269,16 +269,9 @@ html[data-dsh-edge="1"][data-dsh-edge-settle="1"] #root {
 #dsh-concierge-glass > div:first-child {
   position: absolute;
   inset: 0;
-  /* 颗粒作为同一张图的第一个背景层，而不是另一个元素：多一个全屏元素就是多一个
-     全屏合成层，Iris Xe 这种核显上等于每帧多读 4M 像素。 */
-  --dsh-grain: none;
-  background-image:
-    radial-gradient(1150px 860px at 14% -8%, rgba(255, 224, 240, 0.92) 0%, rgba(255, 224, 240, 0) 58%),
-    radial-gradient(1000px 780px at 90% 2%, rgba(212, 228, 255, 0.95) 0%, rgba(212, 228, 255, 0) 60%),
-    radial-gradient(1240px 920px at 64% 110%, rgba(224, 212, 255, 0.88) 0%, rgba(224, 212, 255, 0) 62%),
-    linear-gradient(165deg, #f4f6fb 0%, var(--dsh-canvas) 50%, #f2f4f9 100%);
-  background-size: auto, auto, auto, auto;
-  background-repeat: no-repeat, no-repeat, no-repeat, no-repeat;
+  /* 单层渐变：多层 background-image + background-size/repeat 一旦有一处写错，
+     整条声明会被丢弃，表现为「这一层什么都不画」。单层最不容易出错。 */
+  background: linear-gradient(160deg, #ffe6f2 0%, #e8efff 46%, #efe6ff 100%);
 }
 
 html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-glass > div:first-child {

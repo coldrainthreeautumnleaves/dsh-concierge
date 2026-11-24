@@ -6,6 +6,14 @@
 
 ## [Unreleased]
 
+## [0.17.4] - 2026-11-24
+
+> 壁纸层改成单层渐变，排除多层写法
+
+### Changed
+
+- 外观: 浅色壁纸层从「3 个 radial + 1 个 linear + background-size/repeat 各 4 个值」简化成**一条 `background: linear-gradient(160deg, #ffe6f2, #e8efff, #efe6ff)`**。多层声明里任何一处不合法，整条 `background-image` 都会被丢弃，表现就是「这一层什么都不画」——先排除这一类，再谈配色
+
 ## [0.17.3] - 2026-11-24
 
 > 失效的自定义壁纸不再盖住渐变

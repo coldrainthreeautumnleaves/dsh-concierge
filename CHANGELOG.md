@@ -6,6 +6,15 @@
 
 ## [Unreleased]
 
+## [0.17.1] - 2026-11-24
+
+> 让开 body 的不透明背景，壁纸层才看得见
+
+### Fixed
+
+- 外观: `html[data-dsh-glass="1"]`、`body`、`#root` 全部 `background: transparent`。应用 boot 时写了 `body{background-color:#fff}`（深色 `#151517`），而壁纸层是 `z-index: -1`，**正好被 body 那层不透明背景盖住**——这是今天所有「壁纸/光斑没生效」的总原因：改动全画在了 body 背后
+- 说明: 这个 profile 没有 HMR，客户端改动必须**完整重启**才生效（刷新只是重新请求同一个旧 bundle）
+
 ## [0.17.0] - 2026-11-24
 
 > 按 Arc / Fluent 的配方重做玻璃：彩色背景 + 白纱表面

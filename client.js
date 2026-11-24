@@ -204,6 +204,15 @@ html[data-dsh-glass="1"] #dsh-concierge-glass {
   pointer-events: none;
   overflow: hidden;
 }
+/* 应用在 boot 时给 body 写了不透明背景：
+     body{background-color:#fff}   （深色 #151517，见 bootThemeStyle）
+   而壁纸层是 z-index: -1——**正好被 body 的背景盖住**。于是无论怎么改壁纸、
+   怎么调光斑，看到的永远是 body 那层白。玻璃皮肤必须把这一层让开。 */
+html[data-dsh-glass="1"],
+html[data-dsh-glass="1"] body,
+html[data-dsh-glass="1"] #root {
+  background: transparent !important;
+}
 /* 无边框窗口。窗口本身是 backgroundColor #00000000 + backgroundMaterial acrylic，
    DWM 一直在窗口后面画桌面壁纸的模糊——只是被页面铺满的不透明底盖住了。
 

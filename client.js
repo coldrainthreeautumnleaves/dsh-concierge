@@ -526,47 +526,10 @@ html[data-dsh-glass="1"] [class*="_centerCol"] {
    不变，天然适合烘一次。 */
 #dsh-concierge-frost { display: none; }
 html[data-dsh-glass="1"] #dsh-concierge-frost {
-  display: block;
-  position: fixed;
-  overflow: hidden;
-  z-index: -1;
-  pointer-events: none;
-  /* 把布局/绘制范围锁在这块矩形里：外面的变化不会让它重绘 */
-  contain: strict;
-  /* 兜底色用壁纸本身，不用中性白纱。
-     子层（模糊壁纸）不透明，正常情况下完全盖住这里；但静止时 GPU 可能把那个
-     大模糊层丢掉，那时露出来的就是这里的底色。原来是 rgba(tint, 0.32) 的中性
-     白——压在桌面上就是一块去饱和的灰，正是「静止时发灰」的来源。
-     换成壁纸渐变之后，子层掉了也只是少一层模糊，不会变色。 */
-  background: linear-gradient(165deg, var(--dsh-canvas) 0%, #e7eef7 50%, #edf1f4 100%);
-}
-html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-frost {
-  background: linear-gradient(165deg, var(--dsh-canvas) 0%, #121a24 50%, #0c1417 100%);
-}
-#dsh-concierge-frost > div {
-  position: absolute;
-  width: 100vw;
-  height: 100vh;
-  background-image:
-    var(--dsh-grain, none),
-    radial-gradient(900px 700px at 8% 0%, rgba(122, 162, 214, 0.55) 0%, rgba(122, 162, 214, 0) 60%),
-    radial-gradient(820px 640px at 92% 6%, rgba(150, 180, 222, 0.35) 0%, rgba(150, 180, 222, 0) 62%),
-    radial-gradient(940px 720px at 78% 100%, rgba(214, 206, 196, 0.30) 0%, rgba(214, 206, 196, 0) 62%),
-    linear-gradient(165deg, var(--dsh-canvas) 0%, #e7eef7 50%, #edf1f4 100%);
-  background-size: 140px 140px, auto, auto, auto, auto;
-  background-repeat: repeat, no-repeat, no-repeat, no-repeat, no-repeat;
-  /* 源色已经是低饱和，这里只做轻微收口：不再用 0.32 硬压，
-     否则饱和色被压成灰，玻璃就「脏」了。 */
-  filter: blur(28px) saturate(1.25) brightness(1.02);
-}
-html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-frost > div {
-  background-image:
-    var(--dsh-grain, none),
-    radial-gradient(900px 700px at 8% 0%, rgba(52, 86, 140, 0.55) 0%, rgba(52, 86, 140, 0) 60%),
-    radial-gradient(820px 640px at 92% 6%, rgba(44, 64, 96, 0.40) 0%, rgba(44, 64, 96, 0) 62%),
-    radial-gradient(940px 720px at 78% 100%, rgba(70, 66, 62, 0.28) 0%, rgba(70, 66, 62, 0) 62%),
-    linear-gradient(165deg, var(--dsh-canvas) 0%, #121a24 50%, #0c1417 100%);
-  filter: blur(28px) saturate(0.55) brightness(0.98);
+  /* 关掉。这一层是「预模糊的壁纸副本」，铺在整页底下，所有半透明面板都压在它
+     上面——填充一降，透出来的就是这层糊过的壁纸，看着像垫了一张磨砂纸。
+     壁纸本身由 #dsh-concierge-glass 铺，去掉这层不影响底色，只是不再糊。 */
+  display: none;
 }
 /* 会话区磨砂现在由上面那层预模糊负责，::before 不再挂 backdrop-filter。 */
 html[data-dsh-glass="1"] [data-conversation-region="chat"] {

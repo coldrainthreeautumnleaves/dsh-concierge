@@ -418,13 +418,13 @@ html[data-dsh-glass="1"] [class*="_bottomRow"] {
 }
 /* 输入框座位自带一条渐隐：
      linear-gradient(180deg, transparent 0, var(--dsw-alias-bg-base) 36px)
-   玻璃下 bg-base 只有 0.55 不透明度，渐隐的尽头等于「没有底」，露出下面那层
-   预模糊壁纸（模糊 + saturate 0.62，底部是薄荷段）——整块发青。
-   不同版本挂的类名不一样：_composerSeat（sticky 座位）和 _composerStack
-   （里面的堆叠容器）都兜上，统一铺成会话区那个平色。 */
+   玻璃下 bg-base 是半透明的，渐隐的尽头等于「没有底」，露出下面那层预模糊壁纸
+   （模糊 + saturate，底部是薄荷段）——整块发青。这是已知坑：dsh-web#98 里几个
+   插画皮肤把 bg-base 改透明之后，座位遮罩同样整体变透。
+   关键：**不能用同一个半透明 token 去盖**，那等于没盖。这里给不透明的画布色。 */
 html[data-dsh-glass="1"] [class*="_composerSeat"],
 html[data-dsh-glass="1"] [class*="_composerStack"] {
-  background: var(--dsw-alias-bg-base) !important;
+  background: var(--dsh-canvas) !important;
 }
 /* 玻璃的边界靠「棱」，不靠「白」：填充降下来之后，用 1px 内高光把卡片和底分开。
    参考 art-direction 的故障对照表——「Milky plastic slab（奶白塑料）」的修法就是

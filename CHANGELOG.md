@@ -6,6 +6,15 @@
 
 ## [Unreleased]
 
+## [0.15.3] - 2026-11-24
+
+> 输入框座位改用不透明底
+
+### Fixed
+
+- 外观: `_composerSeat` / `_composerStack` 的背景从 `var(--dsw-alias-bg-base)`（半透明）换成 `var(--dsh-canvas)`（不透明）。之前是拿「同一种半透明色」去盖半透明，等于没盖——座位自带的 `color-mix(… bg-base …)` 渐隐整体变透，壁纸透上来，输入框底下像垫了张磨砂纸
+- 依据: [dsh-web#98](https://github.com/zhu1090093659/dsh-web/issues/98) 记录的是同一个坑——插画皮肤把 `--dsw-alias-bg-base` 改透明后，`composerSeat` 的 `color-mix` 遮罩整体失效；[token-map.md](https://raw.githubusercontent.com/Cenuon/dsh-opencode-ui/66066534874a3f5479df10c2959bba42d787e961/docs/token-map.md) 说明 token 是写在 `<body>` 上的内联样式，只能走 `overrideTokens`，CSS 改不动
+
 ## [0.15.2] - 2026-11-24
 
 > 关掉预模糊层

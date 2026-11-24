@@ -1577,23 +1577,23 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       )
       return {
         '--dsw-alias-bg-base': fill(0.42, 0.46),
-        '--dsw-alias-bg-layer-1': fill(0.62, 0.64),
+        '--dsw-alias-bg-layer-1': fill(0.8, 0.7),
         // 设置面板用的就是 layer-2，太薄了字会糊在壁纸上，这里给足不透明度
-        '--dsw-alias-bg-layer-2': fill(0.72, 0.74),
-        '--dsw-alias-bg-layer-3': fill(0.66, 0.68),
-        '--dsw-alias-bg-overlay': fill(0.66, 0.68),
+        '--dsw-alias-bg-layer-2': fill(0.88, 0.8),
+        '--dsw-alias-bg-layer-3': fill(0.84, 0.74),
+        '--dsw-alias-bg-overlay': fill(0.86, 0.76),
         '--dsw-alias-bg-mask-1': fill(0.2, 0.3),
         '--dsw-alias-bg-mask-2': fill(0.28, 0.38),
         '--dsw-alias-bg-mask-3': fill(0.36, 0.46),
-        '--dsw-alias-card-fill': fill(0.5, 0.52),
+        '--dsw-alias-card-fill': fill(0.72, 0.6),
         '--dsw-alias-card-fill-hover': fill(0.72, 0.74),
-        '--dsw-alias-card-tile-fill': fill(0.48, 0.5),
-        '--dsw-alias-settings-card-fill': fill(0.8, 0.82),
+        '--dsw-alias-card-tile-fill': fill(0.68, 0.56),
+        '--dsw-alias-settings-card-fill': fill(0.92, 0.86),
         '--dsw-alias-settings-card-stroke': pair('rgba(255, 255, 255, 0.6)', 'rgba(255, 255, 255, 0.12)'),
         '--dsw-alias-onboarding-card-fill': fill(0.65, 0.67),
         '--dsw-alias-onboarding-secondary-fill': fill(0.58, 0.6),
-        '--dsw-menu-surface-fill': fill(0.74, 0.76),
-        '--dsw-specific-menu': fill(0.74, 0.76),
+        '--dsw-menu-surface-fill': fill(0.92, 0.86),
+        '--dsw-specific-menu': fill(0.92, 0.86),
         '--dsw-alias-menu-group-header-fill': fill(0.55, 0.57),
         '--dsw-alias-hovercard-bg': fill(0.9, 0.92),
         // 悬浮卡（会话卡片那种）有自己的 label token，默认是给「深底卡片」准备的
@@ -1612,9 +1612,9 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         // 另一块材质；「+」按钮要比卡片亮一点，才看得出它是个控件。
         // 基准跟会话区那一档对齐（bg-base 的 0.55）：之前是 0.76，比页面实一档，
         // 在玻璃上就是一块白板——「输入框是白的」说的就是这个。
-        '--dsw-specific-input-major': fill(0.46, 0.5),
+        '--dsw-specific-input-major': fill(0.82, 0.72),
         '--dsw-specific-selector': fill(0.82, 0.84),
-        '--dsw-specific-tip': fill(0.46, 0.5),
+        '--dsw-specific-tip': fill(0.82, 0.72),
         // 代码块 / 行内代码 / 标签徽章的底默认是 #f9fafb、#f5f6f7 这类近白实色，
         // 在玻璃上同样是一块块死白。跟着色温走，但保留一点层次：块比行内略实。
         '--dsw-alias-markdown-code-block': fill(0.55, 0.5),

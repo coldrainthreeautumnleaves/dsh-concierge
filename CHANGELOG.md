@@ -6,6 +6,15 @@
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-11-24
+
+> 所有背景层统一成不透明画布
+
+### Changed
+
+- 外观: AppFrame、ConversationRoot、`_centerCol`、`_bottomRow`、`_sidebarCol` 全部改成 `var(--dsh-canvas)`（不透明）。之前每层都是半透明白（0.42 / 0.62 / 0.72…），叠起来就是一层层磨砂纸，越叠越白越叠越灰；改成一层实底之后颜色只有一个来源，层次交给卡片填充和那条发丝线
+- 钩子: 用的是 dsh-theme-mist 层级实测里的稳定选择器——`[id='root'] > div[data-slot='root'] > div`（AppFrame）、`[data-slot='main.conversation'] > div`（ConversationRoot），不再靠哈希类名猜
+
 ## [0.15.6] - 2026-11-24
 
 > 竖杠换成真正看得见的边框色

@@ -334,14 +334,27 @@ html[data-dsh-glass="1"] div:has(> aside.dsh-console-modal) {
    两边同色之后需要一条「竖杠」把左栏和内容分开：用 inset 阴影画 1px 发丝线，
    不占布局（border 会把列宽挤掉 1px，缩放时还会闪）。 */
 html[data-dsh-glass="1"] [class*="_sidebarCol"] {
-  background: var(--dsw-alias-bg-base) !important;
+  background: var(--dsh-canvas) !important;
   border-right: none !important;
   box-shadow: inset -1px 0 0 var(--dsw-alias-border-l2);
 }
 html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] [class*="_sidebarCol"] {
-  background: var(--dsw-alias-bg-base) !important;
+  background: var(--dsh-canvas) !important;
   border-right: none !important;
   box-shadow: inset -1px 0 0 var(--dsw-alias-border-l2);
+}
+/* 所有背景层统一到不透明的画布色。
+   之前每层都是半透明白（0.42 / 0.62 / 0.72…），叠起来就是一层层「磨砂纸」，
+   越叠越白、越叠越灰。改成一层实底之后：颜色只有一个来源（--dsh-canvas），
+   层次交给卡片自身的填充和那条发丝线。
+   钩子取自 dsh-theme-mist 的层级实测：
+     1 AppFrame        = [id='root'] > div[data-slot='root'] > div
+     4 ConversationRoot= [data-slot='main.conversation'] > div */
+html[data-dsh-glass="1"] [id='root'] > div[data-slot='root'] > div,
+html[data-dsh-glass="1"] [data-slot='main.conversation'] > div,
+html[data-dsh-glass="1"] [class*="_centerCol"],
+html[data-dsh-glass="1"] [class*="_bottomRow"] {
+  background: var(--dsh-canvas) !important;
 }
 /* 官方 Windows 布局在内容列左上角留 16px 圆角（--dsh-windows-content-radius），
    壁纸铺满整窗之后，那个圆角会切出一块露壁纸的缺口，看着就是「一块空的」。

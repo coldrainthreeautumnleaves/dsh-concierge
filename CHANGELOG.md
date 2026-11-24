@@ -6,6 +6,15 @@
 
 ## [Unreleased]
 
+## [0.18.1] - 2026-11-24
+
+> 修掉维护中心整页崩掉的真因：effect 写在了 state 之前
+
+### Fixed
+
+- 客户端: `POST /auto` 那个 `React.useEffect` 原本插在 `const [autoUpdate, setAutoUpdate] = React.useState(…)` **之前**。`const` 初始化前处于暂时性死区，渲染到这里会抛 `Cannot access 'autoUpdate' before initialization`，整个维护中心组件崩掉——表现就是「设置页界面没了」，只剩遮罩盖着聊天。现在 effect 移到 state 声明之后
+- 说明: 之前把这个问题归因到 `--dsw-alias-bg-*` 那批 token（0.18.2–0.18.5 连加了补 token、`solid()`、涂遮罩三层），全部是误判，已在退回时删掉，现在一行业务样式都没动
+
 ## [0.18.0] - 2026-11-24
 
 > 自动更新搬到宿主侧定时器，弹窗只留一处

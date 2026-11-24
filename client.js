@@ -3247,6 +3247,14 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         ignoreListeners.add(listener)
         return () => ignoreListeners.delete(listener)
       }, [])
+
+      const [autoUpdate, setAutoUpdate] = React.useState(() => {
+        try {
+          return typeof localStorage === 'undefined' || localStorage.getItem('dsh-concierge:auto') !== '0'
+        } catch {
+          return true
+        }
+      })
       // 把开关同步给宿主：自动安装现在由宿主的定时器执行，不依赖这个页面开着。
       React.useEffect(() => {
         try {
@@ -3259,13 +3267,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
           /* bridge unavailable */
         }
       }, [autoUpdate])
-      const [autoUpdate, setAutoUpdate] = React.useState(() => {
-        try {
-          return typeof localStorage === 'undefined' || localStorage.getItem('dsh-concierge:auto') !== '0'
-        } catch {
-          return true
-        }
-      })
       const autoKeyRef = React.useRef('')
       const announceRef = React.useRef((() => {
         try {

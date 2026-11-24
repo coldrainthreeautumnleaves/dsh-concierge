@@ -268,7 +268,7 @@ html[data-dsh-edge="1"][data-dsh-edge-settle="1"] #root {
     radial-gradient(900px 700px at 8% 0%, rgba(122, 162, 214, 0.55) 0%, rgba(122, 162, 214, 0) 60%),
     radial-gradient(820px 640px at 92% 6%, rgba(150, 180, 222, 0.35) 0%, rgba(150, 180, 222, 0) 62%),
     radial-gradient(940px 720px at 78% 100%, rgba(214, 206, 196, 0.30) 0%, rgba(214, 206, 196, 0) 62%),
-    linear-gradient(165deg, var(--dsh-canvas) 0%, #e7eef7 50%, #eaf1f1 100%);
+    linear-gradient(165deg, var(--dsh-canvas) 0%, #e7eef7 50%, #edf1f4 100%);
   background-size: 140px 140px, auto, auto, auto, auto;
   background-repeat: repeat, no-repeat, no-repeat, no-repeat, no-repeat;
 }
@@ -525,7 +525,7 @@ html[data-dsh-glass="1"] #dsh-concierge-frost {
      大模糊层丢掉，那时露出来的就是这里的底色。原来是 rgba(tint, 0.32) 的中性
      白——压在桌面上就是一块去饱和的灰，正是「静止时发灰」的来源。
      换成壁纸渐变之后，子层掉了也只是少一层模糊，不会变色。 */
-  background: linear-gradient(165deg, var(--dsh-canvas) 0%, #e7eef7 50%, #eaf1f1 100%);
+  background: linear-gradient(165deg, var(--dsh-canvas) 0%, #e7eef7 50%, #edf1f4 100%);
 }
 html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-frost {
   background: linear-gradient(165deg, var(--dsh-canvas) 0%, #121a24 50%, #0c1417 100%);
@@ -539,7 +539,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-frost {
     radial-gradient(900px 700px at 8% 0%, rgba(122, 162, 214, 0.55) 0%, rgba(122, 162, 214, 0) 60%),
     radial-gradient(820px 640px at 92% 6%, rgba(150, 180, 222, 0.35) 0%, rgba(150, 180, 222, 0) 62%),
     radial-gradient(940px 720px at 78% 100%, rgba(214, 206, 196, 0.30) 0%, rgba(214, 206, 196, 0) 62%),
-    linear-gradient(165deg, var(--dsh-canvas) 0%, #e7eef7 50%, #eaf1f1 100%);
+    linear-gradient(165deg, var(--dsh-canvas) 0%, #e7eef7 50%, #edf1f4 100%);
   background-size: 140px 140px, auto, auto, auto, auto;
   background-repeat: repeat, no-repeat, no-repeat, no-repeat, no-repeat;
   /* 源色已经是低饱和，这里只做轻微收口：不再用 0.32 硬压，

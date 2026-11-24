@@ -410,7 +410,10 @@ html[data-dsh-edge-settle="1"] #root {
      0.87（token 原值）太实，看着像块白板；完全透明又没了边界。
      0.55 是中间档——卡片还在、投影还在，但不再是死白，和会话区更接近。 */
 html[data-dsh-glass="1"] [class*="_bottomRow"] {
-  background: transparent !important;
+  /* 和会话区用同一个底。之前这里是 transparent（为了防缩放时露底），但会话区
+     现在统一铺 bg-base，底栏透明就会直接露出壁纸——实测底栏 #CEE7EA、内容区
+     #E4EAED，输入框周围那一圈因此发青。 */
+  background: var(--dsw-alias-bg-base) !important;
   --dsw-specific-menu: rgba(var(--dsh-tint-rgb), 0.55);
 }
 html[data-dsh-glass="1"] [class*="_centerCol"] {

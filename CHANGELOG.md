@@ -6,6 +6,20 @@
 
 ## [Unreleased]
 
+## [0.13.6] - 2026-11-24
+
+> 侧边栏和会话区同色，颜色切换不再硬跳
+
+### Fixed
+
+- 外观: 侧边栏改回 `--dsw-alias-bg-base`。会话区根节点铺的就是这个 token（玻璃下 `rgba(248,250,252,0.55)`，发白），而侧边栏之前被强制成 `transparent`，直接露壁纸（发蓝）——两块并排差一大截
+
+### Changed
+
+- 外观: 给顶层表面（`html` / `body` / `#root` / `_frame` / `_sidebarCol` / `_centerCol` / `_bottomRow`）加 240ms 的 `background-color` + `color` 过渡。切浅深、切皮肤、改主题时颜色渐变过去，不再瞬间跳变
+- 外观: 「过渡期兜底」那个状态排除在过渡之外——它要求根层立刻变不透明，加了过渡反而会把白带放回来
+- 兼容: `prefers-reduced-motion` 下关闭过渡
+
 ## [0.13.5] - 2026-11-22
 
 > 插件路由补上 DSH 自己的访问检查

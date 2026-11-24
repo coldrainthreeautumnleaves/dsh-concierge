@@ -328,15 +328,16 @@ html[data-dsh-glass="1"] div:has(> aside.dsh-console-modal) {
    backdrop-filter——侧边栏里挂着 fixed 定位的弹层，给容器加 filter 会把它们的
    包含块换成侧边栏，弹层会错位（dsh-glass-skin 的 README 也提到这一点）。
    壁纸是柔和的冷调渐变，不糊也看不出锯齿。 */
-/* 侧边栏必须和内容列完全同色。内容列在玻璃皮肤下是 background: transparent
-   （见下面 _centerCol 那条），所以侧边栏也必须是透明——只要它压着任何非零的
-   tint，两块之间就永远差一档。边框同样显式去掉。 */
+/* 侧边栏必须和会话区完全同色。会话区根节点（an3WzG_root）自己铺的是
+   --dsw-alias-bg-base（玻璃下 = rgba(248,250,252,0.55)，发白），所以侧边栏
+   不能再用 transparent——那会直接露壁纸（发蓝），两块并排差一大截。
+   这里统一走同一个 token，浅色深色都是。边框同样显式去掉。 */
 html[data-dsh-glass="1"] [class*="_sidebarCol"] {
-  background: transparent !important;
+  background: var(--dsw-alias-bg-base) !important;
   border-right: none !important;
 }
 html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] [class*="_sidebarCol"] {
-  background: transparent !important;
+  background: var(--dsw-alias-bg-base) !important;
   border-right: none !important;
 }
 /* 官方 Windows 布局在内容列左上角留 16px 圆角（--dsh-windows-content-radius），
@@ -357,6 +358,31 @@ html[data-dsh-glass="1"] [data-windows-titlebar] [class*="_frame"] {
 html[data-dsh-glass="1"] [data-windows-titlebar] [class*="_frame"]::before,
 html[data-dsh-skin="native"] [data-windows-titlebar] [class*="_frame"]::before {
   background: var(--dsw-alias-bg-base) !important;
+}
+/* 颜色切换（浅/深、切皮肤、改主题）不要硬跳：主要表面给一段短过渡。
+   只挂在顶层容器上，流式输出时不会每帧重算。
+   注意排除「过渡期兜底」那个状态——它要求根层**立刻**变成不透明，加了过渡
+   反而会把白带放回来。 */
+html, body, #root,
+html[data-dsh-glass="1"] [class*="_frame"],
+html[data-dsh-glass="1"] [class*="_sidebarCol"],
+html[data-dsh-glass="1"] [class*="_centerCol"],
+html[data-dsh-glass="1"] [class*="_bottomRow"] {
+  transition: background-color 240ms ease, color 240ms ease;
+}
+html[data-dsh-edge-settle="1"],
+html[data-dsh-edge-settle="1"] body,
+html[data-dsh-edge-settle="1"] #root {
+  transition: none !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  html, body, #root,
+  html[data-dsh-glass="1"] [class*="_frame"],
+  html[data-dsh-glass="1"] [class*="_sidebarCol"],
+  html[data-dsh-glass="1"] [class*="_centerCol"],
+  html[data-dsh-glass="1"] [class*="_bottomRow"] {
+    transition: none;
+  }
 }
 /* 底部那一行（grid-column: 1/-1，横贯整窗）自带 --dsw-alias-bg-base 的浅底。
    窗口缩放时这一行的行高会滞后，它被拉高就铺出一条横贯整窗的浅色带——

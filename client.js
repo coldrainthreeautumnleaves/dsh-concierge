@@ -416,13 +416,19 @@ html[data-dsh-glass="1"] [class*="_bottomRow"] {
   background: var(--dsw-alias-bg-base) !important;
   --dsw-specific-menu: rgba(var(--dsh-tint-rgb), 0.55);
 }
-/* 输入框座位自带一条渐隐：
-     linear-gradient(180deg, transparent 0, var(--dsw-alias-bg-base) 36px)
-   玻璃下 bg-base 是半透明的，渐隐的尽头等于「没有底」，露出下面那层预模糊壁纸
-   （模糊 + saturate，底部是薄荷段）——整块发青。这是已知坑：dsh-web#98 里几个
-   插画皮肤把 bg-base 改透明之后，座位遮罩同样整体变透。
-   关键：**不能用同一个半透明 token 去盖**，那等于没盖。这里给不透明的画布色。 */
-html[data-dsh-glass="1"] [class*="_composerSeat"],
+/* 输入框座位（composer seat）自带一条 36px 渐隐：
+     linear-gradient(180deg, color-mix(bg-base 0%, transparent) 0, var(--dsw-alias-bg-base) 36px)
+   玻璃下 bg-base 是半透明的，渐变的「终点」等于没有底，壁纸从底下透上来——输入框
+   底下那块就像垫了一张磨砂纸。
+   这是官方记录过的坑（dsh-web#98），官方修法是把渐变的终点换成**皮肤正文色**
+   （不透明），而不是继续用 bg-base：
+     fix(skins): opaque composer seat fade for background skins (#98)
+   座位节点的稳定钩子是属性 [data-composer-seat]（见 dsh-theme-mist 的视觉规范
+   阶段 0 实测：第 5 层 = [data-composer-seat]）。 */
+html[data-dsh-glass="1"] [data-composer-seat],
+html[data-dsh-glass="1"] [class*="_composerSeat"] {
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0, var(--dsh-canvas) 36px) !important;
+}
 html[data-dsh-glass="1"] [class*="_composerStack"] {
   background: var(--dsh-canvas) !important;
 }

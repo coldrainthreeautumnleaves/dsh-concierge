@@ -6,6 +6,15 @@
 
 ## [Unreleased]
 
+## [0.15.4] - 2026-11-24
+
+> 按官方修法处理输入框座位
+
+### Fixed
+
+- 外观: 座位改用**官方稳定钩子** `[data-composer-seat]`，渐隐终点从不透明的 `var(--dsh-canvas)` 起（36px 之后实底），不再用半透明的 `bg-base`。之前按类名猜（`_composerSeat` / `_composerStack`）一直没命中真正那一层
+- 依据: [dsh-web commit 4138d4d](https://github.com/zhu1090093659/dsh-web/commit/4138d4dadc344ab2a9b04566150a8b0efadcd7b2)「opaque composer seat fade for background skins (#98)」；层级实测见 [dsh-theme-mist 视觉规范](https://raw.githubusercontent.com/ffyfox/dsh-theme-mist/078c7dfc4e2523935f11be0754080076b5c02a0b/docs/visual-spec.md)（第 5 层 = `[data-composer-seat]`，36px 渐变终点色）
+
 ## [0.15.3] - 2026-11-24
 
 > 输入框座位改用不透明底

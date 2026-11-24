@@ -350,22 +350,26 @@ html[data-dsh-glass="1"] [class*="_frame"] {
 /* 标题栏那一条是 frame 的 padding-top（应用规则：[data-windows-titlebar] .frame
    { padding-top: var(--dsh-windows-titlebar-height); background: sidebar-fill }），
    而 sidebar-fill 在玻璃下是 0.004，几乎透明 → 那条直接露出桌面 → 整条发蓝。
-   注意 data-windows-titlebar 加在 **html 本身**上（documentElement.hasAttribute），
-   所以选择器必须写成 html[data-windows-titlebar]，不能当后代找。
-   这里把壁纸渐变和 bg-base 一起画到 frame 上，padding 区自然和内容同色。 */
+   data-windows-titlebar 可能挂在 html 上，也可能挂在 body 上（应用那段 JS 读的是
+   documentElement，但属性未必加在那儿），所以两种写法都写上，别赌。 */
 html[data-dsh-glass="1"][data-windows-titlebar] [class*="_frame"],
-html[data-dsh-glass="1"][data-windows-titlebar] [class*="_frame"]::before {
+html[data-dsh-glass="1"] [data-windows-titlebar] [class*="_frame"],
+html[data-dsh-glass="1"][data-windows-titlebar] [class*="_frame"]::before,
+html[data-dsh-glass="1"] [data-windows-titlebar] [class*="_frame"]::before {
   background:
     linear-gradient(var(--dsw-alias-bg-base), var(--dsw-alias-bg-base)),
     linear-gradient(165deg, var(--dsh-canvas) 0%, #e7eef7 50%, #eaf1f1 100%) !important;
 }
 html[data-dsh-glass="1"][data-windows-titlebar][data-dsh-glass-scheme="dark"] [class*="_frame"],
-html[data-dsh-glass="1"][data-windows-titlebar][data-dsh-glass-scheme="dark"] [class*="_frame"]::before {
+html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] [data-windows-titlebar] [class*="_frame"],
+html[data-dsh-glass="1"][data-windows-titlebar][data-dsh-glass-scheme="dark"] [class*="_frame"]::before,
+html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] [data-windows-titlebar] [class*="_frame"]::before {
   background:
     linear-gradient(var(--dsw-alias-bg-base), var(--dsw-alias-bg-base)),
     linear-gradient(165deg, var(--dsh-canvas) 0%, #121a24 50%, #0c1417 100%) !important;
 }
-html[data-dsh-skin="native"][data-windows-titlebar] [class*="_frame"]::before {
+html[data-dsh-skin="native"][data-windows-titlebar] [class*="_frame"]::before,
+html[data-dsh-skin="native"] [data-windows-titlebar] [class*="_frame"]::before {
   background: var(--dsw-alias-bg-base) !important;
 }
 /* 颜色切换（浅/深、切皮肤、改主题）不要硬跳：主要表面给一段短过渡。

@@ -688,15 +688,30 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       if (!media) return
       const video = media.querySelector('video')
       if (video) video.remove()
-      media.style.backgroundImage = ''
+      // 注意：`style.backgroundImage = ''` 不会清掉内联属性（CSSOM 会忽略空值），
+      // 必须用 removeProperty。否则上一次写进去的 url(...) 会一直盖住样式表里的
+      // 渐变——壁纸文件失效时，那一层就什么都不画，整页露出窗口底色。
+      media.style.removeProperty('background-image')
+      media.style.removeProperty('background-size')
+      media.style.removeProperty('background-position')
       if (!look.enabled || look.skin !== 'glass') return
       const mode = look.wall && look.wall.mode
       const url = wallpaperUrl(look.wall && look.wall.src)
       if (!url) return
       if (mode === 'image') {
-        media.style.backgroundImage = `url("${url.replace(/"/g, '%22')}")`
-        media.style.backgroundSize = 'cover'
-        media.style.backgroundPosition = 'center'
+        // 先探一次：加载失败就保持样式表里的渐变，不留一层空白。
+        const probe = new Image()
+        probe.onload = () => {
+          media.style.backgroundImage = `url("${url.replace(/"/g, '%22')}")`
+          media.style.backgroundSize = 'cover'
+          media.style.backgroundPosition = 'center'
+        }
+        probe.onerror = () => {
+          media.style.removeProperty('background-image')
+          media.style.removeProperty('background-size')
+          media.style.removeProperty('background-position')
+        }
+        probe.src = url
         return
       }
       if (mode === 'video') {

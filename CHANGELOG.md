@@ -6,6 +6,15 @@
 
 ## [Unreleased]
 
+## [0.17.3] - 2026-11-24
+
+> 失效的自定义壁纸不再盖住渐变
+
+### Fixed
+
+- 外观: `applyWallpaper()` 用 `style.removeProperty('background-image')` 取代 `style.backgroundImage = ''`——后者在 CSSOM 里是空操作，上一次写进去的 `url(...)` 会一直盖住样式表里的渐变
+- 外观: 自定义壁纸改成**先探测再挂**：`new Image()` 加载成功才写内联样式，失败就保持渐变。壁纸文件被移走/改名时，那一层不再变成空白、露出窗口底色
+
 ## [0.17.2] - 2026-11-24
 
 > 壁纸终于画出来了：颗粒层把整条 background-image 拖垮了

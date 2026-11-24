@@ -6,6 +6,14 @@
 
 ## [Unreleased]
 
+## [0.14.8] - 2026-11-24
+
+> 输入卡不再是白板
+
+### Fixed
+
+- 外观: `--dsw-specific-input-major` 和 `--dsw-specific-tip` 从 `fill(0.76, 0.78)` 降到 `fill(0.58, 0.62)`。输入卡用的是这个 token（`GRgSLq_card`），0.76 比会话区的 bg-base（0.55）实一档，在玻璃上就是一块白板
+
 ## [0.14.7] - 2026-11-24
 
 > 壁纸末端去掉薄荷偏色

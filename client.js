@@ -1612,11 +1612,11 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         // 输入卡、左下角「+」按钮、卡片下面那条状态栏。
         // 状态栏必须和输入卡**同色**，否则两块之间会出现一条硬边界，看着像贴了
         // 另一块材质；「+」按钮要比卡片亮一点，才看得出它是个控件。
-        // 基准跟面板那一档对齐（layer-1 的 0.76）：之前输入卡是 0.42、状态栏是
-        // 0.86，一个太透一个太实，两者之间那条缝就是「聊天框和别处不一致」的来源。
-        '--dsw-specific-input-major': fill(0.76, 0.78),
+        // 基准跟会话区那一档对齐（bg-base 的 0.55）：之前是 0.76，比页面实一档，
+        // 在玻璃上就是一块白板——「输入框是白的」说的就是这个。
+        '--dsw-specific-input-major': fill(0.58, 0.62),
         '--dsw-specific-selector': fill(0.82, 0.84),
-        '--dsw-specific-tip': fill(0.76, 0.78),
+        '--dsw-specific-tip': fill(0.58, 0.62),
         // 代码块 / 行内代码 / 标签徽章的底默认是 #f9fafb、#f5f6f7 这类近白实色，
         // 在玻璃上同样是一块块死白。跟着色温走，但保留一点层次：块比行内略实。
         '--dsw-alias-markdown-code-block': fill(0.55, 0.5),

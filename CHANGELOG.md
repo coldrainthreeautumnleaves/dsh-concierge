@@ -6,6 +6,15 @@
 
 ## [Unreleased]
 
+## [0.13.8] - 2026-11-24
+
+> 顶栏那一条终于真的刷上底色了
+
+### Fixed
+
+- 外观: 顶栏选择器从 `html[data-dsh-glass="1"] [data-windows-titlebar] …` 改成 `html[data-dsh-glass="1"][data-windows-titlebar] …`。`data-windows-titlebar` 加在 **`<html>` 本身**上（`documentElement.hasAttribute`），当后代找永远匹配不到——0.12.2 到 0.13.7 这几版对顶栏的修改其实都没生效
+- 外观: 顶栏那条是 `_frame` 的 `padding-top`（应用规则 `[data-windows-titlebar] .frame { padding-top: …; background: sidebar-fill }`），而 `sidebar-fill` 在玻璃下是 0.004 → 整条直接露出桌面（实测 `#9FBFCC`），和内容的 `#D8E8EF` 差一大截。现在把「壁纸渐变 + bg-base」画到 frame 上，padding 区自然和内容同色
+
 ## [0.13.7] - 2026-11-24
 
 > 顶栏不再发蓝

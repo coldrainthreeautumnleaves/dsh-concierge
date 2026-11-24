@@ -6,6 +6,15 @@
 
 ## [Unreleased]
 
+## [0.17.2] - 2026-11-24
+
+> 壁纸终于画出来了：颗粒层把整条 background-image 拖垮了
+
+### Fixed
+
+- 外观: 从壁纸层的 `background-image` 里去掉 `var(--dsh-grain, none)`。颗粒是 SVG data URI（带引号和逗号），`var()` 替换进去之后**整条 `background-image` 被判定非法、整体丢弃**——所以纯色能画、渐变一条都画不出来，页面永远是白的。用洋红/绿标记逐层验证过：子层能画纯色，画不了渐变
+- 外观: `background-size` / `background-repeat` 同步改成 4 个值（原来按 5 层写）
+
 ## [0.17.1] - 2026-11-24
 
 > 让开 body 的不透明背景，壁纸层才看得见

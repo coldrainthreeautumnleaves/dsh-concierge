@@ -213,32 +213,6 @@ html[data-dsh-glass="1"] body,
 html[data-dsh-glass="1"] #root {
   background: transparent !important;
 }
-/* TEMP DEBUG：版本徽标。看到它就说明这份 CSS 真的在跑；看不到说明浏览器里
-   还是旧 bundle。定位完立刻删。 */
-html[data-dsh-glass="1"] #root::after {
-  content: "concierge 0.17.3";
-  position: fixed;
-  left: 10px;
-  top: 10px;
-  z-index: 99999;
-  padding: 4px 7px;
-  border-radius: 6px;
-  background: #ff00ff;
-  color: #fff;
-  font: 600 11px/1.2 ui-monospace, Consolas, monospace;
-  pointer-events: none;
-}
-/* TEMP DEBUG：壁纸层判别。父层绿、子层洋红：
-   看到绿 = 父层在画、子层没画（渐变或尺寸问题）；
-   看到洋红 = 子层在画，那就是渐变被别的东西盖住；
-   两个都没有 = 这一层被隐藏或裁剪掉了。 */
-html[data-dsh-glass="1"] #dsh-concierge-glass {
-  background: #00ff00 !important;
-}
-html[data-dsh-glass="1"] #dsh-concierge-glass > div:first-child {
-  background-image: none !important;
-  background-color: #ff00ff !important;
-}
 /* 无边框窗口。窗口本身是 backgroundColor #00000000 + backgroundMaterial acrylic，
    DWM 一直在窗口后面画桌面壁纸的模糊——只是被页面铺满的不透明底盖住了。
 
@@ -299,18 +273,16 @@ html[data-dsh-edge="1"][data-dsh-edge-settle="1"] #root {
      全屏合成层，Iris Xe 这种核显上等于每帧多读 4M 像素。 */
   --dsh-grain: none;
   background-image:
-    var(--dsh-grain, none),
     radial-gradient(1150px 860px at 14% -8%, rgba(255, 224, 240, 0.92) 0%, rgba(255, 224, 240, 0) 58%),
     radial-gradient(1000px 780px at 90% 2%, rgba(212, 228, 255, 0.95) 0%, rgba(212, 228, 255, 0) 60%),
     radial-gradient(1240px 920px at 64% 110%, rgba(224, 212, 255, 0.88) 0%, rgba(224, 212, 255, 0) 62%),
     linear-gradient(165deg, #f4f6fb 0%, var(--dsh-canvas) 50%, #f2f4f9 100%);
-  background-size: 140px 140px, auto, auto, auto, auto;
-  background-repeat: repeat, no-repeat, no-repeat, no-repeat, no-repeat;
+  background-size: auto, auto, auto, auto;
+  background-repeat: no-repeat, no-repeat, no-repeat, no-repeat;
 }
 
 html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-glass > div:first-child {
   background-image:
-    var(--dsh-grain, none),
     radial-gradient(900px 700px at 8% 0%, rgba(52, 86, 140, 0.55) 0%, rgba(52, 86, 140, 0) 60%),
     radial-gradient(820px 640px at 92% 6%, rgba(44, 64, 96, 0.40) 0%, rgba(44, 64, 96, 0) 62%),
     radial-gradient(940px 720px at 78% 100%, rgba(70, 66, 62, 0.28) 0%, rgba(70, 66, 62, 0) 62%),

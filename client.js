@@ -460,10 +460,10 @@ html[data-dsh-glass="1"] [class*="_bottomRow"] {
    阶段 0 实测：第 5 层 = [data-composer-seat]）。 */
 html[data-dsh-glass="1"] [data-composer-seat],
 html[data-dsh-glass="1"] [class*="_composerSeat"] {
-  background: linear-gradient(180deg, rgba(239, 234, 249, 0) 0, #efeaf9 36px) !important;
+  background: transparent !important;
 }
 html[data-dsh-glass="1"] [class*="_composerStack"] {
-  background: #efeaf9 !important;
+  background: transparent !important;
 }
 /* 玻璃的边界靠「棱」，不靠「白」：填充降下来之后，用 1px 内高光把卡片和底分开。
    参考 art-direction 的故障对照表——「Milky plastic slab（奶白塑料）」的修法就是
@@ -1611,7 +1611,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         '--dsw-alias-bg-base': fill(0.6, 0.55),
         '--dsw-alias-bg-layer-1': fill(0.6, 0.55),
         // 设置面板用的就是 layer-2，太薄了字会糊在壁纸上，这里给足不透明度
-        '--dsw-alias-bg-layer-2': fill(0.85, 0.8),
+        '--dsw-alias-bg-layer-2': fill(0.7, 0.68),
         '--dsw-alias-bg-layer-3': fill(0.78, 0.72),
         '--dsw-alias-bg-overlay': fill(0.8, 0.74),
         '--dsw-alias-bg-mask-1': fill(0.2, 0.3),
@@ -1644,13 +1644,13 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         // 另一块材质；「+」按钮要比卡片亮一点，才看得出它是个控件。
         // 基准跟会话区那一档对齐（bg-base 的 0.55）：之前是 0.76，比页面实一档，
         // 在玻璃上就是一块白板——「输入框是白的」说的就是这个。
-        '--dsw-specific-input-major': fill(0.85, 0.78),
+        '--dsw-specific-input-major': fill(0.62, 0.6),
         '--dsw-specific-selector': fill(0.82, 0.84),
-        '--dsw-specific-tip': fill(0.85, 0.78),
+        '--dsw-specific-tip': fill(0.62, 0.6),
         // 代码块 / 行内代码 / 标签徽章的底默认是 #f9fafb、#f5f6f7 这类近白实色，
         // 在玻璃上同样是一块块死白。跟着色温走，但保留一点层次：块比行内略实。
-        '--dsw-alias-markdown-code-block': fill(0.55, 0.5),
-        '--dsw-alias-markdown-code-block-banner': fill(0.64, 0.56),
+        '--dsw-alias-markdown-code-block': fill(0.34, 0.36),
+        '--dsw-alias-markdown-code-block-banner': fill(0.44, 0.42),
         '--dsw-alias-markdown-inline-code': fill(0.55, 0.5),
         '--dsw-alias-markdown-tag': fill(0.6, 0.5),
         '--dsw-specific-login-input': fill(0.76, 0.78),

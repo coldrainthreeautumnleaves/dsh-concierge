@@ -162,7 +162,7 @@ html[data-dsh-noanim="1"] [data-animating] {
    拉伸上一帧；非不透明的帧只能等下一次提交，那一两帧就露出窗口表面色
    （拖边框白带、全屏闪白都是这个原因）。 */
 html[data-dsh-glass="1"] {
-  --dsh-canvas: #e4ecf7;
+  --dsh-canvas: #eef1f8;
   background-color: var(--dsh-canvas) !important;
 }
 html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] {
@@ -265,10 +265,10 @@ html[data-dsh-edge="1"][data-dsh-edge-settle="1"] #root {
   --dsh-grain: none;
   background-image:
     var(--dsh-grain, none),
-    radial-gradient(900px 700px at 8% 0%, rgba(122, 162, 214, 0.55) 0%, rgba(122, 162, 214, 0) 60%),
-    radial-gradient(820px 640px at 92% 6%, rgba(150, 180, 222, 0.35) 0%, rgba(150, 180, 222, 0) 62%),
-    radial-gradient(940px 720px at 78% 100%, rgba(214, 206, 196, 0.30) 0%, rgba(214, 206, 196, 0) 62%),
-    linear-gradient(165deg, var(--dsh-canvas) 0%, #dfe9f4 50%, #e4edf2 100%);
+    radial-gradient(1150px 860px at 14% -8%, rgba(255, 224, 240, 0.92) 0%, rgba(255, 224, 240, 0) 58%),
+    radial-gradient(1000px 780px at 90% 2%, rgba(212, 228, 255, 0.95) 0%, rgba(212, 228, 255, 0) 60%),
+    radial-gradient(1240px 920px at 64% 110%, rgba(224, 212, 255, 0.88) 0%, rgba(224, 212, 255, 0) 62%),
+    linear-gradient(165deg, #f4f6fb 0%, var(--dsh-canvas) 50%, #f2f4f9 100%);
   background-size: 140px 140px, auto, auto, auto, auto;
   background-repeat: repeat, no-repeat, no-repeat, no-repeat, no-repeat;
 }
@@ -334,14 +334,14 @@ html[data-dsh-glass="1"] div:has(> aside.dsh-console-modal) {
    两边同色之后需要一条「竖杠」把左栏和内容分开：用 inset 阴影画 1px 发丝线，
    不占布局（border 会把列宽挤掉 1px，缩放时还会闪）。 */
 html[data-dsh-glass="1"] [class*="_sidebarCol"] {
-  background: var(--dsh-canvas) !important;
+  background: transparent !important;
   border-right: none !important;
-  box-shadow: inset -1px 0 0 var(--dsw-alias-border-l2);
+  box-shadow: inset -1px 0 0 rgba(15, 15, 20, 0.08);
 }
 html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] [class*="_sidebarCol"] {
-  background: var(--dsh-canvas) !important;
+  background: transparent !important;
   border-right: none !important;
-  box-shadow: inset -1px 0 0 var(--dsw-alias-border-l2);
+  box-shadow: inset -1px 0 0 rgba(15, 15, 20, 0.08);
 }
 /* 所有背景层统一到不透明的画布色。
    之前每层都是半透明白（0.42 / 0.62 / 0.72…），叠起来就是一层层「磨砂纸」，
@@ -354,7 +354,7 @@ html[data-dsh-glass="1"] [id='root'] > div[data-slot='root'] > div,
 html[data-dsh-glass="1"] [data-slot='main.conversation'] > div,
 html[data-dsh-glass="1"] [class*="_centerCol"],
 html[data-dsh-glass="1"] [class*="_bottomRow"] {
-  background: var(--dsh-canvas) !important;
+  background: transparent !important;
 }
 /* 官方 Windows 布局在内容列左上角留 16px 圆角（--dsh-windows-content-radius），
    壁纸铺满整窗之后，那个圆角会切出一块露壁纸的缺口，看着就是「一块空的」。
@@ -443,10 +443,10 @@ html[data-dsh-glass="1"] [class*="_bottomRow"] {
    阶段 0 实测：第 5 层 = [data-composer-seat]）。 */
 html[data-dsh-glass="1"] [data-composer-seat],
 html[data-dsh-glass="1"] [class*="_composerSeat"] {
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0, var(--dsh-canvas) 36px) !important;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0, #fbfcff 36px) !important;
 }
 html[data-dsh-glass="1"] [class*="_composerStack"] {
-  background: var(--dsh-canvas) !important;
+  background: #fbfcff !important;
 }
 /* 玻璃的边界靠「棱」，不靠「白」：填充降下来之后，用 1px 内高光把卡片和底分开。
    参考 art-direction 的故障对照表——「Milky plastic slab（奶白塑料）」的修法就是
@@ -1576,19 +1576,19 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         `rgba(26, 28, 32, ${scale(darkAlpha)})`,
       )
       return {
-        '--dsw-alias-bg-base': fill(0.42, 0.46),
-        '--dsw-alias-bg-layer-1': fill(0.8, 0.7),
+        '--dsw-alias-bg-base': fill(0.6, 0.55),
+        '--dsw-alias-bg-layer-1': fill(0.6, 0.55),
         // 设置面板用的就是 layer-2，太薄了字会糊在壁纸上，这里给足不透明度
-        '--dsw-alias-bg-layer-2': fill(0.88, 0.8),
-        '--dsw-alias-bg-layer-3': fill(0.84, 0.74),
-        '--dsw-alias-bg-overlay': fill(0.86, 0.76),
+        '--dsw-alias-bg-layer-2': fill(0.85, 0.8),
+        '--dsw-alias-bg-layer-3': fill(0.78, 0.72),
+        '--dsw-alias-bg-overlay': fill(0.8, 0.74),
         '--dsw-alias-bg-mask-1': fill(0.2, 0.3),
         '--dsw-alias-bg-mask-2': fill(0.28, 0.38),
         '--dsw-alias-bg-mask-3': fill(0.36, 0.46),
-        '--dsw-alias-card-fill': fill(0.72, 0.6),
+        '--dsw-alias-card-fill': fill(0.66, 0.58),
         '--dsw-alias-card-fill-hover': fill(0.72, 0.74),
-        '--dsw-alias-card-tile-fill': fill(0.68, 0.56),
-        '--dsw-alias-settings-card-fill': fill(0.92, 0.86),
+        '--dsw-alias-card-tile-fill': fill(0.62, 0.54),
+        '--dsw-alias-settings-card-fill': fill(0.9, 0.84),
         '--dsw-alias-settings-card-stroke': pair('rgba(255, 255, 255, 0.6)', 'rgba(255, 255, 255, 0.12)'),
         '--dsw-alias-onboarding-card-fill': fill(0.65, 0.67),
         '--dsw-alias-onboarding-secondary-fill': fill(0.58, 0.6),
@@ -1612,9 +1612,9 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         // 另一块材质；「+」按钮要比卡片亮一点，才看得出它是个控件。
         // 基准跟会话区那一档对齐（bg-base 的 0.55）：之前是 0.76，比页面实一档，
         // 在玻璃上就是一块白板——「输入框是白的」说的就是这个。
-        '--dsw-specific-input-major': fill(0.82, 0.72),
+        '--dsw-specific-input-major': fill(0.85, 0.78),
         '--dsw-specific-selector': fill(0.82, 0.84),
-        '--dsw-specific-tip': fill(0.82, 0.72),
+        '--dsw-specific-tip': fill(0.85, 0.78),
         // 代码块 / 行内代码 / 标签徽章的底默认是 #f9fafb、#f5f6f7 这类近白实色，
         // 在玻璃上同样是一块块死白。跟着色温走，但保留一点层次：块比行内略实。
         '--dsw-alias-markdown-code-block': fill(0.55, 0.5),

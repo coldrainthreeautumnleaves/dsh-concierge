@@ -6,6 +6,17 @@
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-11-24
+
+> 按 Arc / Fluent 的配方重做玻璃：彩色背景 + 白纱表面
+
+### Changed
+
+- 外观: 背景改成**三团彩色光斑**（粉 `rgba(255,224,240,.92)` / 蓝 `rgba(212,228,255,.95)` / 紫 `rgba(224,212,255,.88)`）铺在 `#eef1f8` 上；结构层（AppFrame、ConversationRoot、`_centerCol`、`_bottomRow`、`_sidebarCol`）全部改成 `transparent`，让光斑透上来
+- 外观: 表面回到白纱——`bg-base` / `layer-1` 0.60、`layer-2` 0.85、`layer-3` 0.78、`overlay` 0.80、输入卡 0.85、卡片 0.66
+- 外观: 竖杠换成 `rgba(15,15,20,0.08)`（Arc 的 `--border-alt`），输入卡保留 `rgba(255,255,255,.55)` 内高光
+- 依据: 玻璃的颜色来自**背景**而不是表面——「纯白背景无法显示明显的背景采样」（[linear-glass-ui](https://gitee.com/xiaobait9/linear-glass-ui/blob/master/README.md)）；Arc 的配方是彩色光斑 + 白 0.60/0.85 表面（[Arc Glass](https://raw.githubusercontent.com/rohitg00/awesome-claude-design/main/design-md/glass/arc.md)）；WinUI Acrylic 同构：模糊 → 亮度层 → 色调，`tintOpacity` ≈ 0.6、`luminosityOpacity` ≈ 0.85（[msime-windows #1033](https://github.com/metasequoiaime/msime-windows/pull/1033)）
+
 ## [0.16.2] - 2026-11-24
 
 > 画布压深，让卡片真的浮起来

@@ -372,6 +372,14 @@ html[data-dsh-skin="native"][data-windows-titlebar] [class*="_frame"]::before,
 html[data-dsh-skin="native"] [data-windows-titlebar] [class*="_frame"]::before {
   background: var(--dsw-alias-bg-base) !important;
 }
+/* TEMP DEBUG：确认顶栏那条到底是谁画的。frame = 洋红，frame::before = 青。
+   测完立刻删。 */
+html[data-dsh-glass="1"] [class*="_frame"] {
+  background: #ff00ff !important;
+}
+html[data-dsh-glass="1"] [class*="_frame"]::before {
+  background: #00ffff !important;
+}
 /* 颜色切换（浅/深、切皮肤、改主题）不要硬跳：主要表面给一段短过渡。
    只挂在顶层容器上，流式输出时不会每帧重算。
    注意排除「过渡期兜底」那个状态——它要求根层**立刻**变成不透明，加了过渡

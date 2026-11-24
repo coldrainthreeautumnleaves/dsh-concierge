@@ -356,17 +356,10 @@ html[data-dsh-glass="1"][data-windows-titlebar] [class*="_frame"],
 html[data-dsh-glass="1"] [data-windows-titlebar] [class*="_frame"],
 html[data-dsh-glass="1"][data-windows-titlebar] [class*="_frame"]::before,
 html[data-dsh-glass="1"] [data-windows-titlebar] [class*="_frame"]::before {
-  background:
-    linear-gradient(var(--dsw-alias-bg-base), var(--dsw-alias-bg-base)),
-    linear-gradient(165deg, var(--dsh-canvas) 0%, #e7eef7 50%, #eaf1f1 100%) !important;
-}
-html[data-dsh-glass="1"][data-windows-titlebar][data-dsh-glass-scheme="dark"] [class*="_frame"],
-html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] [data-windows-titlebar] [class*="_frame"],
-html[data-dsh-glass="1"][data-windows-titlebar][data-dsh-glass-scheme="dark"] [class*="_frame"]::before,
-html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] [data-windows-titlebar] [class*="_frame"]::before {
-  background:
-    linear-gradient(var(--dsw-alias-bg-base), var(--dsw-alias-bg-base)),
-    linear-gradient(165deg, var(--dsh-canvas) 0%, #121a24 50%, #0c1417 100%) !important;
+  /* 和系统画的标题栏用同一个值：补丁把 titleBarOverlay.color 改成了
+     chromeFallbackFill() = #eef3fa / #0e1116，也就是 --dsh-canvas。
+     这里不要再叠 bg-base——那会多出 0.55 层白，和系统那条差一档。 */
+  background: var(--dsh-canvas) !important;
 }
 html[data-dsh-skin="native"][data-windows-titlebar] [class*="_frame"]::before,
 html[data-dsh-skin="native"] [data-windows-titlebar] [class*="_frame"]::before {

@@ -329,16 +329,19 @@ html[data-dsh-glass="1"] div:has(> aside.dsh-console-modal) {
    包含块换成侧边栏，弹层会错位（dsh-glass-skin 的 README 也提到这一点）。
    壁纸是柔和的冷调渐变，不糊也看不出锯齿。 */
 /* 侧边栏必须和会话区完全同色。会话区根节点（an3WzG_root）自己铺的是
-   --dsw-alias-bg-base（玻璃下 = rgba(248,250,252,0.55)，发白），所以侧边栏
-   不能再用 transparent——那会直接露壁纸（发蓝），两块并排差一大截。
-   这里统一走同一个 token，浅色深色都是。边框同样显式去掉。 */
+   --dsw-alias-bg-base，所以侧边栏不能再用 transparent——那会直接露壁纸，
+   两块并排差一大截。这里统一走同一个 token。
+   两边同色之后需要一条「竖杠」把左栏和内容分开：用 inset 阴影画 1px 发丝线，
+   不占布局（border 会把列宽挤掉 1px，缩放时还会闪）。 */
 html[data-dsh-glass="1"] [class*="_sidebarCol"] {
   background: var(--dsw-alias-bg-base) !important;
   border-right: none !important;
+  box-shadow: inset -1px 0 0 var(--dsw-alias-border-l1);
 }
 html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] [class*="_sidebarCol"] {
   background: var(--dsw-alias-bg-base) !important;
   border-right: none !important;
+  box-shadow: inset -1px 0 0 var(--dsw-alias-border-l1);
 }
 /* 官方 Windows 布局在内容列左上角留 16px 圆角（--dsh-windows-content-radius），
    壁纸铺满整窗之后，那个圆角会切出一块露壁纸的缺口，看着就是「一块空的」。

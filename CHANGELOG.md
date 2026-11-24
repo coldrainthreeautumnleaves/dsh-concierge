@@ -6,6 +6,14 @@
 
 ## [Unreleased]
 
+## [0.15.5] - 2026-11-24
+
+> 侧边栏和内容之间加一条竖杠
+
+### Added
+
+- 外观: `_sidebarCol` 加 `box-shadow: inset -1px 0 0 var(--dsw-alias-border-l1)`，在右边缘画一条 1px 发丝线。两边同色之后需要一条分界，用 inset 阴影而不是 border——border 会把列宽挤掉 1px，窗口缩放时还会闪
+
 ## [0.15.4] - 2026-11-24
 
 > 按官方修法处理输入框座位

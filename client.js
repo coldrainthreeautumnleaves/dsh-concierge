@@ -361,6 +361,11 @@ html[data-dsh-glass="1"] [data-windows-titlebar] [class*="_frame"]::before {
      这里不要再叠 bg-base——那会多出 0.55 层白，和系统那条差一档。 */
   background: var(--dsh-canvas) !important;
 }
+/* TEMP DEBUG：frame 的 padding 区用的是 --dsw-specific-sidebar-fill，
+   直接把这个 token 涂成洋红，看那 40px 变不变。 */
+html[data-dsh-glass="1"] {
+  --dsw-specific-sidebar-fill: #ff00ff !important;
+}
 html[data-dsh-skin="native"][data-windows-titlebar] [class*="_frame"]::before,
 html[data-dsh-skin="native"] [data-windows-titlebar] [class*="_frame"]::before {
   background: var(--dsw-alias-bg-base) !important;

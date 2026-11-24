@@ -361,10 +361,15 @@ html[data-dsh-glass="1"] [data-windows-titlebar] [class*="_frame"]::before {
      这里不要再叠 bg-base——那会多出 0.55 层白，和系统那条差一档。 */
   background: var(--dsh-canvas) !important;
 }
-/* TEMP DEBUG：frame 的 padding 区用的是 --dsw-specific-sidebar-fill，
-   直接把这个 token 涂成洋红，看那 40px 变不变。 */
-html[data-dsh-glass="1"] {
-  --dsw-specific-sidebar-fill: #ff00ff !important;
+/* 壁纸层往上多铺一个标题栏高度。
+   frame 有 padding-top: 40px（放标题栏），而壁纸层是 position: fixed; inset: 0——
+   如果它的包含块是 frame 的 padding box，那 inset:0 就从内容区开始，窗口最上面
+   那 40px 直接漏出桌面（实测 #B1D2DE，两列颜色还不一样，说明各透各的）。 */
+html[data-dsh-glass="1"] #dsh-concierge-glass {
+  top: calc(-1 * var(--dsh-windows-titlebar-height, 0px));
+}
+html[data-dsh-glass="1"][data-dsh-edge="1"] #dsh-concierge-glass {
+  top: calc(var(--dsh-edge) - var(--dsh-windows-titlebar-height, 0px));
 }
 html[data-dsh-skin="native"][data-windows-titlebar] [class*="_frame"]::before,
 html[data-dsh-skin="native"] [data-windows-titlebar] [class*="_frame"]::before {

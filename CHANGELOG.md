@@ -6,6 +6,14 @@
 
 ## [Unreleased]
 
+## [0.14.2] - 2026-11-24
+
+> 壁纸层往上多铺一个标题栏高度
+
+### Fixed
+
+- 外观: `#dsh-concierge-glass` 加 `top: calc(-1 * var(--dsh-windows-titlebar-height))`。frame 有 `padding-top: 40px`（放标题栏），而壁纸层是 `position: fixed; inset: 0`——包含块是 frame 的 padding box 时，`inset: 0` 从内容区开始，窗口最上面那 40px 直接漏出桌面。实测那 40px 两列颜色不同（`#B1D2DE` / `#A8D2E1`），正是各透各的证据
+
 ## [0.14.1] - 2026-11-24
 
 > 顶栏区域和系统那条对齐

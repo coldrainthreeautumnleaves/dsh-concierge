@@ -162,7 +162,7 @@ html[data-dsh-noanim="1"] [data-animating] {
    拉伸上一帧；非不透明的帧只能等下一次提交，那一两帧就露出窗口表面色
    （拖边框白带、全屏闪白都是这个原因）。 */
 html[data-dsh-glass="1"] {
-  --dsh-canvas: #eef3fa;
+  --dsh-canvas: #e4ecf7;
   background-color: var(--dsh-canvas) !important;
 }
 html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] {
@@ -268,7 +268,7 @@ html[data-dsh-edge="1"][data-dsh-edge-settle="1"] #root {
     radial-gradient(900px 700px at 8% 0%, rgba(122, 162, 214, 0.55) 0%, rgba(122, 162, 214, 0) 60%),
     radial-gradient(820px 640px at 92% 6%, rgba(150, 180, 222, 0.35) 0%, rgba(150, 180, 222, 0) 62%),
     radial-gradient(940px 720px at 78% 100%, rgba(214, 206, 196, 0.30) 0%, rgba(214, 206, 196, 0) 62%),
-    linear-gradient(165deg, var(--dsh-canvas) 0%, #e7eef7 50%, #edf1f4 100%);
+    linear-gradient(165deg, var(--dsh-canvas) 0%, #dfe9f4 50%, #e4edf2 100%);
   background-size: 140px 140px, auto, auto, auto, auto;
   background-repeat: repeat, no-repeat, no-repeat, no-repeat, no-repeat;
 }

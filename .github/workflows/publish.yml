@@ -1,0 +1,47 @@
+name: publish
+
+# 发布流程：
+#   1. 改 package.json 的 version（同时更新 CHANGELOG）
+#   2. 提交并推送到 main
+#   3. 在 GitHub 上建一个 Release，tag 用 v<version>（例如 v0.19.0）
+#   4. 这个 workflow 会校验 tag 与 package.json 一致，然后发布到 npm
+#
+# 也可以手动触发：Actions → publish → Run workflow。
+# 需要仓库 secret：NPM_TOKEN（npm 的 Automation / 绕过 2FA 的 Granular token）。
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  npm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+
+      # tag 和 package.json 对不上就不发，避免发出一个版本号错误的包
+      - name: Verify the tag matches package.json
+        if: github.event_name == 'release'
+        run: |
+          pkg=$(node -p "require('./package.json').version")
+          tag="${GITHUB_REF_NAME#v}"
+          echo "package.json = $pkg"
+          echo "release tag  = $tag"
+          if [ "$pkg" != "$tag" ]; then
+            echo "::error::版本号不一致：package.json 是 $pkg，tag 是 $tag"
+            exit 1
+          fi
+
+      - name: Publish to npm
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

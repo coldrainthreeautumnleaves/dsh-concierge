@@ -6,6 +6,15 @@
 
 ## [Unreleased]
 
+## [0.19.2] - 2026-11-25
+
+> 「标准模式」那块白底去掉
+
+### Fixed
+
+- 外观: `--dsw-alias-bg-module-platform` 从 `fill(0.72, 0.66)` 改成 `transparent`。应用里 `.CDP_Dq_selector` / `.-TO4SG_selector`（新会话的「标准模式」「工作区」选择器）就是 `background: var(--dsw-alias-bg-module-platform)`，默认值 `var(--dsw-static-neutral-bluish-60)` 是浅灰蓝——在白页面上看不出来，铺到彩色渐变上就是一块白板。这个 token 是 0.19.0 补市场 token 时一起加的
+- 参考: 社区主题同样在跟这个按钮较劲——[dsh-gemini-cat-theme](https://dshmp.com/zh/plugins/dsh-gemini-cat-theme) 给它「补衬底」，[dsh-glass-ranswork](https://socket.dev/npm/package/dsh-glass-ranswork) 则明确「不要白底」并把 `.frame` 清成透明。玻璃皮肤取后者
+
 ## [0.19.1] - 2026-11-25
 
 > 收窄实色底的选择器，别再给选择器刷白块

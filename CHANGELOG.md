@@ -6,6 +6,15 @@
 
 ## [Unreleased]
 
+## [0.19.4] - 2026-11-25
+
+> 颜色回到 DSH 默认，别自作主张改品牌色
+
+### Fixed
+
+- 外观: 撤掉 0.19.0 补市场 token 时顺手加进去的 19 个**颜色**覆盖，回到 DSH 原值。`brand-primary` 在 DSH 里是 `neutral-bluish-1000`（**近黑**），我把它改成了蓝色 `#2f6bff`；`button-primary-fill`、`link`、`state-*` 八个、`toast-*`、`tooltip-label`、`menu-icon`、`label-primary-foreground` 同理。结果按钮、开关、状态点全都发蓝发绿，和原版对不上
+- 保留: 表面类 token（`bg-*`、`border-l3/l4`、`settings-card-*`、`button-tool-bar-hover`、`interactive-bg-active` 等）不动——玻璃皮肤只该改「面」，不该改「色」
+
 ## [0.19.3] - 2026-11-25
 
 > 选择器那块白底：token 加直接 CSS，两条一起压

@@ -6,6 +6,18 @@
 
 ## [Unreleased]
 
+## [0.20.3] - 2026-11-25
+
+> 按真类名压「标准模式」：`m2hUqa_seat`
+
+### Fixed
+
+- 外观: 新增 `[class*='_seat']` / `[class*='_menuAnchor']` 的 `background: transparent !important`（同时清 `background-image` 和 `box-shadow`）。之前三轮（`_selector`、`bg-module-platform` token、`heroOptions` 子树）全是猜的类名，一次都没命中——真实类名是用户从 DevTools 贴出来的 `<button class="m2hUqa_seat">`
+
+### 说明
+
+- `.m2hUqa_seat` 自己的规则是 `background: 0 0`（透明），只在 `:hover` / `[aria-expanded=true]` 时取 `--dsw-alias-interactive-bg-hover`；这两条都已还原成 DSH 原值，白块仍在，所以还有别的东西在画底。这条按真类名压死
+
 ## [0.20.2] - 2026-11-25
 
 > 底座打孔：`bg-base` 在样式表里直接打成透明

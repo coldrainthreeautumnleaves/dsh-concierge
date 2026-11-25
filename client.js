@@ -534,6 +534,17 @@ html[data-dsh-glass="1"] *::after {
 html[data-dsh-glass="1"] [class*='_selector'] {
   background: transparent !important;
 }
+
+/* 新会话页的「工作区 / 标准模式」选择器。真实类名是 m2hUqa_seat（用户从
+   DevTools 里贴出来的）。它自己的规则是 background: 0 0（透明），只在 hover
+   和 [aria-expanded=true] 时取 --dsw-alias-interactive-bg-hover。这两条都试过，
+   白块仍在，说明还有别的东西在画底——这里按真类名直接压死。 */
+html[data-dsh-glass="1"] [class*='_seat'],
+html[data-dsh-glass="1"] [class*='_menuAnchor'] {
+  background: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
 /* 应用在中心列左边画了 .5px 的 border-left，在标签行下面画了 border-bottom——
    底色清零之后这两条线就是仅剩的分界，一并去掉。 */
 html[data-dsh-glass="1"] [class*="_centerCol"] {

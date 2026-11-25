@@ -516,7 +516,17 @@ html[data-dsh-glass="1"] *::after {
    铺到渐变上就是一块白板。token 改了不一定生效（主题运行时可能丢非法值），
    这里再直接压一层，不经过 token。 */
 html[data-dsh-glass="1"] [class*='_selector'] {
-  background: #00ff00 !important;
+  background: transparent !important;
+}
+/* 新会话欢迎页：工作区 / 模式选择器所在的容器（asar 里的真实结构
+   .an3WzG_heroWorkspaceRow + .an3WzG_heroOptions）。按钮的类名每个构建都变，
+   这里按容器压，不依赖按钮自己的类名。红色描边是验证用的。 */
+html[data-dsh-glass="1"] [class*='heroWorkspaceRow'] button,
+html[data-dsh-glass="1"] [class*='heroOptions'] button,
+html[data-dsh-glass="1"] [class*='heroOptions'] [role='button'],
+html[data-dsh-glass="1"] [class*='heroWorkspaceRow'] [role='button'] {
+  background: transparent !important;
+  outline: 2px solid #ff0000 !important;
 }
 
 html[data-dsh-glass="1"] [class*='_searchField'],

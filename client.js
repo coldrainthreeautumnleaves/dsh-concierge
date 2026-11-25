@@ -513,7 +513,9 @@ html[data-dsh-glass="1"] *::after {
 }
 html[data-dsh-glass="1"] [class*='_searchField'],
 html[data-dsh-glass="1"] [class*='_searchInput'],
-html[data-dsh-glass="1"] [class*='_tabSearchRow'] [class*='_pill_'] {
+html[data-dsh-glass="1"] [class*='_wrap_'] input,
+html[data-dsh-glass="1"] [data-chip],
+html[data-dsh-glass="1"] [class*='_pill_'] {
   background: var(--dsh-canvas) !important;
 }
 /* 设置页（插件 / 插件市场 / 维护中心 / 自动化任务）：整列不铺任何底色，

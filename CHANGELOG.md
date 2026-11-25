@@ -6,6 +6,14 @@
 
 ## [Unreleased]
 
+## [0.18.4] - 2026-11-25
+
+> 插件市场的搜索框和筛选胶囊也兜上
+
+### Fixed
+
+- 外观: 搜索框 / 筛选胶囊的选择器从「内置插件页的 `_tabSearchRow` 容器」改成按组件本身匹配——`_searchField`、`_searchInput`、`_wrap_ input`、`[data-chip]`、`_pill_`。插件市场（dshmarket）用的是公共 `Pill` 组件（`data-chip="1"`）和 `nUhMVa_searchField`，没有那个容器，所以之前一条都没命中
+
 ## [0.18.3] - 2026-11-25
 
 > 玻璃下不再有任何毛玻璃

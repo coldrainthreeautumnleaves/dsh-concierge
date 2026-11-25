@@ -518,21 +518,7 @@ html[data-dsh-glass="1"] [data-chip],
 html[data-dsh-glass="1"] [class*='_pill_'] {
   background: var(--dsh-canvas) !important;
 }
-/* 插件市场（dshmarket）自己的类名。它卡片的底取
-   var(--dsw-alias-settings-card-fill, …)，但实测改 token 之后卡片依旧跟着
-   底下的渐变变色（左粉右蓝），说明那条 token 没落到卡片上。这里按市场自己的
-   类名前缀（nUhMVa_，v1.84.1 的构建哈希）直接写死，不再经过 token。
-   只点市场这几个类，不碰 _card 这种泛匹配——那会连输入卡一起变成实白。 */
-html[data-dsh-glass="1"] [class*='nUhMVa_card'],
-html[data-dsh-glass="1"] [class*='nUhMVa_recentTile'],
-html[data-dsh-glass="1"] [class*='nUhMVa_viewBar'] {
-  background: #fcfdff !important;
-}
-html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] [class*='nUhMVa_card'],
-html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] [class*='nUhMVa_recentTile'],
-html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] [class*='nUhMVa_viewBar'] {
-  background: #1e2026 !important;
-}
+
 /* 设置页（插件 / 插件市场 / 维护中心 / 自动化任务）：整列不铺任何底色，
    直接坐在渐变背景上。之前这里铺的是 bg-base，视觉上就是一块浮起来的磨砂板，
    和周围渐变割裂。应用自己给 _centerCol 铺的 bg-base 要显式压掉。 */
@@ -1651,6 +1637,37 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         '--dsw-alias-card-fill': fill(0.66, 0.58),
         '--dsw-alias-card-fill-hover': fill(0.72, 0.74),
         '--dsw-alias-card-tile-fill': fill(0.62, 0.54),
+                // 插件市场按官方 THEMING.md 的清单消费这些 alias token，缺一个就在面板里
+        // 回落到原色。这里把剩下的 25 个补齐（清单见 dsh-market/THEMING.md）。
+        '--dsw-alias-bg-module-platform': fill(0.72, 0.66),
+        '--dsw-alias-border-l3': pair('rgba(120, 130, 150, 0.24)', 'rgba(255, 255, 255, 0.16)'),
+        '--dsw-alias-border-l4': pair('rgba(120, 130, 150, 0.32)', 'rgba(255, 255, 255, 0.22)'),
+        '--dsw-alias-button-primary-fill': pair('#2f6bff', '#5b8cff'),
+        '--dsw-alias-button-primary-hover': pair('#255ae0', '#6f9bff'),
+        '--dsw-alias-button-ghost-active-fill': fill(0.22, 0.18),
+        '--dsw-alias-button-ghost-active-border': pair('rgba(47, 107, 255, 0.45)', 'rgba(91, 140, 255, 0.5)'),
+        '--dsw-alias-button-tool-bar-hover': fill(0.3, 0.26),
+        '--dsw-alias-interactive-bg-active': fill(0.3, 0.26),
+        '--dsw-alias-interactive-bg-hover-danger': pair('rgba(220, 70, 70, 0.12)', 'rgba(255, 90, 90, 0.16)'),
+        '--dsw-alias-label-primary-foreground': pair('#ffffff', '#0b0d12'),
+        '--dsw-alias-brand-primary': pair('#2f6bff', '#5b8cff'),
+        '--dsw-alias-link': pair('#2f6bff', '#7aa2ff'),
+        '--dsw-alias-menu-icon': pair('rgba(90, 100, 120, 0.9)', 'rgba(200, 205, 215, 0.9)'),
+        '--dsw-alias-state-business-primary': pair('#2f6bff', '#5b8cff'),
+        '--dsw-alias-state-error-primary': pair('#e5484d', '#ff6369'),
+        '--dsw-alias-state-idle-primary': pair('#8b8b95', '#9aa1ad'),
+        '--dsw-alias-state-warn-primary': pair('#f5a623', '#ffb84d'),
+        '--dsw-alias-state-warn-label': pair('#8a5a00', '#ffcf70'),
+        '--dsw-alias-state-warn-tertiary': pair('rgba(138, 90, 0, 0.7)', 'rgba(255, 207, 112, 0.8)'),
+        '--dsw-alias-state-success-primary': pair('#30a46c', '#4cc38a'),
+        '--dsw-alias-state-success-tertiary': pair('rgba(48, 164, 108, 0.75)', 'rgba(76, 195, 138, 0.8)'),
+        '--dsw-alias-toast-label': pair('#f5f7fa', '#eef1f6'),
+        '--dsw-alias-toast-action': pair('#8ab4ff', '#a9c6ff'),
+        '--dsw-alias-tooltip-label': pair('#f5f7fa', '#eef1f6'),
+        // 市场吸顶的搜索条 / 分类条用它自己的变量；不设的话钉住时是透明的，
+        // 卡片从底下滚过就是「磨砂」。官方文档的 transparent-base contract。
+        '--dshm-sticky-bg': pair('rgba(252, 253, 255, 0.86)', 'rgba(30, 32, 38, 0.86)'),
+        '--dshm-stuck-bg': pair('rgba(252, 253, 255, 0.97)', 'rgba(30, 32, 38, 0.97)'),
         '--dsw-alias-settings-card-fill': pair('rgba(252, 253, 255, 1)', 'rgba(30, 32, 38, 1)'),
         '--dsw-alias-settings-card-stroke': pair('rgba(255, 255, 255, 0.6)', 'rgba(255, 255, 255, 0.12)'),
         '--dsw-alias-onboarding-card-fill': fill(0.65, 0.67),

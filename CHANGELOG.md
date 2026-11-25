@@ -6,6 +6,21 @@
 
 ## [Unreleased]
 
+## [0.19.0] - 2026-11-25
+
+> 按官方 THEMING.md 把市场消费的 token 补齐
+
+### Changed
+
+- 外观: 补上插件市场消费、我们一直没覆盖的 25 个 alias token——`bg-module-platform`、`border-l3/l4`、`button-primary-fill/hover`、`button-ghost-active-fill/border`、`button-tool-bar-hover`、`interactive-bg-active`、`interactive-bg-hover-danger`、`label-primary-foreground`、`brand-primary`、`link`、`menu-icon`、`state-*` 八个、`toast-label/action`、`tooltip-label`
+- 外观: 设置市场吸顶搜索条 / 分类条的 `--dshm-sticky-bg`（0.86）与 `--dshm-stuck-bg`（0.97）。不设的话钉住时是透明的，卡片从底下滚过就是「磨砂」
+- 移除: 按哈希类名写的 `nUhMVa_card` / `nUhMVa_recentTile` / `nUhMVa_viewBar` 补丁
+
+### 依据
+
+- [dsh-market THEMING.md](https://raw.githubusercontent.com/dsh-market/dsh-market/master/THEMING.md)：市场**故意不画自己的颜色**，全部走宿主 alias token；「类名是构建哈希，主题永远不要点它」，稳定钩子只有 `[data-dsh-market-root]`、`[data-dsh-market-tab]`、`[data-dshm-stuck]` 和 `--dshm-sticky-bg` / `--dshm-stuck-bg`
+- 同一份文档的 transparent-base contract：透明主题必须自己给吸顶行铺底，否则「卡片从它们下面滚过，两层文字叠在一起」
+
 ## [0.18.6] - 2026-11-25
 
 > 市场卡片按它自己的类名写死

@@ -16,7 +16,7 @@
  */
 import { spawn } from 'node:child_process'
 import { createReadStream, existsSync } from 'node:fs'
-import { appendFile, mkdir, readFile, rm, stat as statOf, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, rm, stat as statOf, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -382,28 +382,6 @@ export function apply(ctx) {
       handler: withGuard(ctx, (request, response) => handleRestart(ctx, request, response)),
     }),
     'dsh-concierge: restart route',
-  )
-
-  // 临时诊断（chore，不进正式版）：client 半把「页面上面积够大且画了底」的元素
-  // 回传过来，这里原样追加到日志，供排查「白块」用。查完整段删除。
-  ctx.effect(
-    () => ctx.webServer.register({
-      kind: 'exact',
-      path: `${ROUTE}/dom-probe`,
-      handler: withGuard(ctx, async (request, response) => {
-        if (request.method !== 'POST') return sendNodeJson(response, { ok: false, error: 'method not allowed' }, 405)
-        try {
-          const body = await readNodeJson(request)
-          const file = path.join(homedir(), '.dsh', 'logs', 'dsh-concierge-dom.log')
-          await mkdir(path.dirname(file), { recursive: true })
-          await appendFile(file, JSON.stringify(body) + '\n', 'utf8')
-          return sendNodeJson(response, { ok: true }, 200)
-        } catch (error) {
-          return sendNodeJson(response, { ok: false, error: messageOf(error) }, 400)
-        }
-      }),
-    }),
-    'dsh-concierge: dom probe route',
   )
 
   ctx.effect(

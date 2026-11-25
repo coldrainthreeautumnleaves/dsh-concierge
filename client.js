@@ -51,80 +51,6 @@ window.__ModuleLoader__.load({
       }
     }
 
-    /* ------------------------------------------------------- dom probe (tmp) -- */
-    /* 临时诊断（chore，不进正式版）：把当前页里「面积够大、且确实画了底」的元素
-       连同类名、矩形、祖先链回传 Host，落进 ~/.dsh/logs/dsh-concierge-dom.log。
-       目的是查清「白块」到底是哪个元素——查完整段删除。 */
-    function startDomProbe() {
-      const MAX_SENDS = 8
-      let sent = 0
-      let timer = 0
-
-      const chainOf = (el) => {
-        const parts = []
-        let node = el
-        for (let i = 0; i < 7 && node && node.nodeType === 1; i++) {
-          const cls = typeof node.className === 'string' ? node.className : ''
-          const head = cls.split(/\s+/).filter(Boolean).slice(0, 2).join('.')
-          parts.push(node.tagName.toLowerCase() + (head ? '.' + head : ''))
-          node = node.parentElement
-        }
-        return parts.join(' < ').slice(0, 200)
-      }
-
-      const report = () => {
-        if (sent >= MAX_SENDS || !document.body) return
-        const rows = []
-        const all = document.querySelectorAll('body *')
-        for (let i = 0; i < all.length; i++) {
-          const el = all[i]
-          const rect = el.getBoundingClientRect()
-          const width = rect.width
-          const height = rect.height
-          if (!(width * height >= 8000)) continue
-          const cs = window.getComputedStyle(el)
-          const bg = cs.backgroundColor || ''
-          const img = cs.backgroundImage || ''
-          const paints = (bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') || (img && img !== 'none')
-          if (!paints) continue
-          rows.push({
-            cls: (typeof el.className === 'string' ? el.className : '').slice(0, 90),
-            rect: [Math.round(rect.left), Math.round(rect.top), Math.round(width), Math.round(height)],
-            bg,
-            img: img === 'none' ? '' : img.slice(0, 80),
-            z: cs.zIndex,
-            pos: cs.position,
-            phase: el.getAttribute('data-phase') || '',
-            chain: chainOf(el),
-          })
-        }
-        rows.sort((a, b) => b.rect[2] * b.rect[3] - a.rect[2] * a.rect[3])
-        sent++
-        fetch(`${API}/dom-probe`, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({
-            page: String(window.location.href || '').slice(0, 160),
-            vp: [window.innerWidth, window.innerHeight],
-            rows: rows.slice(0, 30),
-          }),
-        }).catch(() => {})
-      }
-
-      const schedule = () => {
-        clearTimeout(timer)
-        timer = setTimeout(report, 2000)
-      }
-
-      setTimeout(report, 3000)
-      try {
-        const mo = new MutationObserver(schedule)
-        mo.observe(document.body, { childList: true, subtree: true })
-      } catch {
-        /* probe is best-effort */
-      }
-    }
-
     /* ---------------------------------------------------------- performance -- */
 
     const perf = {
@@ -5566,11 +5492,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         startLongTasks()
         startPerfMonitor()
         installResizeShield()
-        try {
-          startDomProbe()
-        } catch {
-          /* probe must never break the skin */
-        }
 
         readTyperPrefs()
         const typerRestores = []

@@ -6,6 +6,14 @@
 
 ## [Unreleased]
 
+## [0.19.1] - 2026-11-25
+
+> 收窄实色底的选择器，别再给选择器刷白块
+
+### Fixed
+
+- 外观: 上一版把 `[class*='_pill_']` 和 `[class*='_wrap_'] input` 一律刷成 `--dsh-canvas` 实色，误伤了新会话界面的「标准模式」选择器（被刷出一块白底）以及其它 `Pill` 组件。现在只保留 `_searchField` / `_searchInput` / `[data-chip]`（插件市场的搜索框与分类胶囊）
+
 ## [0.19.0] - 2026-11-25
 
 > 按官方 THEMING.md 把市场消费的 token 补齐

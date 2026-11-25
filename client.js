@@ -513,9 +513,7 @@ html[data-dsh-glass="1"] *::after {
 }
 html[data-dsh-glass="1"] [class*='_searchField'],
 html[data-dsh-glass="1"] [class*='_searchInput'],
-html[data-dsh-glass="1"] [class*='_wrap_'] input,
-html[data-dsh-glass="1"] [data-chip],
-html[data-dsh-glass="1"] [class*='_pill_'] {
+html[data-dsh-glass="1"] [data-chip] {
   background: var(--dsh-canvas) !important;
 }
 

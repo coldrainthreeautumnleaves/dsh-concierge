@@ -518,6 +518,21 @@ html[data-dsh-glass="1"] [data-chip],
 html[data-dsh-glass="1"] [class*='_pill_'] {
   background: var(--dsh-canvas) !important;
 }
+/* 插件市场（dshmarket）自己的类名。它卡片的底取
+   var(--dsw-alias-settings-card-fill, …)，但实测改 token 之后卡片依旧跟着
+   底下的渐变变色（左粉右蓝），说明那条 token 没落到卡片上。这里按市场自己的
+   类名前缀（nUhMVa_，v1.84.1 的构建哈希）直接写死，不再经过 token。
+   只点市场这几个类，不碰 _card 这种泛匹配——那会连输入卡一起变成实白。 */
+html[data-dsh-glass="1"] [class*='nUhMVa_card'],
+html[data-dsh-glass="1"] [class*='nUhMVa_recentTile'],
+html[data-dsh-glass="1"] [class*='nUhMVa_viewBar'] {
+  background: #fcfdff !important;
+}
+html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] [class*='nUhMVa_card'],
+html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] [class*='nUhMVa_recentTile'],
+html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] [class*='nUhMVa_viewBar'] {
+  background: #1e2026 !important;
+}
 /* 设置页（插件 / 插件市场 / 维护中心 / 自动化任务）：整列不铺任何底色，
    直接坐在渐变背景上。之前这里铺的是 bg-base，视觉上就是一块浮起来的磨砂板，
    和周围渐变割裂。应用自己给 _centerCol 铺的 bg-base 要显式压掉。 */

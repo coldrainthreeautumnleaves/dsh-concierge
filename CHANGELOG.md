@@ -6,6 +6,15 @@
 
 ## [Unreleased]
 
+## [0.18.6] - 2026-11-25
+
+> 市场卡片按它自己的类名写死
+
+### Fixed
+
+- 外观: 直接给 `nUhMVa_card` / `nUhMVa_recentTile` / `nUhMVa_viewBar` 写 `#fcfdff`（深色 `#1e2026`）。实测改 `--dsw-alias-settings-card-fill` 之后卡片依旧跟着渐变变色（左 `#F7E7F6`、右 `#E7EBFD`），说明那条 token 没有落到卡片上；这次按市场自己的类名前缀直接写死，不经过 token
+- 注意: 前缀 `nUhMVa_` 是 dshmarket v1.84.1 的构建哈希，市场升级后可能失效
+
 ## [0.18.5] - 2026-11-25
 
 > 插件市场的卡片改成不透明

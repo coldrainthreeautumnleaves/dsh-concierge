@@ -145,3 +145,36 @@ const [autoUpdate, setAutoUpdate] = React.useState(…)   // 后声明
 2. 「界面变透 / 变空 / 少一块」优先怀疑**渲染失败**，而不是颜色；
 3. 只改过一处却出问题，先查自己改的那一处，别去翻无关的 token；
 4. 同一个症状连试三次没解决，就换方法——今天的三层补丁加起来不如一行挪位置。
+
+## 十、两条今天用六个版本换来的
+
+### 1. 宽泛的 `[class*="..."]` 是雷区
+
+浮层那条「必须给足不透明底」的规则里写了 `[class*="_menu"]`，本意是匹配菜单面板。它同时命中了：
+
+```html
+<span class="m2hUqa_menuAnchor">   <!-- 只是个 anchor-name 定位用的空容器 -->
+```
+
+于是这个空 span 被刷上 `rgba(var(--dsh-tint-rgb), 0.96)`，正好盖在「标准模式」下面——看起来像「按钮有白底」，实际是旁边一个不可见的定位容器。
+
+**规矩**：属性选择器要带尾部下划线或更长前缀（`_menu_`、`_card_`），别用词根（`_menu`、`_card`、`_pill`）。这类词根会被 `menuAnchor`、`cardShots`、`pillRow` 复用。
+
+### 2. `bg-base` 必须用样式表打孔，不能用 overrideTokens
+
+`--dsw-alias-bg-base` 是「应用底色」，几乎所有页面根容器都铺它。用 `ctx.theme.overrideTokens` 给半透明有两个问题：
+
+- 宿主的偏好写入会盖回来；
+- 它只收合法颜色，`transparent` 会被丢掉。
+
+社区壁纸主题的通行做法（dsh-theme-theresa / dsh-ui-appearance）是在注入的样式表里直接：
+
+```css
+html[data-dsh-glass="1"] body { --dsw-alias-bg-base: transparent !important; }
+```
+
+### 3. 别再猜类名，先开 DevTools
+
+今天为了找一块白底，试了 `_selector`、`bg-module-platform` token、`heroOptions` 子树、`interactive-bg-hover`、`_seat` 五轮，**全部落空**。最后用户在 DevTools 的 **Styles 面板**里一眼看到命中的那条规则——就是我自己写的。
+
+「元素没反应」时，第一件事是右键 → 检查 → 看 Styles 里哪条规则在生效、被划掉的又是哪条。比对着 asar 猜类名快十倍。

@@ -6,6 +6,25 @@
 
 ## [Unreleased]
 
+## [0.20.0] - 2026-11-25
+
+> 「标准模式」白块的真因：我把悬停色改成了 24% 白
+
+### Fixed
+
+- 外观: 删掉 `--dsw-alias-interactive-bg-hover` 的覆盖，回到 DSH 原值。它原本是 `color-mix(in srgb, var(--dsw-alias-state-error-primary) 8%, transparent)`——一层几乎看不见的淡红；我把它设成了 `fill(0.24)`（24% 白），于是**所有悬停态都变成一块白**
+- 外观: `bg-layer-1` 回到 `0.6`（0.19.9 把它压到 0.34 是基于错误猜测）
+- 移除: 0.19.6–0.19.8 按 `heroWorkspaceRow` / `heroOptions` 猜的那批规则
+
+### 定位过程（记下来，下次别重走）
+
+1. `_selector`、`bg-module-platform`、`heroOptions button` 三轮都没命中——品红/荧光绿标记法证明前两条根本到不了那个元素；
+2. 最后是**用户把元素的 HTML 贴出来**才定位到：`<button class="m2hUqa_seat" title="选择新任务使用的 Agent 预设">`；
+3. 查 asar 的 `.m2hUqa_seat` 规则：平时 `background: 0 0`（透明），只在 `:hover` 和 `[aria-expanded=true]` 时取 `--dsw-alias-interactive-bg-hover`；
+4. 而那个 token 被我改成了 24% 白——白块就是这么来的。
+
+**教训**：改「交互色」（hover / active / selected）比改表面更危险——它们平时看不见，一出问题就是「凭空多出一块」。皮肤只该动 `bg-*` 表面，不该动 `interactive-*`。
+
 ## [0.19.4] - 2026-11-25
 
 > 颜色回到 DSH 默认，别自作主张改品牌色

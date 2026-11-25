@@ -518,61 +518,6 @@ html[data-dsh-glass="1"] *::after {
 html[data-dsh-glass="1"] [class*='_selector'] {
   background: transparent !important;
 }
-/* 新会话欢迎页：工作区 / 模式选择器（asar 里的真实结构
-   .an3WzG_heroWorkspaceRow + .an3WzG_heroOptions）。
-   按钮自己的类名每个构建都变，而且实测：给按钮刷透明之后白块还在——
-   说明白底在按钮外面的包装元素上。这里把整行、行内所有后代、以及它们的
-   伪元素一起清掉，不再依赖按钮的类名。 */
-html[data-dsh-glass="1"] [class*='heroWorkspaceRow'],
-html[data-dsh-glass="1"] [class*='heroOptions'],
-html[data-dsh-glass="1"] [class*='heroWorkspaceRow'] *,
-html[data-dsh-glass="1"] [class*='heroOptions'] * {
-  background: transparent !important;
-  background-image: none !important;
-  border-color: transparent !important;
-}
-html[data-dsh-glass="1"] [class*='heroWorkspaceRow'] *::before,
-html[data-dsh-glass="1"] [class*='heroOptions'] *::before,
-html[data-dsh-glass="1"] [class*='heroWorkspaceRow'] *::after,
-html[data-dsh-glass="1"] [class*='heroOptions'] *::after {
-  background: transparent !important;
-  background-image: none !important;
-}
-
-html[data-dsh-glass="1"] [class*='_searchField'],
-html[data-dsh-glass="1"] [class*='_searchInput'],
-html[data-dsh-glass="1"] [data-chip] {
-  background: var(--dsh-canvas) !important;
-}
-
-/* 设置页（插件 / 插件市场 / 维护中心 / 自动化任务）：整列不铺任何底色，
-   直接坐在渐变背景上。之前这里铺的是 bg-base，视觉上就是一块浮起来的磨砂板，
-   和周围渐变割裂。应用自己给 _centerCol 铺的 bg-base 要显式压掉。 */
-html[data-dsh-glass="1"] [class*="_centerCol"]:not(:has([data-conversation-region="chat"])) {
-  background: transparent !important;
-}
-/* 设置页的页头（header._pageHead）是一套自定义组件：三个部件用内联变量
-   --plugin-part-y 定位，会跟着滚动收放。这类页头自带底色/渐变，否则滚动时
-   文字会透出来——而它和下面的内容区是两种材质，交界处就是那条硬台阶。
-   玻璃下把页头、页体、搜索行全部归零，整页只留中心列那一层 bg-base。 */
-html[data-dsh-glass="1"] header[class*="_pageHead"],
-html[data-dsh-glass="1"] [class*="_page"],
-html[data-dsh-glass="1"] [class*="_pageBody"],
-html[data-dsh-glass="1"] [class*="_tabSearchRow"] {
-  background: transparent !important;
-  background-image: none !important;
-  box-shadow: none !important;
-  border-bottom: none !important;
-}
-html[data-dsh-glass="1"] header[class*="_pageHead"]::before,
-html[data-dsh-glass="1"] header[class*="_pageHead"]::after,
-html[data-dsh-glass="1"] [class*="_page"]::before,
-html[data-dsh-glass="1"] [class*="_page"]::after,
-html[data-dsh-glass="1"] [class*="_pageBody"]::before,
-html[data-dsh-glass="1"] [class*="_pageBody"]::after {
-  background: none !important;
-  background-image: none !important;
-}
 /* 应用在中心列左边画了 .5px 的 border-left，在标签行下面画了 border-bottom——
    底色清零之后这两条线就是仅剩的分界，一并去掉。 */
 html[data-dsh-glass="1"] [class*="_centerCol"] {
@@ -1652,7 +1597,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       )
       return {
         '--dsw-alias-bg-base': fill(0.6, 0.55),
-        '--dsw-alias-bg-layer-1': fill(0.34, 0.3),
+        '--dsw-alias-bg-layer-1': fill(0.6, 0.55),
         // 设置面板用的就是 layer-2，太薄了字会糊在壁纸上，这里给足不透明度
         '--dsw-alias-bg-layer-2': fill(0.7, 0.68),
         '--dsw-alias-bg-layer-3': fill(0.78, 0.72),
@@ -1722,7 +1667,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         '--dsw-alias-button-tool-bar-fill': fill(0.3, 0.34),
         '--dsw-alias-turn-trigger-bg': fill(0.34, 0.38),
         '--dsw-alias-turn-trigger-bg-hover': fill(0.46, 0.5),
-        '--dsw-alias-interactive-bg-hover': fill(0.24, 0.28),
         // 菜单 / 输入卡 / 弹层都吃这个 token。实测结论：这块模糊背后是「每帧都在动
         // 的聊天记录」——输入卡就压在聊天区上面，滚动和流式时它每帧都要重新采样。
         // 它是全界面唯一一处「背景会动」的模糊，也是外观一开就掉帧的主因，所以直接

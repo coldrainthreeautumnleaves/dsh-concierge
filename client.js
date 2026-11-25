@@ -518,15 +518,25 @@ html[data-dsh-glass="1"] *::after {
 html[data-dsh-glass="1"] [class*='_selector'] {
   background: transparent !important;
 }
-/* 新会话欢迎页：工作区 / 模式选择器所在的容器（asar 里的真实结构
-   .an3WzG_heroWorkspaceRow + .an3WzG_heroOptions）。按钮的类名每个构建都变，
-   这里按容器压，不依赖按钮自己的类名。红色描边是验证用的。 */
-html[data-dsh-glass="1"] [class*='heroWorkspaceRow'] button,
-html[data-dsh-glass="1"] [class*='heroOptions'] button,
-html[data-dsh-glass="1"] [class*='heroOptions'] [role='button'],
-html[data-dsh-glass="1"] [class*='heroWorkspaceRow'] [role='button'] {
+/* 新会话欢迎页：工作区 / 模式选择器（asar 里的真实结构
+   .an3WzG_heroWorkspaceRow + .an3WzG_heroOptions）。
+   按钮自己的类名每个构建都变，而且实测：给按钮刷透明之后白块还在——
+   说明白底在按钮外面的包装元素上。这里把整行、行内所有后代、以及它们的
+   伪元素一起清掉，不再依赖按钮的类名。 */
+html[data-dsh-glass="1"] [class*='heroWorkspaceRow'],
+html[data-dsh-glass="1"] [class*='heroOptions'],
+html[data-dsh-glass="1"] [class*='heroWorkspaceRow'] *,
+html[data-dsh-glass="1"] [class*='heroOptions'] * {
   background: transparent !important;
-  outline: 2px solid #ff0000 !important;
+  background-image: none !important;
+  border-color: transparent !important;
+}
+html[data-dsh-glass="1"] [class*='heroWorkspaceRow'] *::before,
+html[data-dsh-glass="1"] [class*='heroOptions'] *::before,
+html[data-dsh-glass="1"] [class*='heroWorkspaceRow'] *::after,
+html[data-dsh-glass="1"] [class*='heroOptions'] *::after {
+  background: transparent !important;
+  background-image: none !important;
 }
 
 html[data-dsh-glass="1"] [class*='_searchField'],

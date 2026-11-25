@@ -1652,7 +1652,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       )
       return {
         '--dsw-alias-bg-base': fill(0.6, 0.55),
-        '--dsw-alias-bg-layer-1': fill(0.6, 0.55),
+        '--dsw-alias-bg-layer-1': fill(0.34, 0.3),
         // 设置面板用的就是 layer-2，太薄了字会糊在壁纸上，这里给足不透明度
         '--dsw-alias-bg-layer-2': fill(0.7, 0.68),
         '--dsw-alias-bg-layer-3': fill(0.78, 0.72),

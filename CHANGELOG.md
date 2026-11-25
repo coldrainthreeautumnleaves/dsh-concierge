@@ -6,6 +6,19 @@
 
 ## [Unreleased]
 
+## [0.20.2] - 2026-11-25
+
+> 底座打孔：`bg-base` 在样式表里直接打成透明
+
+### Fixed
+
+- 外观: 新增 `html[data-dsh-glass="1"] body { --dsw-alias-bg-base: transparent !important }`。之前只用 `overrideTokens` 把 `bg-base` 设成 0.6 白——**宿主的偏好写入会盖回来**，而且 0.6 的白铺在渐变上就是整页发白。现在在样式表里直接打成透明，渐变才能从每一页（包括新会话页）透出来
+
+### 依据
+
+- [dsh-theme-theresa 架构说明](https://dshhub.org/en/plugins/wanxi123w/dsh-theme-theresa/)：「色板注入作用域样式表，`--dsw-alias-bg-base` 设为 `transparent`；**不走 ctx.theme.overrideTokens**，所以 `rgba()` / 渐变 / `backdrop-filter` 都能写，也不会和宿主的偏好写入抢状态」
+- [dsh-ui-appearance](https://dshbase.com/zh/plugins/dsh-ui-appearance/)：「当壁纸/视频生效时，自动对宿主底座（`--dsw-alias-bg-base`）进行**透明打孔**」
+
 ## [0.20.1] - 2026-11-25
 
 > 新会话页整页发白：hero 根节点漏了

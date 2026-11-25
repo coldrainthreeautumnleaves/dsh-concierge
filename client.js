@@ -380,6 +380,15 @@ html[data-dsh-glass="1"] [class*="_root"][data-phase],
 html[data-dsh-glass="1"] [class*="_root"][data-content-phase] {
   background: transparent !important;
 }
+
+/* 底座打孔（社区壁纸主题的通行做法，见 dsh-theme-theresa / dsh-ui-appearance）：
+   --dsw-alias-bg-base 是「应用底色」，几乎所有页面的根容器都铺它。
+   用 overrideTokens 给半透明不够——宿主的偏好写入会盖回来，而且 0.6 的白
+   铺在渐变上就是整页发白。这里在样式表里直接把它打成 transparent，
+   渐变才能从每一页透出来。 */
+html[data-dsh-glass="1"] body {
+  --dsw-alias-bg-base: transparent !important;
+}
 /* 官方 Windows 布局在内容列左上角留 16px 圆角（--dsh-windows-content-radius），
    壁纸铺满整窗之后，那个圆角会切出一块露壁纸的缺口，看着就是「一块空的」。
    玻璃皮肤下把它归零，内容铺满、不留弧度。 */

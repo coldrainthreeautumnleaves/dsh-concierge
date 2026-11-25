@@ -501,12 +501,11 @@ html[data-dsh-glass="1"] [class*="_centerCol"]:has([data-conversation-region="ch
     rgba(var(--dsh-tint-rgb), 0) 100%
   ) !important;
 }
-/* 设置页（插件 / 插件市场 / 维护中心）反过来：页头是透明的（露壁纸、发蓝），
-   内容区自己上了色（发白），交界处就是一条硬台阶。这里让整列统一铺 bg-base，
-   子元素继续保持透明——上下变成同一块底，台阶消失。
-   参考 unsloth #17403：玻璃下不要再叠页头渐隐，否则必然出横带。 */
+/* 设置页（插件 / 插件市场 / 维护中心 / 自动化任务）：整列**不铺任何底色**，
+   直接坐在渐变背景上。之前这里铺的是 bg-base，视觉上就是一块浮起来的磨砂板，
+   和周围渐变割裂。应用自己给 _centerCol 铺的 bg-base 要显式压掉。 */
 html[data-dsh-glass="1"] [class*="_centerCol"]:not(:has([data-conversation-region="chat"])) {
-  background: var(--dsw-alias-bg-base) !important;
+  background: transparent !important;
 }
 /* 设置页的页头（header._pageHead）是一套自定义组件：三个部件用内联变量
    --plugin-part-y 定位，会跟着滚动收放。这类页头自带底色/渐变，否则滚动时

@@ -6,6 +6,14 @@
 
 ## [Unreleased]
 
+## [0.18.2] - 2026-11-25
+
+> 设置页不再垫一块磨砂板
+
+### Fixed
+
+- 外观: `_centerCol:not(:has([data-conversation-region="chat"]))` 从铺 `bg-base` 改成 `transparent`。插件 / 插件市场 / 维护中心 / 自动化任务这些页面，内容区原本是一块浮起来的浅色板，和周围的彩色渐变割裂；现在整列直接坐在渐变上
+
 ## [0.18.1] - 2026-11-24
 
 > 修掉维护中心整页崩掉的真因：effect 写在了 state 之前

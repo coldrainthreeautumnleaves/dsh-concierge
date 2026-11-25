@@ -6,6 +6,20 @@
 
 ## [Unreleased]
 
+## [0.20.4] - 2026-11-25
+
+> 白块真凶：`[class*="_menu"]` 误伤了 `m2hUqa_menuAnchor`
+
+### Fixed
+
+- 外观: 浮层那条「必须给足不透明底」的规则里，`[class*="_menu"]` 改成 `[class*="_menu_"]`。原来它匹配到 `<span class="m2hUqa_menuAnchor">`——一个只用来做 CSS 锚点定位（`anchor-name`）的空容器，被刷上了 `rgba(var(--dsh-tint-rgb), 0.96)` 的 96% 近白底。新会话页「标准模式」旁边那块白就是它
+
+### 定位过程
+
+- 前面 5 轮（`_selector`、`bg-module-platform` token、`heroOptions` 子树、`interactive-bg-hover`、`_seat`）全是猜的，一次都没命中；
+- 最后是用户开 DevTools，**Styles 面板直接显示了命中的那条规则**——`background-color: rgba(var(--dsh-tint-rgb), 0.96) !important`，正是我们自己写的浮层规则；
+- 教训：**宽泛的 `[class*="..."]` 属性选择器是雷区**。哈希类名里 `_menu`、`_card`、`_pill` 这类词根会被别的组件复用（`menuAnchor`、`cardShots`、`pillRow`），一律要带尾部下划线或更长的前缀。
+
 ## [0.20.3] - 2026-11-25
 
 > 按真类名压「标准模式」：`m2hUqa_seat`

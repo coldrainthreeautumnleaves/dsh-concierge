@@ -44,4 +44,6 @@ jobs:
       - name: Publish to npm
         run: npm publish --access public
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          # 仓库里这个 secret 可能叫 NPM，也可能叫 NPM_TOKEN——两个都认，
+          # 免得因为名字不一致拿到空值报 ENEEDAUTH。
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN || secrets.NPM }}

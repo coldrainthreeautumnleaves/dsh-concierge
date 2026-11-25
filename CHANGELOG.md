@@ -6,6 +6,15 @@
 
 ## [Unreleased]
 
+## [0.19.3] - 2026-11-25
+
+> 选择器那块白底：token 加直接 CSS，两条一起压
+
+### Fixed
+
+- 外观: 0.19.2 只把 `--dsw-alias-bg-module-platform` 设成 `transparent`，实测没生效（主题运行时很可能把这个值当非法颜色丢掉了）。这次改成合法的 `rgba(0, 0, 0, 0)`，**同时**加一条直接规则 `html[data-dsh-glass="1"] [class*='_selector'] { background: transparent !important }`，不经过 token
+- 依据: 应用里有三个构建变体的选择器规则（`.CDP_Dq_selector` / `.-TO4SG_selector` / `.V68kMG_selector`），全是 `background: var(--dsw-alias-bg-module-platform)`
+
 ## [0.19.2] - 2026-11-25
 
 > 「标准模式」那块白底去掉

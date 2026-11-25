@@ -511,6 +511,14 @@ html[data-dsh-glass="1"] *::after {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
+/* 新会话的「工作区 / 标准模式」选择器：应用给它们铺的是
+   var(--dsw-alias-bg-module-platform)（默认浅灰蓝），在白页面上看不见，
+   铺到渐变上就是一块白板。token 改了不一定生效（主题运行时可能丢非法值），
+   这里再直接压一层，不经过 token。 */
+html[data-dsh-glass="1"] [class*='_selector'] {
+  background: transparent !important;
+}
+
 html[data-dsh-glass="1"] [class*='_searchField'],
 html[data-dsh-glass="1"] [class*='_searchInput'],
 html[data-dsh-glass="1"] [data-chip] {
@@ -1637,7 +1645,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         '--dsw-alias-card-tile-fill': fill(0.62, 0.54),
                 // 插件市场按官方 THEMING.md 的清单消费这些 alias token，缺一个就在面板里
         // 回落到原色。这里把剩下的 25 个补齐（清单见 dsh-market/THEMING.md）。
-        '--dsw-alias-bg-module-platform': pair('transparent', 'transparent'),
+        '--dsw-alias-bg-module-platform': pair('rgba(0, 0, 0, 0)', 'rgba(0, 0, 0, 0)'),
         '--dsw-alias-border-l3': pair('rgba(120, 130, 150, 0.24)', 'rgba(255, 255, 255, 0.16)'),
         '--dsw-alias-border-l4': pair('rgba(120, 130, 150, 0.32)', 'rgba(255, 255, 255, 0.22)'),
         '--dsw-alias-button-primary-fill': pair('#2f6bff', '#5b8cff'),

@@ -1655,7 +1655,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         '--dsw-alias-card-tile-fill': fill(0.62, 0.54),
                 // 插件市场按官方 THEMING.md 的清单消费这些 alias token，缺一个就在面板里
         // 回落到原色。这里把剩下的 25 个补齐（清单见 dsh-market/THEMING.md）。
-        '--dsw-alias-bg-module-platform': pair('#ff00ff', '#ff00ff'),
+        '--dsw-alias-bg-module-platform': pair('rgba(0, 0, 0, 0)', 'rgba(0, 0, 0, 0)'),
         '--dsw-alias-border-l3': pair('rgba(120, 130, 150, 0.24)', 'rgba(255, 255, 255, 0.16)'),
         '--dsw-alias-border-l4': pair('rgba(120, 130, 150, 0.32)', 'rgba(255, 255, 255, 0.22)'),
         '--dsw-alias-button-tool-bar-hover': fill(0.3, 0.26),

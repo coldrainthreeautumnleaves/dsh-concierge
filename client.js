@@ -1636,7 +1636,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         '--dsw-alias-card-fill': fill(0.66, 0.58),
         '--dsw-alias-card-fill-hover': fill(0.72, 0.74),
         '--dsw-alias-card-tile-fill': fill(0.62, 0.54),
-        '--dsw-alias-settings-card-fill': fill(0.9, 0.84),
+        '--dsw-alias-settings-card-fill': pair('rgba(252, 253, 255, 1)', 'rgba(30, 32, 38, 1)'),
         '--dsw-alias-settings-card-stroke': pair('rgba(255, 255, 255, 0.6)', 'rgba(255, 255, 255, 0.12)'),
         '--dsw-alias-onboarding-card-fill': fill(0.65, 0.67),
         '--dsw-alias-onboarding-secondary-fill': fill(0.58, 0.6),

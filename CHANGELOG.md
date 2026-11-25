@@ -6,6 +6,14 @@
 
 ## [Unreleased]
 
+## [0.18.5] - 2026-11-25
+
+> 插件市场的卡片改成不透明
+
+### Fixed
+
+- 外观: `--dsw-alias-settings-card-fill` 从 `fill(0.9, 0.84)` 改成写死的 `rgba(252,253,255,1)` / `rgba(30,32,38,1)`，**不参与透明度缩放**。市场的卡片就是 `.nUhMVa_card { background: var(--dsw-alias-settings-card-fill, …) }`，0.9 再乘滑杆系数只剩 0.85，压在渐变上看着像磨砂
+
 ## [0.18.4] - 2026-11-25
 
 > 插件市场的搜索框和筛选胶囊也兜上

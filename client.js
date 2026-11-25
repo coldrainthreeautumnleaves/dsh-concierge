@@ -373,6 +373,13 @@ html[data-dsh-glass="1"] [class*="_centerCol"],
 html[data-dsh-glass="1"] [class*="_bottomRow"] {
   background: transparent !important;
 }
+/* 新会话页（hero）的根节点：.an3WzG_root 自己铺 var(--dsw-alias-bg-base)，
+   0.6 的白铺在渐变上就是「整页发白」。它带 data-phase / data-content-phase，
+   按这个属性清掉，聊天页和 hero 页才是同一张底。 */
+html[data-dsh-glass="1"] [class*="_root"][data-phase],
+html[data-dsh-glass="1"] [class*="_root"][data-content-phase] {
+  background: transparent !important;
+}
 /* 官方 Windows 布局在内容列左上角留 16px 圆角（--dsh-windows-content-radius），
    壁纸铺满整窗之后，那个圆角会切出一块露壁纸的缺口，看着就是「一块空的」。
    玻璃皮肤下把它归零，内容铺满、不留弧度。 */

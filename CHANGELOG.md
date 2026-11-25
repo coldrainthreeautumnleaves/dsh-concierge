@@ -6,6 +6,14 @@
 
 ## [Unreleased]
 
+## [0.20.1] - 2026-11-25
+
+> 新会话页整页发白：hero 根节点漏了
+
+### Fixed
+
+- 外观: 给 `[class*="_root"][data-phase]` / `[class*="_root"][data-content-phase]` 补上 `background: transparent`。新会话页（hero）的根节点 `.an3WzG_root` 自己铺 `var(--dsw-alias-bg-base)`，0.6 的白盖在渐变上就是**整页发白**——聊天页早就清成透明了，这个根节点漏了
+
 ## [0.20.0] - 2026-11-25
 
 > 「标准模式」白块的真因：我把悬停色改成了 24% 白

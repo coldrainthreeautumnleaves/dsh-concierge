@@ -501,7 +501,22 @@ html[data-dsh-glass="1"] [class*="_centerCol"]:has([data-conversation-region="ch
     rgba(var(--dsh-tint-rgb), 0) 100%
   ) !important;
 }
-/* 设置页（插件 / 插件市场 / 维护中心 / 自动化任务）：整列**不铺任何底色**，
+/* 玻璃皮肤里不要任何「毛玻璃」：
+   1) 全局关掉 backdrop-filter——应用有硬编码的 blur(10px)（拖放遮罩之类），
+      菜单那条 token 已经设成 none，但写死的压不住；
+   2) 搜索框 / 筛选胶囊这类控件，半透明白铺在渐变上就是毛玻璃观感，改成实色画布。 */
+html[data-dsh-glass="1"] *,
+html[data-dsh-glass="1"] *::before,
+html[data-dsh-glass="1"] *::after {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+html[data-dsh-glass="1"] [class*='_searchField'],
+html[data-dsh-glass="1"] [class*='_searchInput'],
+html[data-dsh-glass="1"] [class*='_tabSearchRow'] [class*='_pill_'] {
+  background: var(--dsh-canvas) !important;
+}
+/* 设置页（插件 / 插件市场 / 维护中心 / 自动化任务）：整列不铺任何底色，
    直接坐在渐变背景上。之前这里铺的是 bg-base，视觉上就是一块浮起来的磨砂板，
    和周围渐变割裂。应用自己给 _centerCol 铺的 bg-base 要显式压掉。 */
 html[data-dsh-glass="1"] [class*="_centerCol"]:not(:has([data-conversation-region="chat"])) {

@@ -6,6 +6,15 @@
 
 ## [Unreleased]
 
+## [0.18.3] - 2026-11-25
+
+> 玻璃下不再有任何毛玻璃
+
+### Changed
+
+- 外观: 全局关掉 `backdrop-filter`（含 `::before` / `::after`）。菜单那条 token 早就是 `none`，但应用里有硬编码的 `blur(10px)`（拖放遮罩之类）压不住，这次按元素统一清掉
+- 外观: 搜索框 / 筛选胶囊（`_searchField`、`_searchInput`、`_tabSearchRow` 里的 `_pill_`）改成实色画布。半透明白铺在渐变上，观感就是毛玻璃
+
 ## [0.18.2] - 2026-11-25
 
 > 设置页不再垫一块磨砂板

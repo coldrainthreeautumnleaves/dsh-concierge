@@ -6,6 +6,15 @@
 
 ## [Unreleased]
 
+## [0.22.6] - 2026-11-26
+
+> 模型菜单不再混进一列裸 id
+
+### Fixed
+
+- 模型: `readRouteModels` 改成**有 `modelPicker.options` 就只用它**（`[1m]` 这类后缀先剥掉再去重），不再把 `deepseek/deepseek-flash`、`codeflow-2/claude-haiku-5-5` 这些裸 id 和带标签的条目堆在一起；`/v1/models` 只在没有 `modelPicker` 时兜底
+- 模型: 同时去掉 `ANTHROPIC_DEFAULT_SONNET_MODEL` / `HAIKU_MODEL` 的额外条目——它们本来就是 `modelPicker` 里那几项，重复出现只会更长
+
 ## [0.22.5] - 2026-11-26
 
 > 模型菜单列出路由真正提供的模型

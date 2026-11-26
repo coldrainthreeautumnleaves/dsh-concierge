@@ -2202,34 +2202,38 @@ async function readClaudeVersion() {
 // 列出这条路由实际提供的模型：优先 settings.json 里的 modelPicker，
 // 本机 magpie 再补一份 /v1/models（OpenAI 形状）。
 async function readRouteModels() {
-  const seen = new Map()
   const route = await readClaudeRoute()
-  if (route && route.ok) {
-    const options = Array.isArray(route.options) ? route.options : []
-    for (const option of options) {
-      if (!option || !option.model) continue
-      const id = String(option.model)
-      if (!seen.has(id)) seen.set(id, { id, name: String(option.label || id) })
-    }
-    for (const extra of [route.sonnet, route.haiku]) {
-      if (extra && !seen.has(extra)) seen.set(extra, { id: extra, name: extra })
-    }
+  const options = route && Array.isArray(route.options) ? route.options : []
+  // 有 modelPicker 就以它为准：只有它是「模型名 + 展示名」成对给的；
+  // /v1/models 只有裸 id，混在一起就会出现一列重复的原始 id。
+  const seen = new Map()
+  for (const option of options) {
+    if (!option || !option.model) continue
+    const id = String(option.model)
+    const key = id.replace(/\[[^\]]*\]$/, "")
+    if (seen.has(key)) continue
+    seen.set(key, { id, name: String(option.label || id) })
   }
+  if (seen.size > 0) return Array.from(seen.values())
+
+  // 没有 modelPicker 才退回探测：本机 magpie 的 /v1/models
   try {
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), 800)
-    const res = await fetch('http://127.0.0.1:3425/v1/models', { signal: controller.signal })
+    const res = await fetch("http://127.0.0.1:3425/v1/models", { signal: controller.signal })
     clearTimeout(timer)
     if (res.ok) {
       const body = await res.json()
       const list = Array.isArray(body && body.data) ? body.data : []
       for (const item of list) {
-        const id = item && typeof item.id === 'string' ? item.id : ''
-        if (id && !seen.has(id)) seen.set(id, { id, name: id })
+        const id = item && typeof item.id === "string" ? item.id : ""
+        if (!id) continue
+        const key = id.replace(/\[[^\]]*\]$/, "")
+        if (!seen.has(key)) seen.set(key, { id, name: id })
       }
     }
   } catch {
-    /* 探不到就算了，settings.json 那份仍然有效 */
+    /* 探不到就算了 */
   }
   return Array.from(seen.values())
 }

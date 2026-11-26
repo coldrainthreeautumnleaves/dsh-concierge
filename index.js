@@ -2001,6 +2001,9 @@ function createClaudeCodeAdapter() {
     id: 'claude-code',
     name: 'Claude Code',
     description: '本机 Claude Code，模型路由由 ~/.claude/settings.json（magpie）决定',
+    // DSH 切模型前要压缩上下文，必须知道窗口大小，否则报 MODEL_SWITCH_COMPACTION_FAILED
+    context: { contextWindow: 1048576 },
+    defaultMaxTokens: 32000,
   }
   return {
     providerInfo: () => ({ id: CLAUDE_PROVIDER, name: 'Claude Code' }),

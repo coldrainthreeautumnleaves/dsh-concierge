@@ -6,6 +6,14 @@
 
 ## [Unreleased]
 
+## [0.21.7] - 2026-11-26
+
+> 切到 Claude Code 时报 `MODEL_SWITCH_COMPACTION_FAILED`
+
+### Fixed
+
+- 模型: 适配器返回的模型信息补上 `context: { contextWindow: 1048576 }` 和 `defaultMaxTokens: 32000`。DSH 切模型前要先压缩上下文，拿不到窗口大小就直接拒绝切换：`compaction-basic: no context capacity for claude-code/claude-code`
+
 ## [0.21.6] - 2026-11-26
 
 > Claude Code 进聊天框的模型菜单

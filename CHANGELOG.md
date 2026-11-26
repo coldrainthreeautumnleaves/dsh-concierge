@@ -6,6 +6,23 @@
 
 ## [Unreleased]
 
+## [0.22.8] - 2026-11-26
+
+> 设置行不再被长文本挤成竖排
+
+### Fixed
+
+- 外观: `.uc-row-title` 加 `white-space: nowrap`，`.uc-row-control` 改成 `flex: 0 1 auto; max-width: 62%`——之前控制列是 `flex: 0 0 auto`，值一长就把标签列压到只剩一个字宽，「可用模型」被挤成竖着排的四行
+
+## [0.22.7] - 2026-11-26
+
+> 菜单里只报路由上勾选的那一个模型
+
+### Changed
+
+- 模型: `listModels` 只返回一个条目，名字跟着 `settings.json` 的 `model` / `modelPicker` 走（如 `Claude Code · DeepSeek-V4.1-Flash · DeepSeek`）；请求时不传 `--model`，让 Claude Code 用它自己当前选中的那个——路由上同一时间只有一个勾选，菜单里也不该列一长串
+- 外观: Claude Code 页「可用模型」改成「当前模型」，只显示勾选的那一个
+
 ## [0.22.6] - 2026-11-26
 
 > 模型菜单不再混进一列裸 id

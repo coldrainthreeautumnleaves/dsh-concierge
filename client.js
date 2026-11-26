@@ -3129,10 +3129,10 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
 
 .uc-row-setting { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--uc-sep); }
 .uc-row-setting:last-of-type { border-bottom: none; }
-.uc-row-text { min-width: 0; }
-.uc-row-title { font-size: var(--uc-fs-body); font-weight: 500; color: var(--dsw-alias-label-primary); }
+.uc-row-text { min-width: 0; flex: 1 1 auto; }
+.uc-row-title { font-size: var(--uc-fs-body); font-weight: 500; color: var(--dsw-alias-label-primary); white-space: nowrap; }
 .uc-row-hint { margin-top: 4px; font-size: var(--uc-fs-small); line-height: 1.5; color: var(--dsw-alias-label-secondary); }
-.uc-row-control { flex: 0 0 auto; }
+.uc-row-control { flex: 0 1 auto; max-width: 62%; text-align: right; overflow-wrap: anywhere; }
 
 .uc-progress { position: relative; height: 2px; border-radius: 999px; overflow: hidden; background: var(--uc-surface-2); margin: 0 0 8px; }
 .uc-progress::after { content: ''; position: absolute; top: 0; bottom: 0; width: 35%; border-radius: 999px; background: var(--uc-accent); animation: uc-progress-slide 1.1s ease-in-out infinite; }
@@ -4369,10 +4369,10 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
                         : claudeInfo.routing.count > 0
                           ? `${claudeInfo.routing.names.join('、')}${claudeInfo.routing.conflict ? '（冲突）' : ''}`
                           : '未检测到')),
-                settingRow('可用模型', '路由实际提供的；模型菜单里按这些列出',
+                settingRow('当前模型', '路由上勾选的那个；菜单里也只听它',
                   h('span', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-secondary)' } },
-                    claudeInfo && Array.isArray(claudeInfo.models) && claudeInfo.models.length > 0
-                      ? claudeInfo.models.map((entry) => entry.name).join('、')
+                    claudeInfo && claudeInfo.currentModel
+                      ? claudeInfo.currentModel
                       : '—')),
                 settingRow('状态', null,
                   h('span', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-secondary)' } },

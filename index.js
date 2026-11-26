@@ -381,6 +381,15 @@ export function apply(ctx) {
             switcher: await readCcSwitch(),
             routing: await readRoutingTools(),
             models: await readRouteModels(),
+            currentModel: (() => {
+              const routeModel = (route && route.model) || ""
+              const strip = (value) => String(value || "").replace(/\[[^\]]*\]$/, "")
+              const options = route && Array.isArray(route.options) ? route.options : []
+              for (const option of options) {
+                if (option && strip(option.model) === strip(routeModel)) return String(option.label || routeModel)
+              }
+              return strip(routeModel)
+            })(),
             route,
           }, 200)
         } catch (error) {
@@ -2298,15 +2307,24 @@ function createClaudeCodeAdapter(version) {
     providerRetryPolicy: () => undefined,
     imageRequestPricing: () => undefined,
     imageRequestTarget: () => ({ width: 0, height: 0, maxBytes: 0 }),
+    // 路由上同一时间只勾一个模型，菜单里也只报这一个：
+    // 名字跟着 settings.json 的 model / modelPicker 走，请求时不传 --model，
+    // 让 Claude Code 用它自己当前选中的那个。
     listModels: async () => {
-      const detected = await readRouteModels()
-      if (!detected.length) return [model]
-      return detected.map((entry) => ({
-        ...model,
-        id: entry.id,
-        name: entry.name,
-        description: '经路由提供的模型',
-      }))
+      const route = await readClaudeRoute()
+      const options = route && Array.isArray(route.options) ? route.options : []
+      const current = (route && route.model) || ''
+      const strip = (value) => String(value || "").replace(/\[[^\]]*\]$/, "")
+      let label = ""
+      for (const option of options) {
+        if (!option || !option.model) continue
+        if (strip(option.model) === strip(current)) {
+          label = String(option.label || "")
+          break
+        }
+      }
+      const suffix = label || strip(current) || version || ""
+      return [{ ...model, id: 'claude-code', name: suffix ? 'Claude Code · ' + suffix : 'Claude Code' }]
     },
     resolveModel: async (_provider, id) => ({ ...model, id }),
     prepareCall: async (_provider, id) => ({ model: { ...model, id }, stream: streamClaudeCode }),

@@ -3227,7 +3227,8 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
 .uc-typer { display: flex; align-items: center; gap: 8px; }
 .uc-typer input { width: 160px; accent-color: var(--dsw-alias-brand-primary); }
 .uc-typer-value { font-size: var(--uc-fs-body); min-width: 32px; text-align: right; font-variant-numeric: tabular-nums; }
-.uc-color3 { display: flex; gap: 8px; align-items: center; }
+.uc-color3-card { margin: 10px 0 14px; animation: none !important; }
+.uc-color3 { display: flex; gap: 8px; align-items: center; padding: 12px 16px; }
 .uc-color3-input { width: 44px; height: 26px; padding: 0; border: 1px solid var(--dsw-alias-border-l2); border-radius: 8px; background: transparent; cursor: pointer; }
 .uc-color3-input::-webkit-color-swatch-wrapper { padding: 2px; }
 .uc-color3-input::-webkit-color-swatch { border: none; border-radius: 6px; }
@@ -3353,6 +3354,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       const [notice, setNotice] = React.useState(null)
       const [filter, setFilter] = React.useState('all')
       const [tab, setTab] = React.useState('update')
+
       const [query, setQuery] = React.useState('')
       const [gitUrl, setGitUrl] = React.useState('')
       const [addingSource, setAddingSource] = React.useState(false)
@@ -4442,7 +4444,10 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
                     h('option', { value: 'sunset' }, t('lookPaletteSunset')),
                     h('option', { value: 'custom' }, t('lookPaletteCustom')),
                   )),
-                settingRow(t('lookPaletteCustom'), null,
+                h('div', { className: 'uc-card uc-color3-card' },
+                  h('div', { className: 'uc-card-head' },
+                    h('span', { className: 'uc-card-title' }, t('lookPaletteCustom')),
+                  ),
                   h('div', { className: 'uc-color3' },
                     [0, 1, 2].map((idx) => h('input', {
                       key: idx,
@@ -4460,7 +4465,8 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
                         lookUpdate()
                       },
                     })),
-                  )),
+                  ),
+                ),
                 settingRow(t('lookFont'), null,
                   h('select', {
                     className: 'uc-select',

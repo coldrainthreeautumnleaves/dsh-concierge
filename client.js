@@ -273,7 +273,16 @@ html[data-dsh-edge="1"][data-dsh-edge-settle="1"] #root {
      整条声明会被丢弃，表现为「这一层什么都不画」。单层最不容易出错。 */
   /* 配色可切（LOOK_PALETTES）：--dsh-wall 由 applyPalette() 写到 html 上，
      没设就用默认这组粉蓝紫。 */
-  background: var(--dsh-wall, linear-gradient(160deg, #ffe6f2 0%, #e8efff 46%, #efe6ff 100%));
+  background: linear-gradient(160deg, #ffe6f2 0%, #e8efff 46%, #efe6ff 100%);
+}
+/* 配色切换：默认那条规则永远画字面渐变，选别的配色时靠 html 上的
+   data-dsh-palette 覆盖。不用 var(--dsh-wall, 默认值) 兜底——变量一旦被
+   赋成非法值，var 的默认值也会失效，壁纸层就什么都不画（整页露出画布色）。 */
+html[data-dsh-palette="sunset"] #dsh-concierge-glass > div:first-child {
+  background: linear-gradient(160deg, #ffe9e0 0%, #fff0f5 46%, #f5e9ff 100%);
+}
+html[data-dsh-palette="custom"] #dsh-concierge-glass > div:first-child {
+  background: var(--dsh-wall-custom, linear-gradient(160deg, #ffe6f2 0%, #e8efff 46%, #efe6ff 100%));
 }
 /* 彩色光斑用伪元素各铺一层：每个元素只有**一条** background，不会像多层
    background-image 那样一处不合法就整条丢弃（0.17.4 之前就是这么白的）。 */
@@ -1639,24 +1648,32 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
     function applyPalette() {
       if (typeof document === 'undefined') return
       const root = document.documentElement
-      const p = LOOK_PALETTES[look.palette] || null
-      const put = (name, value) => {
-        if (value) root.style.setProperty(name, value)
-        else root.style.removeProperty(name)
+      const HEX6 = /^#[0-9a-fA-F]{6}$/
+      const wallColors = Array.isArray(look.wallColors) ? look.wallColors.map((x) => String(x || '').trim()) : []
+      const customOk = wallColors.length === 3 && wallColors.every((c) => HEX6.test(c))
+      const clearBlobs = () => {
+        root.style.removeProperty('--dsh-blob-a')
+        root.style.removeProperty('--dsh-blob-b')
       }
-      const custom = look.palette === 'custom' && Array.isArray(look.wallColors) && look.wallColors.length === 3
-      if (custom) {
-        const c = look.wallColors.map((x) => String(x || '').trim() || '#ffffff')
-        put('--dsh-wall', `linear-gradient(160deg, ${c[0]} 0%, ${c[1]} 46%, ${c[2]} 100%)`)
-        put('--dsh-blob-a', null)
-        put('--dsh-blob-b', null)
-        put('--dsh-wall-dark', `linear-gradient(160deg, ${c[0]} 0%, ${c[1]} 46%, ${c[2]} 100%)`)
+      if (look.palette === 'custom' && customOk) {
+        const grad = `linear-gradient(160deg, ${wallColors[0]} 0%, ${wallColors[1]} 46%, ${wallColors[2]} 100%)`
+        root.style.setProperty('--dsh-wall-custom', grad)
+        root.style.setProperty('--dsh-wall-dark', grad)
+        root.dataset.dshPalette = 'custom'
+        clearBlobs()
         return
       }
-      put('--dsh-wall', p && p.light && p.light.base)
-      put('--dsh-blob-a', p && p.light && p.light.a)
-      put('--dsh-blob-b', p && p.light && p.light.b)
-      put('--dsh-wall-dark', p && p.dark && p.dark.base)
+      root.style.removeProperty('--dsh-wall-custom')
+      root.dataset.dshPalette = look.palette === 'sunset' ? 'sunset' : 'default'
+      const p = LOOK_PALETTES[look.palette] || null
+      if (p && p.dark && p.dark.base) root.style.setProperty('--dsh-wall-dark', p.dark.base)
+      else root.style.removeProperty('--dsh-wall-dark')
+      if (p && p.light) {
+        root.style.setProperty('--dsh-blob-a', p.light.a)
+        root.style.setProperty('--dsh-blob-b', p.light.b)
+      } else {
+        clearBlobs()
+      }
     }
 
     const BRAND_TOKEN_NAMES = [

@@ -2112,6 +2112,14 @@ async function readRoutingTools() {
   const ccrFound = existsSync(ccr)
   tools.push({ id: 'ccr', name: 'Claude Code Router', found: ccrFound, detail: ccrFound ? ccr : '' })
 
+  // 当前实际生效的路由：不是本机地址就当「中转」
+  const route = await readClaudeRoute()
+  const baseUrl = (route && route.baseUrl) || ''
+  const isLocal = /^https?:\/\/(127\.0\.0\.1|localhost)([:/]|$)/i.test(baseUrl)
+  const relay = baseUrl && !isLocal ? baseUrl : ''
+  for (const tool of tools) {
+    tool.active = tool.id === 'magpie' ? isLocal && tool.found : false
+  }
   const found = tools.filter((tool) => tool.found)
   return {
     tools,
@@ -2119,6 +2127,7 @@ async function readRoutingTools() {
     names: found.map((tool) => tool.name),
     // 两个以上同时在用就会打架
     conflict: found.length >= 2,
+    relay,
   }
 }
 

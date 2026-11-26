@@ -3374,12 +3374,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         }
       }, [])
       React.useEffect(() => {
-        if (tab !== 'claude') return
-        loadClaudeInfo()
-        // CC Switch 切供应商是自动生效的（它改的就是 settings.json），
-        // 这边每 5 秒跟着读一次，切完不用手动刷新
-        const timer = setInterval(loadClaudeInfo, 5000)
-        return () => clearInterval(timer)
+        if (tab === 'claude') loadClaudeInfo()
       }, [tab, loadClaudeInfo])
       const toggleClaude = React.useCallback(async () => {
         if (claudeBusy) return
@@ -4329,8 +4324,16 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         tab === 'claude'
           ? h('section', { className: 'uc-card' },
               h('div', { className: 'uc-card-head' },
-                h('div', { className: 'uc-card-title' }, 'Claude Code（走 magpie）'),
-                switchControl(claudeInfo ? !!claudeInfo.enabled : false, toggleClaude),
+                h('div', { className: 'uc-card-title' }, 'Claude Code（走 magpie / 中转）'),
+                h('div', { className: 'uc-card-actions' },
+                  h('button', {
+                    type: 'button',
+                    className: 'uc-icon-btn',
+                    title: '重新读取',
+                    onClick: loadClaudeInfo,
+                  }, '↻'),
+                  switchControl(claudeInfo ? !!claudeInfo.enabled : false, toggleClaude),
+                ),
               ),
               h('div', { className: 'uc-perf' },
                 settingRow('路由', '由 ~/.claude/settings.json 决定，插件不自己拼',
@@ -4361,9 +4364,11 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
                   h('span', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-secondary)' } },
                     !claudeInfo || !claudeInfo.routing
                       ? '—'
-                      : claudeInfo.routing.count > 0
-                        ? `${claudeInfo.routing.names.join('、')}${claudeInfo.routing.conflict ? '（冲突）' : ''}`
-                        : '未检测到')),
+                      : claudeInfo.routing.relay
+                        ? `中转 · ${String(claudeInfo.routing.relay).replace(/^https?:\/\//, '')}`
+                        : claudeInfo.routing.count > 0
+                          ? `${claudeInfo.routing.names.join('、')}${claudeInfo.routing.conflict ? '（冲突）' : ''}`
+                          : '未检测到')),
                 settingRow('状态', null,
                   h('span', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-secondary)' } },
                     !claudeInfo

@@ -6,6 +6,20 @@
 
 ## [Unreleased]
 
+## [0.20.7] - 2026-11-26
+
+> 遮罩改成直接压 `::after`
+
+### Fixed
+
+- 外观: 新增 `html[data-dsh-glass="1"] [class*='_mask_']::after { background: rgba(0,0,0,0.08) !important }`。Modal 原语的遮罩不是画在 mask 元素本身，而是它的 `::after`（`._mask_1ytzq_18:after { background: var(--dsw-alias-bg-mask-1) }`），只改 body 上的 token 在伪元素里不一定吃到。设置页、插件市场、更新提示共用这个遮罩
+
+### 背景（桌宠查到的）
+
+- 遮罩来源：`dsh-web-frontend\dist\assets\index-*.css` 的 `._mask_1ytzq_18:after`
+- token 定义：`@deepseek-ai/dsh-client-ui-theme\src\styles\design-platform.css`，`--dsw-alias-bg-mask-1: rgba(0,0,0,0.24)`
+- 模糊本来就没有：`gradient-shadow-text.css` 里 `--dsw-mask-blur: none`，所以 `backdrop-filter: var(--dsw-mask-blur)` 一直等于 none——不是我们关掉的
+
 ## [0.20.6] - 2026-11-26
 
 > 模态遮罩透出来，不再是一块死灰

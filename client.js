@@ -395,6 +395,12 @@ html[data-dsh-glass="1"] body {
   --dsw-alias-bg-mask-2: rgba(0, 0, 0, 0.05) !important;
   --dsw-alias-bg-mask-3: rgba(0, 0, 0, 0.12) !important;
 }
+/* Modal 原语的遮罩是画在 ::after 伪元素上的（._mask_1ytzq_18:after），
+   只改 body 上的 token 在伪元素里不一定吃到。这里按伪元素直接压——
+   设置页、插件市场、更新提示共用这个遮罩。 */
+html[data-dsh-glass="1"] [class*='_mask_']::after {
+  background: rgba(0, 0, 0, 0.08) !important;
+}
 /* 官方 Windows 布局在内容列左上角留 16px 圆角（--dsh-windows-content-radius），
    壁纸铺满整窗之后，那个圆角会切出一块露壁纸的缺口，看着就是「一块空的」。
    玻璃皮肤下把它归零，内容铺满、不留弧度。 */

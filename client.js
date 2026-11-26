@@ -156,7 +156,7 @@ html[data-dsh-noanim="1"] [data-animating] {
    window surface every frame. The wallpaper layer sits at z-index: -1, i.e.
    above this background, so nothing changes visually. */
 /* 画布色在这里定义：玻璃一套、原生一套。玻璃的根层、壁纸基色、过渡兜底全部从
-   --dsh-canvas 派生；原生用官方的 #fff / #151517，不覆盖任何 token。 */
+   --dsh-canvas 派生；原生用官方的 #fff / #151517，不覆盖任何 token。
 
    根层必须不透明：Chromium 只在「整帧判定为不透明」时才允许在窗口尺寸跳变时
    拉伸上一帧；非不透明的帧只能等下一次提交，那一两帧就露出窗口表面色
@@ -272,6 +272,8 @@ html[data-dsh-edge="1"][data-dsh-edge-settle="1"] #root {
   /* 单层渐变：多层 background-image + background-size/repeat 一旦有一处写错，
      整条声明会被丢弃，表现为「这一层什么都不画」。单层最不容易出错。 */
   /* 配色可切（LOOK_PALETTES）：--dsh-wall 由 applyPalette() 写到 html 上，
+     没设就用默认这组粉蓝紫。 */
+  background: var(--dsh-wall, linear-gradient(160deg, #ffe6f2 0%, #e8efff 46%, #efe6ff 100%));
 }
 /* 彩色光斑用伪元素各铺一层：每个元素只有**一条** background，不会像多层
    background-image 那样一处不合法就整条丢弃（0.17.4 之前就是这么白的）。 */

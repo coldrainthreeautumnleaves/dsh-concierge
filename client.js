@@ -388,6 +388,12 @@ html[data-dsh-glass="1"] [class*="_root"][data-content-phase] {
    渐变才能从每一页透出来。 */
 html[data-dsh-glass="1"] body {
   --dsw-alias-bg-base: transparent !important;
+  /* 模态遮罩（更新提示、确认框）默认是 #0000003d 的 24% 黑，压在渐变上就是
+     一块死灰。这里在样式表里压薄，能看见后面的界面——和 bg-base 一样，
+     overrideTokens 写这几个名字不生效，只能走 CSS。 */
+  --dsw-alias-bg-mask-1: rgba(0, 0, 0, 0.08) !important;
+  --dsw-alias-bg-mask-2: rgba(0, 0, 0, 0.05) !important;
+  --dsw-alias-bg-mask-3: rgba(0, 0, 0, 0.12) !important;
 }
 /* 官方 Windows 布局在内容列左上角留 16px 圆角（--dsh-windows-content-radius），
    壁纸铺满整窗之后，那个圆角会切出一块露壁纸的缺口，看着就是「一块空的」。

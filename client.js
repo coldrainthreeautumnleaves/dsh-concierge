@@ -1621,18 +1621,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
     // null 表示用 CSS 里的默认（粉蓝紫），不写变量。
     const LOOK_PALETTES = {
       default: null,
-      mint: {
-        light: {
-          base: 'linear-gradient(160deg, #e9f8f2 0%, #e7f2fb 46%, #eef4ff 100%)',
-          a: 'radial-gradient(1150px 860px at 14% -8%, rgba(198, 242, 222, 0.9) 0%, rgba(198, 242, 222, 0) 58%)',
-          b: 'radial-gradient(1000px 780px at 90% 2%, rgba(206, 232, 255, 0.92) 0%, rgba(206, 232, 255, 0) 60%)',
-        },
-        dark: {
-          base: 'linear-gradient(160deg, #101a18 0%, #0f161c 46%, #111820 100%)',
-          a: 'radial-gradient(1150px 860px at 14% -8%, rgba(40, 78, 66, 0.72) 0%, rgba(40, 78, 66, 0) 58%)',
-          b: 'radial-gradient(1000px 780px at 90% 2%, rgba(30, 56, 84, 0.78) 0%, rgba(30, 56, 84, 0) 60%)',
-        },
-      },
       sunset: {
         light: {
           base: 'linear-gradient(160deg, #ffe9e0 0%, #fff0f5 46%, #f5e9ff 100%)',
@@ -1643,30 +1631,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
           base: 'linear-gradient(160deg, #1a1310 0%, #171218 46%, #15121f 100%)',
           a: 'radial-gradient(1150px 860px at 14% -8%, rgba(96, 56, 40, 0.75) 0%, rgba(96, 56, 40, 0) 58%)',
           b: 'radial-gradient(1000px 780px at 90% 2%, rgba(64, 44, 92, 0.8) 0%, rgba(64, 44, 92, 0) 60%)',
-        },
-      },
-      ocean: {
-        light: {
-          base: 'linear-gradient(160deg, #e5f1fc 0%, #e9f7f8 46%, #eaf1ff 100%)',
-          a: 'radial-gradient(1150px 860px at 14% -8%, rgba(198, 230, 255, 0.95) 0%, rgba(198, 230, 255, 0) 58%)',
-          b: 'radial-gradient(1000px 780px at 90% 2%, rgba(190, 240, 244, 0.9) 0%, rgba(190, 240, 244, 0) 60%)',
-        },
-        dark: {
-          base: 'linear-gradient(160deg, #0e1620 0%, #0d1a1c 46%, #0f1522 100%)',
-          a: 'radial-gradient(1150px 860px at 14% -8%, rgba(34, 62, 96, 0.78) 0%, rgba(34, 62, 96, 0) 58%)',
-          b: 'radial-gradient(1000px 780px at 90% 2%, rgba(28, 74, 80, 0.75) 0%, rgba(28, 74, 80, 0) 60%)',
-        },
-      },
-      sand: {
-        light: {
-          base: 'linear-gradient(160deg, #fdf4e8 0%, #faf2ec 46%, #f4eef7 100%)',
-          a: 'radial-gradient(1150px 860px at 14% -8%, rgba(255, 232, 200, 0.95) 0%, rgba(255, 232, 200, 0) 58%)',
-          b: 'radial-gradient(1000px 780px at 90% 2%, rgba(236, 224, 255, 0.9) 0%, rgba(236, 224, 255, 0) 60%)',
-        },
-        dark: {
-          base: 'linear-gradient(160deg, #191510 0%, #171412 46%, #15121a 100%)',
-          a: 'radial-gradient(1150px 860px at 14% -8%, rgba(88, 68, 40, 0.72) 0%, rgba(88, 68, 40, 0) 58%)',
-          b: 'radial-gradient(1000px 780px at 90% 2%, rgba(60, 48, 86, 0.75) 0%, rgba(60, 48, 86, 0) 60%)',
         },
       },
     }
@@ -2575,10 +2539,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       lookPalette: '背景配色',
       lookPaletteHint: '整页渐变底色',
       lookPaletteDefault: '粉蓝紫（默认）',
-      lookPaletteMint: '薄荷',
       lookPaletteSunset: '晚霞',
-      lookPaletteOcean: '海盐',
-      lookPaletteSand: '奶油',
       lookPaletteCustom: '自定义（三色）',
       lookHint: '默认关闭；这些设置只在玻璃皮肤下生效',
       foldersTitle: '目录与配置',
@@ -2850,10 +2811,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       lookPalette: 'Background palette',
       lookPaletteHint: 'Gradient of the whole page',
       lookPaletteDefault: 'Blush blue (default)',
-      lookPaletteMint: 'Mint',
       lookPaletteSunset: 'Sunset',
-      lookPaletteOcean: 'Ocean',
-      lookPaletteSand: 'Cream',
       lookPaletteCustom: 'Custom (3 colours)',
       lookHint: 'Off by default; these settings apply to the Glass skin only',
       foldersTitle: 'Folders',
@@ -4460,10 +4418,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
                     },
                   },
                     h('option', { value: 'default' }, t('lookPaletteDefault')),
-                    h('option', { value: 'mint' }, t('lookPaletteMint')),
                     h('option', { value: 'sunset' }, t('lookPaletteSunset')),
-                    h('option', { value: 'ocean' }, t('lookPaletteOcean')),
-                    h('option', { value: 'sand' }, t('lookPaletteSand')),
                     h('option', { value: 'custom' }, t('lookPaletteCustom')),
                   )),
                 settingRow(t('lookPaletteCustom'), null,

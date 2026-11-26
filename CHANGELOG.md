@@ -6,6 +6,15 @@
 
 ## [Unreleased]
 
+## [0.22.0] - 2026-11-26
+
+> Claude Code 页显示 CLI 版本
+
+### Added
+
+- 外观: Claude Code 页多一行「版本」，显示已装的 Claude Code CLI 版本（如 `Claude Code 2.1.332`）
+- 路由: `GET /dsh-concierge/claude-info` 多返回 `version`——直接读 npm 全局包里 `@anthropic-ai/claude-code/package.json` 的 `version`，不起进程、不拖慢卡片
+
 ## [0.21.9] - 2026-11-26
 
 > Claude Code 单独一页；开关失败能看到原因

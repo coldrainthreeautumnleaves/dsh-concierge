@@ -377,6 +377,7 @@ export function apply(ctx) {
             enabled: state.claudeEnabled,
             registered: !!state.claudeHandle,
             installed: !!findClaudeCli(),
+            version: await readClaudeVersion(),
             route,
           }, 200)
         } catch (error) {
@@ -2061,6 +2062,27 @@ async function* streamClaudeCode(options) {
 }
 
 // 读 ~/.claude/settings.json 里的路由信息（magpie 的 base URL、模型映射）
+// 读已装 Claude Code CLI 的版本号：直接读包的 package.json，不起进程
+async function readClaudeVersion() {
+  const pkg = path.join(
+    homedir(),
+    'AppData',
+    'Roaming',
+    'npm',
+    'node_modules',
+    '@anthropic-ai',
+    'claude-code',
+    'package.json',
+  )
+  try {
+    const text = await readFile(pkg, 'utf8')
+    const json = JSON.parse(text)
+    return typeof json.version === 'string' ? json.version : ''
+  } catch {
+    return ''
+  }
+}
+
 function claudeFlagFile() {
   return path.join(homedir(), '.dsh', 'update-center', 'claude-code.json')
 }

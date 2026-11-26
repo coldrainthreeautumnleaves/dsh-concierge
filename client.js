@@ -4331,6 +4331,11 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
                     claudeInfo && claudeInfo.route && claudeInfo.route.sonnet
                       ? claudeInfo.route.sonnet
                       : '—')),
+                settingRow('版本', '已装的 Claude Code CLI',
+                  h('span', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-secondary)' } },
+                    claudeInfo && claudeInfo.version
+                      ? `Claude Code ${claudeInfo.version}`
+                      : '未知')),
                 settingRow('状态', null,
                   h('span', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-secondary)' } },
                     !claudeInfo

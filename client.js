@@ -3358,18 +3358,24 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       // Claude Code：开关 + 路由信息（路由由 ~/.claude/settings.json 决定，指向 magpie）
       const [claudeInfo, setClaudeInfo] = React.useState(null)
       const [claudeBusy, setClaudeBusy] = React.useState(false)
+      const [claudeError, setClaudeError] = React.useState('')
       const loadClaudeInfo = React.useCallback(async () => {
         try {
           const res = await fetch(`${API}/claude-info`)
           const body = await res.json()
-          if (body && body.ok) setClaudeInfo(body)
-        } catch {
-          /* 读不到就保持空，卡片显示未接入 */
+          if (body && body.ok) {
+            setClaudeInfo(body)
+            setClaudeError('')
+          } else {
+            setClaudeError((body && body.error) || `读取失败（HTTP ${res.status}）`)
+          }
+        } catch (error) {
+          setClaudeError(`读取失败：${(error && error.message) || String(error)}`)
         }
       }, [])
       React.useEffect(() => {
-        loadClaudeInfo()
-      }, [loadClaudeInfo])
+        if (tab === 'claude') loadClaudeInfo()
+      }, [tab, loadClaudeInfo])
       const toggleClaude = React.useCallback(async () => {
         if (claudeBusy) return
         setClaudeBusy(true)
@@ -3381,9 +3387,12 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
             body: JSON.stringify({ enabled: next }),
           })
           const body = await res.json()
-          if (body && body.ok) await loadClaudeInfo()
-        } catch {
-          /* 失败保持原状 */
+          if (!body || !body.ok) {
+            setClaudeError((body && body.error) || `切换失败（HTTP ${res.status}）`)
+          }
+          await loadClaudeInfo()
+        } catch (error) {
+          setClaudeError(`切换失败：${(error && error.message) || String(error)}`)
         } finally {
           setClaudeBusy(false)
         }
@@ -4170,6 +4179,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
           tabButton('plugins', t('tabPlugins')),
           tabButton('look', t('tabLook')),
           tabButton('perf', t('tabPerf')),
+          tabButton('claude', 'Claude Code'),
           tabButton('about', t('tabAbout')),
         ),
 
@@ -4304,7 +4314,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
               ),
             )
           : null,
-        tab === 'update'
+        tab === 'claude'
           ? h('section', { className: 'uc-card' },
               h('div', { className: 'uc-card-head' },
                 h('div', { className: 'uc-card-title' }, 'Claude Code（走 magpie）'),
@@ -4328,6 +4338,9 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
                       : claudeInfo.installed
                         ? claudeInfo.registered ? '已接入，模型菜单里可选' : '已安装，未接入'
                         : '没找到 claude.exe')),
+                claudeError
+                  ? h('div', { style: { padding: '0 16px 12px', fontSize: '12px', color: 'var(--dsw-alias-state-error-primary, #d33)' } }, claudeError)
+                  : null,
               ),
             )
           : null,

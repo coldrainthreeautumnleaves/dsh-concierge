@@ -4336,6 +4336,15 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
                     claudeInfo && claudeInfo.version
                       ? `Claude Code ${claudeInfo.version}`
                       : '未知')),
+                settingRow('切换器', 'CC Switch：第三方供应商切换器，改的也是这份 settings.json',
+                  h('span', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-secondary)' } },
+                    !claudeInfo || !claudeInfo.switcher
+                      ? '—'
+                      : !claudeInfo.switcher.found
+                        ? '未安装'
+                        : claudeInfo.switcher.current
+                          ? `CC Switch · 当前 ${claudeInfo.switcher.current}`
+                          : `CC Switch · 已装（${claudeInfo.switcher.storage || '未知存储'}）`)),
                 settingRow('状态', null,
                   h('span', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-secondary)' } },
                     !claudeInfo

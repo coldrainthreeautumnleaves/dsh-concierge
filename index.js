@@ -378,6 +378,7 @@ export function apply(ctx) {
             registered: !!state.claudeHandle,
             installed: !!findClaudeCli(),
             version: await readClaudeVersion(),
+            switcher: await readCcSwitch(),
             route,
           }, 200)
         } catch (error) {
@@ -2063,6 +2064,58 @@ async function* streamClaudeCode(options) {
 
 // 读 ~/.claude/settings.json 里的路由信息（magpie 的 base URL、模型映射）
 // 读已装 Claude Code CLI 的版本号：直接读包的 package.json，不起进程
+// CC Switch（第三方路由/供应商切换器）的痕迹与当前供应商。
+// v3.8+ 把数据搬进 SQLite（~/.cc-switch/cc-switch.db），没有驱动读不了，只报「在」；
+// v3.2~v3.7 是 config.json，可以读出供应商列表和当前指针。
+// 它切换供应商的方式就是改写 ~/.claude/settings.json 的 env.ANTHROPIC_*，
+// 所以卡片上的「路由」永远是最终生效的那份。
+async function readCcSwitch() {
+  const dir = path.join(homedir(), '.cc-switch')
+  if (!existsSync(dir)) return { found: false, dir }
+  const result = { found: true, dir, storage: '', current: '', providers: [] }
+
+  const live = path.join(dir, 'live-state.json')
+  if (existsSync(live)) {
+    try {
+      const json = JSON.parse(await readFile(live, 'utf8'))
+      result.storage = 'live-state.json'
+      const pick = (node) => {
+        if (!node || typeof node !== 'object') return ''
+        const value = node.current || node.currentProvider || node.provider || node.active
+        return typeof value === 'string' ? value : ''
+      }
+      result.current = pick(json.claude) || pick(json.claudeCode) || pick(json)
+    } catch {
+      /* 读不出来就继续往下试 */
+    }
+  }
+
+  const cfg = path.join(dir, 'config.json')
+  if (existsSync(cfg)) {
+    try {
+      const json = JSON.parse(await readFile(cfg, 'utf8'))
+      if (!result.storage) result.storage = 'config.json'
+      const claude = json && json.providers && json.providers.claude
+      if (claude && claude.items && typeof claude.items === 'object') {
+        result.providers = Object.keys(claude.items)
+          .map((key) => {
+            const item = claude.items[key]
+            return item && typeof item === 'object' ? String(item.name || key) : String(key)
+          })
+          .filter(Boolean)
+      }
+      if (!result.current && claude && typeof claude.current === 'string') result.current = claude.current
+    } catch {
+      /* 同上 */
+    }
+  }
+
+  if (existsSync(path.join(dir, 'cc-switch.db'))) {
+    result.storage = result.storage ? `${result.storage} + sqlite` : 'sqlite'
+  }
+  return result
+}
+
 async function readClaudeVersion() {
   const pkg = path.join(
     homedir(),

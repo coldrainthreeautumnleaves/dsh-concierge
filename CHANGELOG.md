@@ -6,6 +6,19 @@
 
 ## [Unreleased]
 
+## [0.22.1] - 2026-11-26
+
+> Claude Code 页认 CC Switch
+
+### Added
+
+- 外观: Claude Code 页多一行「切换器」，显示 CC Switch 是否装了、当前用的是哪个供应商
+- 路由: `GET /dsh-concierge/claude-info` 多返回 `switcher`——读 `~/.cc-switch/live-state.json`（当前供应商）与 `~/.cc-switch/config.json`（v3.2~v3.7 的供应商列表）；v3.8+ 的数据在 SQLite（`cc-switch.db`），没有驱动读不了，只报「已装（sqlite）」
+
+### 说明
+
+- 不做切换动作：CC Switch 自己就是干这个的，而且它切换时改的也是 `~/.claude/settings.json` 的 `env.ANTHROPIC_*`——插件只读不写，避免和它抢同一个文件
+
 ## [0.22.0] - 2026-11-26
 
 > Claude Code 页显示 CLI 版本

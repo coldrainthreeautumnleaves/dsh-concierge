@@ -3397,6 +3397,43 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
           setClaudeBusy(false)
         }
       }, [claudeBusy, claudeInfo, loadClaudeInfo])
+      const trimModels = React.useCallback(async () => {
+        if (claudeBusy) return
+        setClaudeBusy(true)
+        setClaudeError('')
+        try {
+          const res = await fetch(`${API}/trim-models`, { method: 'POST' })
+          const body = await res.json()
+          if (body && body.ok) {
+            const backup = String(body.backup || '').split(/[\\/]/).pop()
+            setClaudeError(`已保留 ${body.kept} 个、裁掉 ${body.removed} 个（备份 ${backup}），重启 DSH 生效`)
+          } else {
+            setClaudeError(`失败：${(body && body.error) || `HTTP ${res.status}`}`)
+          }
+          await loadClaudeInfo()
+        } catch (error) {
+          setClaudeError(`失败：${(error && error.message) || String(error)}`)
+        } finally {
+          setClaudeBusy(false)
+        }
+      }, [claudeBusy, loadClaudeInfo])
+      const restoreConfig = React.useCallback(async () => {
+        if (claudeBusy) return
+        setClaudeBusy(true)
+        setClaudeError('')
+        try {
+          const res = await fetch(`${API}/restore-config`, { method: 'POST' })
+          const body = await res.json()
+          setClaudeError(body && body.ok
+            ? `已从 ${body.restoredFrom} 还原，重启 DSH 生效`
+            : `失败：${(body && body.error) || `HTTP ${res.status}`}`)
+          await loadClaudeInfo()
+        } catch (error) {
+          setClaudeError(`失败：${(error && error.message) || String(error)}`)
+        } finally {
+          setClaudeBusy(false)
+        }
+      }, [claudeBusy, loadClaudeInfo])
 
       const [query, setQuery] = React.useState('')
       const [gitUrl, setGitUrl] = React.useState('')
@@ -4369,6 +4406,20 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
                         : claudeInfo.routing.count > 0
                           ? `${claudeInfo.routing.names.join('、')}${claudeInfo.routing.conflict ? '（冲突）' : ''}`
                           : '未检测到')),
+                h('div', { style: { padding: '4px 0 8px', display: 'flex', gap: '8px', flexWrap: 'wrap' } },
+                  h('button', {
+                    type: 'button',
+                    className: 'uc-btn',
+                    disabled: claudeBusy,
+                    onClick: trimModels,
+                  }, '只留当前模型'),
+                  h('button', {
+                    type: 'button',
+                    className: 'uc-btn',
+                    disabled: claudeBusy,
+                    onClick: restoreConfig,
+                  }, '恢复配置'),
+                ),
                 settingRow('当前模型', '路由上勾选的那个；菜单里也只听它',
                   h('span', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-secondary)' } },
                     claudeInfo && claudeInfo.currentModel

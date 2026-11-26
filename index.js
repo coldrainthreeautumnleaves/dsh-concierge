@@ -16,8 +16,9 @@
  */
 import { spawn } from 'node:child_process'
 import { createReadStream, existsSync } from 'node:fs'
-import { mkdir, readFile, rm, stat as statOf, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, readdir, rm, stat as statOf, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
+import { createRequire } from 'node:module'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -411,6 +412,61 @@ export function apply(ctx) {
       }),
     }),
     'dsh-concierge claude toggle route',
+  )
+
+  // 把 magpie 写进 profile 的模型列表裁到只剩当前勾选的那个
+  ctx.effect(
+    () => ctx.webServer.register({
+      kind: 'exact',
+      path: `${ROUTE}/trim-models`,
+      handler: withGuard(ctx, async (request, response) => {
+        if (request.method !== 'POST') return sendNodeJson(response, { ok: false }, 405)
+        try {
+          const route = await readClaudeRoute()
+          const strip = (value) => String(value || '').replace(/\[[^\]]*\]$/, '')
+          const alias = strip(route && route.model).toLowerCase()
+          const map = {
+            sonnet: route && route.sonnet,
+            opus: route && route.opus,
+            haiku: route && route.haiku,
+          }
+          const target = strip(map[alias] || (route && route.model))
+          if (!target) return sendNodeJson(response, { ok: false, error: '读不到当前模型' }, 400)
+          const result = await trimRouteModels([target])
+          return sendNodeJson(response, result, result.ok ? 200 : 400)
+        } catch (error) {
+          return sendNodeJson(response, { ok: false, error: messageOf(error) }, 400)
+        }
+      }),
+    }),
+    'dsh-concierge trim models route',
+  )
+
+  // 用最近一次备份把配置还原回去
+  ctx.effect(
+    () => ctx.webServer.register({
+      kind: 'exact',
+      path: `${ROUTE}/restore-config`,
+      handler: withGuard(ctx, async (request, response) => {
+        if (request.method !== 'POST') return sendNodeJson(response, { ok: false }, 405)
+        try {
+          const file = await findProfileConfig()
+          if (!file) return sendNodeJson(response, { ok: false, error: '没找到 profile 配置' }, 400)
+          const dir = path.dirname(file)
+          const backups = (await readdir(dir))
+            .filter((name) => name.startsWith(path.basename(file) + '.bak-'))
+            .sort()
+          if (!backups.length) return sendNodeJson(response, { ok: false, error: '没有备份' }, 400)
+          const newest = path.join(dir, backups[backups.length - 1])
+          const text = await readFile(newest, 'utf8')
+          await writeFile(file, text, 'utf8')
+          return sendNodeJson(response, { ok: true, file, restoredFrom: backups[backups.length - 1] }, 200)
+        } catch (error) {
+          return sendNodeJson(response, { ok: false, error: messageOf(error) }, 400)
+        }
+      }),
+    }),
+    'dsh-concierge restore config route',
   )
 
   ctx.effect(
@@ -2329,6 +2385,114 @@ function createClaudeCodeAdapter(version) {
     prepareCall: async (_provider, id) => ({ model: { ...model, id }, stream: streamClaudeCode }),
     stream: streamClaudeCode,
   }
+}
+
+// 找到 profile 里那份被 magpie 写过的 cordis.patch.yml
+async function findProfileConfig() {
+  const base = path.join(homedir(), '.dsh', 'profiles')
+  try {
+    for (const name of await readdir(base)) {
+      const file = path.join(base, name, 'cordis.patch.yml')
+      if (!existsSync(file)) continue
+      const text = await readFile(file, 'utf8')
+      if (text.includes('llm-pi-ai') || text.includes('magpie')) return file
+    }
+  } catch {
+    /* 没有 profiles 目录 */
+  }
+  return null
+}
+
+// 用 profile 自带的 js-yaml 校验（插件自己的依赖里没有它）
+function loadYamlFromProfile() {
+  try {
+    const requireFromProfile = createRequire(path.join(homedir(), '.dsh', 'profiles', 'desktop', 'package.json'))
+    return requireFromProfile('js-yaml')
+  } catch {
+    return null
+  }
+}
+
+// 把 providers 下的 models 列表裁到只剩给定 id。按行改，不重排整个文件，
+// 否则注释和格式全丢。改完用 js-yaml 解析校验，解析不过就回滚。
+async function trimRouteModels(keepIds) {
+  const file = await findProfileConfig()
+  if (!file) return { ok: false, error: '没找到 profile 配置（cordis.patch.yml）' }
+  const text = await readFile(file, 'utf8')
+  const lines = text.split(/\r?\n/)
+  const keep = new Set((keepIds || []).map((id) => String(id).replace(/\[[^\]]*\]$/, '')))
+  if (!keep.size) return { ok: false, error: '没有要保留的模型' }
+
+  const out = []
+  let removed = 0
+  let kept = 0
+  let lists = 0
+
+  // 一个 models: 列表内收集模型块；结束时如果没有任何块命中，
+  // 就保留第一个块——否则那个 provider 会一条模型都不剩。
+  let blocks = []
+  let inModels = false
+
+  const finishList = () => {
+    if (!blocks.length) return
+    lists += 1
+    const hit = blocks.filter((entry) => keep.has(entry.id.replace(/\[[^\]]*\]$/, '')))
+    const chosen = hit.length ? hit : [blocks[0]]
+    for (const entry of chosen) {
+      out.push(...entry.lines)
+      kept += 1
+    }
+    removed += blocks.length - chosen.length
+    blocks = []
+  }
+
+  for (const line of lines) {
+    if (/^\s+models:\s*$/.test(line)) {
+      finishList()
+      inModels = true
+      out.push(line)
+      continue
+    }
+    if (inModels) {
+      const modelStart = /^(\s+)- id:\s*(.+?)\s*$/.exec(line)
+      if (modelStart) {
+        blocks.push({ id: modelStart[2], lines: [line] })
+        continue
+      }
+      if (blocks.length) {
+        const last = blocks[blocks.length - 1]
+        // 属于当前模型块：缩进比 "- id:" 更深
+        if (/^\s{11,}\S/.test(line) || (line.trim() === '' && false)) {
+          last.lines.push(line)
+          continue
+        }
+        finishList()
+        inModels = false
+        out.push(line)
+        continue
+      }
+      inModels = false
+      out.push(line)
+      continue
+    }
+    out.push(line)
+  }
+  finishList()
+
+  const next = out.join('\n')
+  const yaml = loadYamlFromProfile()
+  if (yaml) {
+    try {
+      yaml.load(next)
+    } catch (error) {
+      return { ok: false, error: `改完解析失败，已放弃：${messageOf(error)}` }
+    }
+  }
+
+  const backup = `${file}.bak-${Date.now()}`
+  await writeFile(backup, text, 'utf8')
+  await writeFile(file, next, 'utf8')
+  return { ok: true, file, backup, kept, removed, lists }
 }
 
 function withGuard(ctx, handler) {

@@ -6,6 +6,21 @@
 
 ## [Unreleased]
 
+## [0.23.0] - 2026-11-26
+
+> 可以把 magpie 写进 profile 的模型列表裁到只剩勾选的那个
+
+### Added
+
+- 路由: 新增两个动作——`POST /dsh-concierge/trim-models`（把 `~/.dsh/profiles/*/cordis.patch.yml` 里 `llm-pi-ai` 的 `providers.*.models` 裁到只剩当前勾选的模型）与 `POST /dsh-concierge/restore-config`（用最近一次备份还原）
+- 外观: Claude Code 页加了「只留当前模型」和「恢复配置」两个按钮
+
+### 安全
+
+- 改之前把原文件备份成 `cordis.patch.yml.bak-<毫秒时间戳>`，同一份配置里只动手写过的 `models:` 列表，注释和格式不动
+- 改完立刻用 profile 自带的 `js-yaml` 解析校验，解析不过就放弃、不写盘
+- **每个 provider 至少留一个模型**——演练时发现直接裁会把 `magpie-anthropic` 裁成零模型，所以某个 provider 没有命中项时保留它的第一个模型
+
 ## [0.22.9] - 2026-11-26
 
 > `Claude Code · sonnet` 这个名字是错的

@@ -431,7 +431,11 @@ html[data-dsh-glass="1"] [data-windows-titlebar] [class*="_frame"]::before {
   /* 和系统画的标题栏用同一个值：补丁把 titleBarOverlay.color 改成了
      chromeFallbackFill() = #eef3fa / #0e1116，也就是 --dsh-canvas。
      这里不要再叠 bg-base——那会多出 0.55 层白，和系统那条差一档。 */
-  background: var(--dsh-canvas) !important;
+  /* 不再铺实色：窗口本身已经不透明（补丁把底色改成 #ffeef3fa），而壁纸层
+     往上多铺了一个标题栏高度——让它直接透上来，标题栏就是渐变的一部分。
+     以前铺 --dsh-canvas 是因为窗口透明、不铺会露桌面（整条发蓝）；现在铺了
+     反而在顶部留一条和渐变对不上的色带。 */
+  background: transparent !important;
 }
 /* 壁纸层往上多铺一个标题栏高度。
    frame 有 padding-top: 40px（放标题栏），而壁纸层是 position: fixed; inset: 0——

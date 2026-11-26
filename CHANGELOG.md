@@ -6,6 +6,21 @@
 
 ## [Unreleased]
 
+## [0.22.3] - 2026-11-26
+
+> 取消能杀掉进程；版本号不再写死路径
+
+### Fixed
+
+- 模型: `stream` 现在把 `options.signal` 传给 `runClaudeOnce`——在 DSH 里中断一轮会真的 `kill` 掉 Claude Code 进程，之前中断了进程还在后台跑满 180 秒
+- 外观: 「版本」不再只认 `%APPDATA%\npm\node_modules\…` 这一条路径。找不到时按 `claude.exe` 的位置反推包根（`<pkg>/bin/claude.exe` → `<pkg>/package.json`），装到 `~/.local/bin` 之类的地方也能读到
+
+### 已知限制（不是 bug，写在这里免得再查）
+
+- 工具调用不显示成卡片：Claude Code 的工具循环在它自己进程内完成，DSH 只拿到最终文本
+- 不是逐字流式：一条回复一次性到达
+- 只取文本：`lastUserText` 只拼 `text` 块，发图会被丢掉
+
 ## [0.22.2] - 2026-11-26
 
 > 路由工具自动检测；两个同时在用就顶部报警

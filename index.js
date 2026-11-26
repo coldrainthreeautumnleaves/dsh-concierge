@@ -1963,7 +1963,7 @@ function findClaudeCli() {
   return null
 }
 
-function runClaudeOnce(prompt, cwd, timeoutMs = 180000) {
+function runClaudeOnce(prompt, cwd, timeoutMs = 180000, signal = null) {
   return new Promise((resolve) => {
     let done = false
     const finish = (value) => {
@@ -1993,6 +1993,18 @@ function runClaudeOnce(prompt, cwd, timeoutMs = 180000) {
       }
       finish({ ok: false, error: 'Claude Code 超时（180 秒）' })
     }, timeoutMs)
+    if (signal) {
+      if (signal.aborted) return finish({ ok: false, error: "已取消" })
+      signal.addEventListener("abort", () => {
+        try {
+          child.kill()
+        } catch {
+          /* already gone */
+        }
+        clearTimeout(timer)
+        finish({ ok: false, error: "已取消" })
+      }, { once: true })
+    }
     child.stdout.on('data', (chunk) => {
       stdout += String(chunk)
     })
@@ -2048,7 +2060,7 @@ async function* streamClaudeCode(options) {
     yield { type: 'finish', reason: { kind: 'stop' } }
     return
   }
-  const result = await runClaudeOnce(prompt, process.cwd())
+  const result = await runClaudeOnce(prompt, process.cwd(), 180000, options && options.signal)
   if (!result.ok) {
     yield {
       type: 'finish',
@@ -2158,23 +2170,21 @@ async function readCcSwitch() {
 }
 
 async function readClaudeVersion() {
-  const pkg = path.join(
-    homedir(),
-    'AppData',
-    'Roaming',
-    'npm',
-    'node_modules',
-    '@anthropic-ai',
-    'claude-code',
-    'package.json',
-  )
-  try {
-    const text = await readFile(pkg, 'utf8')
-    const json = JSON.parse(text)
-    return typeof json.version === 'string' ? json.version : ''
-  } catch {
-    return ''
+  const candidates = []
+  candidates.push(path.join(homedir(), 'AppData', 'Roaming', 'npm', 'node_modules', '@anthropic-ai', 'claude-code', 'package.json'))
+  // 装到别处时按 exe 的位置反推包根：<pkg>/bin/claude.exe -> <pkg>/package.json
+  const cli = findClaudeCli()
+  if (cli) candidates.push(path.join(path.dirname(cli), "..", "package.json"))
+  for (const file of candidates) {
+    try {
+      const text = await readFile(file, 'utf8')
+      const json = JSON.parse(text)
+      if (typeof json.version === 'string') return json.version
+    } catch {
+      /* 换下一个候选 */
+    }
   }
+  return ''
 }
 
 function claudeFlagFile() {

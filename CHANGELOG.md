@@ -6,6 +6,14 @@
 
 ## [Unreleased]
 
+## [0.20.5] - 2026-11-26
+
+> 市场的搜索/分类条不再常驻白带
+
+### Fixed
+
+- 外观: `--dshm-sticky-bg` 从 `rgba(252,253,255,0.86)` 改成透明，只留 `--dshm-stuck-bg`（0.9）。这两个变量是插件市场吸顶搜索条 / 分类条的底，之前**不管钉没钉住都铺**，所以那排永远是一条白带；按 [dsh-market THEMING.md](https://raw.githubusercontent.com/dsh-market/dsh-market/master/THEMING.md) 的 transparent-base contract，流动状态应该透明，只有 `[data-dshm-stuck]` 钉住时才需要底
+
 ## [0.20.4] - 2026-11-25
 
 > 白块真凶：`[class*="_menu"]` 误伤了 `m2hUqa_menuAnchor`

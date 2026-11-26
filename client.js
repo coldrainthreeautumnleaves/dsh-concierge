@@ -1645,8 +1645,8 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         '--dsw-alias-interactive-bg-hover-danger': pair('rgba(220, 70, 70, 0.12)', 'rgba(255, 90, 90, 0.16)'),
         // 市场吸顶的搜索条 / 分类条用它自己的变量；不设的话钉住时是透明的，
         // 卡片从底下滚过就是「磨砂」。官方文档的 transparent-base contract。
-        '--dshm-sticky-bg': pair('rgba(252, 253, 255, 0.86)', 'rgba(30, 32, 38, 0.86)'),
-        '--dshm-stuck-bg': pair('rgba(252, 253, 255, 0.97)', 'rgba(30, 32, 38, 0.97)'),
+        '--dshm-sticky-bg': pair('rgba(0, 0, 0, 0)', 'rgba(0, 0, 0, 0)'),
+        '--dshm-stuck-bg': pair('rgba(252, 253, 255, 0.9)', 'rgba(30, 32, 38, 0.9)'),
         '--dsw-alias-settings-card-fill': pair('rgba(252, 253, 255, 1)', 'rgba(30, 32, 38, 1)'),
         '--dsw-alias-settings-card-stroke': pair('rgba(255, 255, 255, 0.6)', 'rgba(255, 255, 255, 0.12)'),
         '--dsw-alias-onboarding-card-fill': fill(0.65, 0.67),

@@ -380,6 +380,7 @@ export function apply(ctx) {
             version: await readClaudeVersion(),
             switcher: await readCcSwitch(),
             routing: await readRoutingTools(),
+            models: await readRouteModels(),
             route,
           }, 200)
         } catch (error) {
@@ -1963,7 +1964,7 @@ function findClaudeCli() {
   return null
 }
 
-function runClaudeOnce(prompt, cwd, timeoutMs = 180000, signal = null) {
+function runClaudeOnce(prompt, cwd, timeoutMs = 180000, signal = null, model = "") {
   return new Promise((resolve) => {
     let done = false
     const finish = (value) => {
@@ -1975,7 +1976,9 @@ function runClaudeOnce(prompt, cwd, timeoutMs = 180000, signal = null) {
     try {
       const cli = findClaudeCli()
       if (!cli) return finish({ ok: false, error: "没找到 claude.exe，请先安装 Claude Code CLI" })
-      child = spawn(cli, ["-p", prompt, "--output-format", "json"], {
+      const args = ["-p", prompt, "--output-format", "json"]
+      if (model && model !== "claude-code") args.push("--model", model)
+      child = spawn(cli, args, {
         cwd,
         windowsHide: true,
         env: process.env,
@@ -2060,7 +2063,7 @@ async function* streamClaudeCode(options) {
     yield { type: 'finish', reason: { kind: 'stop' } }
     return
   }
-  const result = await runClaudeOnce(prompt, process.cwd(), 180000, options && options.signal)
+  const result = await runClaudeOnce(prompt, process.cwd(), 180000, options && options.signal, (options && options.model) || "")
   if (!result.ok) {
     yield {
       type: 'finish',
@@ -2196,6 +2199,41 @@ async function readClaudeVersion() {
   return ''
 }
 
+// 列出这条路由实际提供的模型：优先 settings.json 里的 modelPicker，
+// 本机 magpie 再补一份 /v1/models（OpenAI 形状）。
+async function readRouteModels() {
+  const seen = new Map()
+  const route = await readClaudeRoute()
+  if (route && route.ok) {
+    const options = Array.isArray(route.options) ? route.options : []
+    for (const option of options) {
+      if (!option || !option.model) continue
+      const id = String(option.model)
+      if (!seen.has(id)) seen.set(id, { id, name: String(option.label || id) })
+    }
+    for (const extra of [route.sonnet, route.haiku]) {
+      if (extra && !seen.has(extra)) seen.set(extra, { id: extra, name: extra })
+    }
+  }
+  try {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 800)
+    const res = await fetch('http://127.0.0.1:3425/v1/models', { signal: controller.signal })
+    clearTimeout(timer)
+    if (res.ok) {
+      const body = await res.json()
+      const list = Array.isArray(body && body.data) ? body.data : []
+      for (const item of list) {
+        const id = item && typeof item.id === 'string' ? item.id : ''
+        if (id && !seen.has(id)) seen.set(id, { id, name: id })
+      }
+    }
+  } catch {
+    /* 探不到就算了，settings.json 那份仍然有效 */
+  }
+  return Array.from(seen.values())
+}
+
 function claudeFlagFile() {
   return path.join(homedir(), '.dsh', 'update-center', 'claude-code.json')
 }
@@ -2256,7 +2294,16 @@ function createClaudeCodeAdapter(version) {
     providerRetryPolicy: () => undefined,
     imageRequestPricing: () => undefined,
     imageRequestTarget: () => ({ width: 0, height: 0, maxBytes: 0 }),
-    listModels: async () => [model],
+    listModels: async () => {
+      const detected = await readRouteModels()
+      if (!detected.length) return [model]
+      return detected.map((entry) => ({
+        ...model,
+        id: entry.id,
+        name: entry.name,
+        description: '经路由提供的模型',
+      }))
+    },
     resolveModel: async (_provider, id) => ({ ...model, id }),
     prepareCall: async (_provider, id) => ({ model: { ...model, id }, stream: streamClaudeCode }),
     stream: streamClaudeCode,

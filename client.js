@@ -4369,6 +4369,11 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
                         : claudeInfo.routing.count > 0
                           ? `${claudeInfo.routing.names.join('、')}${claudeInfo.routing.conflict ? '（冲突）' : ''}`
                           : '未检测到')),
+                settingRow('可用模型', '路由实际提供的；模型菜单里按这些列出',
+                  h('span', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-secondary)' } },
+                    claudeInfo && Array.isArray(claudeInfo.models) && claudeInfo.models.length > 0
+                      ? claudeInfo.models.map((entry) => entry.name).join('、')
+                      : '—')),
                 settingRow('状态', null,
                   h('span', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-secondary)' } },
                     !claudeInfo

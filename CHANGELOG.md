@@ -6,6 +6,16 @@
 
 ## [Unreleased]
 
+## [0.22.5] - 2026-11-26
+
+> 模型菜单列出路由真正提供的模型
+
+### Added
+
+- 模型: 适配器的 `listModels` 不再写死一个「Claude Code · 2.1.332」，改成**从路由读**——`~/.claude/settings.json` 的 `modelPicker.options` 与 `ANTHROPIC_DEFAULT_*` 映射，本机 magpie 再补一份 `/v1/models`。菜单里因此会列出 Sonnet 5 / Opus 5.5 / Haiku 5.5 这些真实可用的模型
+- 模型: 选中的模型会通过 `claude -p … --model <id>` 传给 CLI
+- 外观: Claude Code 页多一行「可用模型」，显示检测到的清单
+
 ## [0.22.4] - 2026-11-26
 
 > 按「中转」认路由；不再每 5 秒轮询

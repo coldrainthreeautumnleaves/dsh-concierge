@@ -1587,6 +1587,8 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       // 背景：预设渐变 / 图片 / 视频（Wallpaper Engine 导出的 mp4/webm 走视频）
       wall: { mode: 'preset', src: '' },
       palette: 'default',
+      // 自定义三色：起 / 中 / 终，palette = 'custom' 时用它拼渐变
+      wallColors: ['#ffe6f2', '#e8efff', '#efe6ff'],
       // 存档版本：配色方案改版时用来做一次性迁移
       lookRev: 0,
     }
@@ -1677,6 +1679,15 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       const put = (name, value) => {
         if (value) root.style.setProperty(name, value)
         else root.style.removeProperty(name)
+      }
+      const custom = look.palette === 'custom' && Array.isArray(look.wallColors) && look.wallColors.length === 3
+      if (custom) {
+        const c = look.wallColors.map((x) => String(x || '').trim() || '#ffffff')
+        put('--dsh-wall', `linear-gradient(160deg, ${c[0]} 0%, ${c[1]} 46%, ${c[2]} 100%)`)
+        put('--dsh-blob-a', null)
+        put('--dsh-blob-b', null)
+        put('--dsh-wall-dark', `linear-gradient(160deg, ${c[0]} 0%, ${c[1]} 46%, ${c[2]} 100%)`)
+        return
       }
       put('--dsh-wall', p && p.light && p.light.base)
       put('--dsh-blob-a', p && p.light && p.light.a)
@@ -1833,6 +1844,8 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         if (look.skin !== 'glass' && look.skin !== 'native') look.skin = 'glass'
         if (typeof parsed.brand === 'string' && parsed.brand in LOOK_BRANDS) look.brand = parsed.brand
         if (typeof parsed.palette === 'string' && parsed.palette in LOOK_PALETTES) look.palette = parsed.palette
+        if (parsed.palette === 'custom') look.palette = 'custom'
+        if (Array.isArray(parsed.wallColors) && parsed.wallColors.length === 3) look.wallColors = parsed.wallColors.map((x) => String(x || ''))
         if (typeof parsed.preference === 'string' && LOOK_PREFERENCES.includes(parsed.preference)) look.preference = parsed.preference
         if (LOOK_FONT_STEPS.includes(parsed.fontStep)) look.fontStep = parsed.fontStep
         if (typeof parsed.codeFont === 'string' && parsed.codeFont in LOOK_CODE_FONTS) look.codeFont = parsed.codeFont
@@ -1962,6 +1975,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
           skin: look.skin,
           brand: look.brand,
           palette: look.palette,
+          wallColors: look.wallColors,
           transparency: look.transparency,
           wall: look.wall,
           preference: look.preference,
@@ -2565,6 +2579,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       lookPaletteSunset: '晚霞',
       lookPaletteOcean: '海盐',
       lookPaletteSand: '奶油',
+      lookPaletteCustom: '自定义（三色）',
       lookHint: '默认关闭；这些设置只在玻璃皮肤下生效',
       foldersTitle: '目录与配置',
       safeModeAuto: '自动安全模式',
@@ -2839,6 +2854,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       lookPaletteSunset: 'Sunset',
       lookPaletteOcean: 'Ocean',
       lookPaletteSand: 'Cream',
+      lookPaletteCustom: 'Custom (3 colours)',
       lookHint: 'Off by default; these settings apply to the Glass skin only',
       foldersTitle: 'Folders',
       safeModeAuto: 'Automatic safe mode',
@@ -3232,6 +3248,10 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
 .uc-typer { display: flex; align-items: center; gap: 8px; }
 .uc-typer input { width: 160px; accent-color: var(--dsw-alias-brand-primary); }
 .uc-typer-value { font-size: var(--uc-fs-body); min-width: 32px; text-align: right; font-variant-numeric: tabular-nums; }
+.uc-color3 { display: flex; gap: 8px; align-items: center; }
+.uc-color3-input { width: 44px; height: 26px; padding: 0; border: 1px solid var(--dsw-alias-border-l2); border-radius: 8px; background: transparent; cursor: pointer; }
+.uc-color3-input::-webkit-color-swatch-wrapper { padding: 2px; }
+.uc-color3-input::-webkit-color-swatch { border: none; border-radius: 6px; }
 
 .uc-folder-actions { display: flex; flex-wrap: wrap; gap: 8px; padding: 8px 16px 12px; }
 .uc-folder-hint { margin: 0; padding: 0 16px 16px; font-size: var(--uc-fs-small); line-height: 1.6; color: var(--dsw-alias-label-secondary); }
@@ -4444,6 +4464,26 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
                     h('option', { value: 'sunset' }, t('lookPaletteSunset')),
                     h('option', { value: 'ocean' }, t('lookPaletteOcean')),
                     h('option', { value: 'sand' }, t('lookPaletteSand')),
+                    h('option', { value: 'custom' }, t('lookPaletteCustom')),
+                  )),
+                settingRow(t('lookPaletteCustom'), null,
+                  h('div', { className: 'uc-color3' },
+                    [0, 1, 2].map((idx) => h('input', {
+                      key: idx,
+                      type: 'color',
+                      className: 'uc-color3-input',
+                      value: String((lookSnapshot.wallColors && lookSnapshot.wallColors[idx]) || '#ffffff'),
+                      disabled: !lookSnapshot.enabled,
+                      onChange: (event) => {
+                        const next = Array.isArray(look.wallColors) ? look.wallColors.slice() : ['#ffe6f2', '#e8efff', '#efe6ff']
+                        next[idx] = event.target.value
+                        look.wallColors = next
+                        look.palette = 'custom'
+                        saveLookPrefs()
+                        applyLook()
+                        lookUpdate()
+                      },
+                    })),
                   )),
                 settingRow(t('lookFont'), null,
                   h('select', {

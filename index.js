@@ -265,6 +265,9 @@ export function apply(ctx) {
     autoBusy: false,
     lastAuto: null,
     autoTimer: null,
+    // Claude Code 提供方：开关状态与当前注册句柄
+    claudeEnabled: true,
+    claudeHandle: null,
   }
 
   // 自动更新的开关存在磁盘上：以前它只是页面里的一个 localStorage 标志，
@@ -317,19 +320,34 @@ export function apply(ctx) {
     }
   }
   // 注册 Claude Code 提供方（聊天框模型菜单里出现「Claude Code」）
-  ctx.effect(() => {
+  function applyClaudeProvider(enabled) {
     const llm = ctx.get('llm')
     if (!llm || typeof llm.registerAdapter !== 'function') return
-    let handle
+    if (!enabled) {
+      if (typeof state.claudeHandle === "function") state.claudeHandle()
+      state.claudeHandle = null
+      return
+    }
+    if (state.claudeHandle) return
     try {
-      handle = llm.registerAdapter([CLAUDE_PROVIDER], createClaudeCodeAdapter())
+      state.claudeHandle = llm.registerAdapter([CLAUDE_PROVIDER], createClaudeCodeAdapter())
     } catch (error) {
       // 注册失败不能把插件带崩：记一条日志，其余功能照常
       console.warn('[dsh-concierge] Claude Code provider registration failed:', messageOf(error))
-      return
+      state.claudeHandle = null
     }
+  }
+
+  ctx.effect(() => {
+    readClaudeEnabled()
+      .then((enabled) => {
+        state.claudeEnabled = enabled
+        applyClaudeProvider(enabled)
+      })
+      .catch(() => applyClaudeProvider(true))
     return () => {
-      if (typeof handle === 'function') handle()
+      if (typeof state.claudeHandle === "function") state.claudeHandle()
+      state.claudeHandle = null
     }
   }, 'dsh-concierge claude-code provider')
 
@@ -345,6 +363,51 @@ export function apply(ctx) {
   }, 'dsh-concierge: auto update loop')
 
   // 用本机 Claude Code 跑一次性任务；路由（magpie）由 ~/.claude/settings.json 决定
+  // Claude Code 的开关与路由信息
+  ctx.effect(
+    () => ctx.webServer.register({
+      kind: 'exact',
+      path: `${ROUTE}/claude-info`,
+      handler: withGuard(ctx, async (request, response) => {
+        if (request.method !== 'GET') return sendNodeJson(response, { ok: false }, 405)
+        try {
+          const route = await readClaudeRoute()
+          return sendNodeJson(response, {
+            ok: true,
+            enabled: state.claudeEnabled,
+            registered: !!state.claudeHandle,
+            installed: !!findClaudeCli(),
+            route,
+          }, 200)
+        } catch (error) {
+          return sendNodeJson(response, { ok: false, error: messageOf(error) }, 400)
+        }
+      }),
+    }),
+    'dsh-concierge claude info route',
+  )
+
+  ctx.effect(
+    () => ctx.webServer.register({
+      kind: 'exact',
+      path: `${ROUTE}/claude-toggle`,
+      handler: withGuard(ctx, async (request, response) => {
+        if (request.method !== 'POST') return sendNodeJson(response, { ok: false }, 405)
+        try {
+          const body = await readNodeJson(request)
+          const enabled = !body || body.enabled !== false
+          await writeClaudeEnabled(enabled)
+          state.claudeEnabled = enabled
+          applyClaudeProvider(enabled)
+          return sendNodeJson(response, { ok: true, enabled, registered: !!state.claudeHandle }, 200)
+        } catch (error) {
+          return sendNodeJson(response, { ok: false, error: messageOf(error) }, 400)
+        }
+      }),
+    }),
+    'dsh-concierge claude toggle route',
+  )
+
   ctx.effect(
     () => ctx.webServer.register({
       kind: 'exact',
@@ -1885,15 +1948,16 @@ function connectionRejection(ctx, request) {
 // 调本机 Claude Code CLI 跑一次性任务。模型路由由 ~/.claude/settings.json 决定
 // （ANTHROPIC_BASE_URL 指向 magpie），插件不自己拼路由，只负责起进程和收结果。
 function findClaudeCli() {
+  // 优先原生 exe：走 .cmd 必须经过 cmd.exe，任务文本里的 & | " 会被当成命令拼接
   const candidates = [
-    path.join(homedir(), 'AppData', 'Roaming', 'npm', 'claude.cmd'),
+    path.join(homedir(), 'AppData', 'Roaming', 'npm', 'node_modules', '@anthropic-ai', 'claude-code', 'bin', 'claude.exe'),
     path.join(homedir(), '.local', 'bin', 'claude.exe'),
     path.join(homedir(), '.claude', 'local', 'claude.exe'),
   ]
   for (const candidate of candidates) {
     if (existsSync(candidate)) return candidate
   }
-  return 'claude'
+  return null
 }
 
 function runClaudeOnce(prompt, cwd, timeoutMs = 180000) {
@@ -1906,9 +1970,10 @@ function runClaudeOnce(prompt, cwd, timeoutMs = 180000) {
     }
     let child
     try {
-      child = spawn(findClaudeCli(), ['-p', prompt, '--output-format', 'json'], {
+      const cli = findClaudeCli()
+      if (!cli) return finish({ ok: false, error: "没找到 claude.exe，请先安装 Claude Code CLI" })
+      child = spawn(cli, ["-p", prompt, "--output-format", "json"], {
         cwd,
-        shell: true,
         windowsHide: true,
         env: process.env,
       })
@@ -1993,6 +2058,52 @@ async function* streamClaudeCode(options) {
   if (text) yield { type: 'text-delta', index: 0, text }
   yield { type: 'block-end', index: 0, block: { type: 'text', text } }
   yield { type: 'finish', reason: { kind: 'stop' } }
+}
+
+// 读 ~/.claude/settings.json 里的路由信息（magpie 的 base URL、模型映射）
+function claudeFlagFile() {
+  return path.join(homedir(), '.dsh', 'update-center', 'claude-code.json')
+}
+
+async function readClaudeEnabled() {
+  try {
+    const text = await readFile(claudeFlagFile(), 'utf8')
+    const json = JSON.parse(text)
+    return !json || json.enabled !== false
+  } catch {
+    return true
+  }
+}
+
+async function writeClaudeEnabled(enabled) {
+  const file = claudeFlagFile()
+  await mkdir(path.dirname(file), { recursive: true })
+  await writeFile(file, JSON.stringify({ enabled: !!enabled }, null, 2) + '\n', 'utf8')
+}
+
+async function readClaudeRoute() {
+  const file = path.join(homedir(), '.claude', 'settings.json')
+  try {
+    const text = await readFile(file, 'utf8')
+    const json = JSON.parse(text)
+    const env = json && json.env ? json.env : {}
+    return {
+      ok: true,
+      file,
+      baseUrl: typeof env.ANTHROPIC_BASE_URL === 'string' ? env.ANTHROPIC_BASE_URL : '',
+      model: typeof json.model === 'string' ? json.model : '',
+      sonnet: typeof env.ANTHROPIC_DEFAULT_SONNET_MODEL === 'string' ? env.ANTHROPIC_DEFAULT_SONNET_MODEL : '',
+      haiku: typeof env.ANTHROPIC_DEFAULT_HAIKU_MODEL === 'string' ? env.ANTHROPIC_DEFAULT_HAIKU_MODEL : '',
+      options: Array.isArray(json.modelPicker && json.modelPicker.options)
+        ? json.modelPicker.options.map((option) => ({
+            label: option && option.label,
+            model: option && option.model,
+          }))
+        : [],
+    }
+  } catch (error) {
+    return { ok: false, file, error: messageOf(error) }
+  }
 }
 
 function createClaudeCodeAdapter() {

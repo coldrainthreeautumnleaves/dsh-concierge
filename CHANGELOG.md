@@ -6,6 +6,24 @@
 
 ## [Unreleased]
 
+## [0.21.8] - 2026-11-26
+
+> Claude Code 卡片改成开关 + 路由；顺手修掉一个命令注入
+
+### Changed
+
+- 外观: 「Claude Code（走 magpie）」卡片去掉任务输入框和运行按钮，改成**开关 + 路由信息**：开关控制是否把 Claude Code 注册成模型提供方，下面三行显示路由（`settings.json` 里的 `ANTHROPIC_BASE_URL`）、模型映射、接入状态
+- 路由: 新增 `GET /dsh-concierge/claude-info`（开关/已安装/已注册/路由）与 `POST /dsh-concierge/claude-toggle`；开关状态存 `~/.dsh/update-center/claude-code.json`，重启后保持
+
+### Fixed
+
+- 安全: `runClaudeOnce` 不再用 `spawn(…, { shell: true })`。走 `claude.cmd` 必须经过 `cmd.exe` 重新解析参数，任务文本里的 `&`、`|`、`"` 会被当成命令拼接——现在直接用原生 `claude.exe`、`shell: false`；找不到 exe 就明确报错
+
+### Docs
+
+- README 增加「Claude Code（走 magpie）」一节，写明开关、路由来源和两条限制
+- 仓库简介补上「Claude Code（走 magpie）开关与模型接入」
+
 ## [0.21.7] - 2026-11-26
 
 > 切到 Claude Code 时报 `MODEL_SWITCH_COMPACTION_FAILED`

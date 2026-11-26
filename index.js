@@ -433,6 +433,17 @@ export function apply(ctx) {
           const target = strip(map[alias] || (route && route.model))
           if (!target) return sendNodeJson(response, { ok: false, error: '读不到当前模型' }, 400)
           const result = await trimRouteModels([target])
+          try {
+            const logDir = path.join(homedir(), '.dsh', 'logs')
+            await mkdir(logDir, { recursive: true })
+            await writeFile(
+              path.join(logDir, 'dsh-concierge-trim.log'),
+              JSON.stringify({ at: new Date().toISOString(), target, result }) + "\n",
+              { flag: 'a' },
+            )
+          } catch {
+            /* 日志失败不影响主流程 */
+          }
           return sendNodeJson(response, result, result.ok ? 200 : 400)
         } catch (error) {
           return sendNodeJson(response, { ok: false, error: messageOf(error) }, 400)

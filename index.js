@@ -316,6 +316,23 @@ export function apply(ctx) {
       state.autoBusy = false
     }
   }
+  // 注册 Claude Code 提供方（聊天框模型菜单里出现「Claude Code」）
+  ctx.effect(() => {
+    const llm = ctx.get('llm')
+    if (!llm || typeof llm.registerAdapter !== 'function') return
+    let handle
+    try {
+      handle = llm.registerAdapter([CLAUDE_PROVIDER], createClaudeCodeAdapter())
+    } catch (error) {
+      // 注册失败不能把插件带崩：记一条日志，其余功能照常
+      console.warn('[dsh-concierge] Claude Code provider registration failed:', messageOf(error))
+      return
+    }
+    return () => {
+      if (typeof handle === 'function') handle()
+    }
+  }, 'dsh-concierge claude-code provider')
+
   ctx.effect(() => {
     const first = setTimeout(autoTick, 90 * 1000)
     const loop = setInterval(autoTick, 30 * 60 * 1000)
@@ -1933,6 +1950,68 @@ function runClaudeOnce(prompt, cwd, timeoutMs = 180000) {
       finish({ ok: true, text: text.slice(0, 20000) })
     })
   })
+}
+
+// 把本机 Claude Code 注册成 DSH 的一个模型提供方（provider = "claude-code"），
+// 这样聊天框的模型菜单里能直接选。工具调用留在 Claude Code 自己那边（它有自己的
+// 工具循环），这里只把最终文本以一条流交给 DSH；不做工具卡片映射。
+const CLAUDE_PROVIDER = 'claude-code'
+
+function lastUserText(messages) {
+  const list = Array.isArray(messages) ? messages : []
+  for (let i = list.length - 1; i >= 0; i -= 1) {
+    const message = list[i]
+    if (!message || message.role !== 'user') continue
+    const content = message.content
+    if (typeof content === 'string') return content
+    if (Array.isArray(content)) {
+      return content
+        .filter((block) => block && block.type === 'text' && typeof block.text === 'string')
+        .map((block) => block.text)
+        .join('\n')
+    }
+  }
+  return ''
+}
+
+async function* streamClaudeCode(options) {
+  const prompt = lastUserText(options && options.messages)
+  if (!prompt) {
+    yield { type: 'finish', reason: { kind: 'stop' } }
+    return
+  }
+  const result = await runClaudeOnce(prompt, process.cwd())
+  if (!result.ok) {
+    yield {
+      type: 'finish',
+      reason: { kind: 'error', failure: { message: result.error || 'Claude Code 失败', code: 'claude-code-failed' } },
+    }
+    return
+  }
+  const text = result.text || ''
+  yield { type: 'block-start', index: 0, blockType: 'text' }
+  if (text) yield { type: 'text-delta', index: 0, text }
+  yield { type: 'block-end', index: 0, block: { type: 'text', text } }
+  yield { type: 'finish', reason: { kind: 'stop' } }
+}
+
+function createClaudeCodeAdapter() {
+  const model = {
+    provider: CLAUDE_PROVIDER,
+    id: 'claude-code',
+    name: 'Claude Code',
+    description: '本机 Claude Code，模型路由由 ~/.claude/settings.json（magpie）决定',
+  }
+  return {
+    providerInfo: () => ({ id: CLAUDE_PROVIDER, name: 'Claude Code' }),
+    providerRetryPolicy: () => undefined,
+    imageRequestPricing: () => undefined,
+    imageRequestTarget: () => ({ width: 0, height: 0, maxBytes: 0 }),
+    listModels: async () => [model],
+    resolveModel: async (_provider, id) => ({ ...model, id }),
+    prepareCall: async (_provider, id) => ({ model: { ...model, id }, stream: streamClaudeCode }),
+    stream: streamClaudeCode,
+  }
 }
 
 function withGuard(ctx, handler) {

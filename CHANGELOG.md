@@ -6,6 +6,22 @@
 
 ## [Unreleased]
 
+## [0.21.6] - 2026-11-26
+
+> Claude Code 进聊天框的模型菜单
+
+### Added
+
+- 模型: 用 `ctx.llm.registerAdapter(['claude-code'], …)` 把本机 Claude Code 注册成一个模型提供方，聊天框的模型菜单里会出现「Claude Code」，选中后这一轮对话直接交给它
+- 适配器: 实现 `providerInfo` / `listModels` / `resolveModel` / `prepareCall` / `stream`；`stream` 把最后一条用户消息交给 `claude -p … --output-format json`，再把 `result` 作为一条文本流交回 DSH
+- 路由: 依旧不自己拼——Claude Code 读 `~/.claude/settings.json`，`ANTHROPIC_BASE_URL` 指向 magpie
+- 注册失败只记一条 `console.warn`，不影响插件其余功能
+
+### 限制
+
+- 只做文本流：Claude Code 自己的工具循环在它进程内跑完，DSH 这边看不到工具卡片，也拿不到 token 用量
+- 一条回复一次性到达，不是逐字流式
+
 ## [0.21.5] - 2026-11-26
 
 > 维护中心里能直接跑 Claude Code（走 magpie）

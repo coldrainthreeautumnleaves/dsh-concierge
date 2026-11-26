@@ -327,6 +327,28 @@ export function apply(ctx) {
     }
   }, 'dsh-concierge: auto update loop')
 
+  // 用本机 Claude Code 跑一次性任务；路由（magpie）由 ~/.claude/settings.json 决定
+  ctx.effect(
+    () => ctx.webServer.register({
+      kind: 'exact',
+      path: `${ROUTE}/claude-run`,
+      handler: withGuard(ctx, async (request, response) => {
+        if (request.method !== 'POST') return sendNodeJson(response, { ok: false }, 405)
+        try {
+          const body = await readNodeJson(request)
+          const prompt = body && typeof body.prompt === 'string' ? body.prompt.trim() : ''
+          if (!prompt) return sendNodeJson(response, { ok: false, error: '缺少 prompt' }, 400)
+          const cwd = body && typeof body.cwd === 'string' && body.cwd.trim() ? body.cwd.trim() : process.cwd()
+          const result = await runClaudeOnce(prompt, cwd)
+          return sendNodeJson(response, result, result.ok ? 200 : 400)
+        } catch (error) {
+          return sendNodeJson(response, { ok: false, error: messageOf(error) }, 400)
+        }
+      }),
+    }),
+    'dsh-concierge claude run route',
+  )
+
   ctx.effect(
     () => ctx.webServer.register({
       kind: 'exact',
@@ -1841,6 +1863,76 @@ function connectionRejection(ctx, request) {
   } catch {
     return undefined
   }
+}
+
+// 调本机 Claude Code CLI 跑一次性任务。模型路由由 ~/.claude/settings.json 决定
+// （ANTHROPIC_BASE_URL 指向 magpie），插件不自己拼路由，只负责起进程和收结果。
+function findClaudeCli() {
+  const candidates = [
+    path.join(homedir(), 'AppData', 'Roaming', 'npm', 'claude.cmd'),
+    path.join(homedir(), '.local', 'bin', 'claude.exe'),
+    path.join(homedir(), '.claude', 'local', 'claude.exe'),
+  ]
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) return candidate
+  }
+  return 'claude'
+}
+
+function runClaudeOnce(prompt, cwd, timeoutMs = 180000) {
+  return new Promise((resolve) => {
+    let done = false
+    const finish = (value) => {
+      if (done) return
+      done = true
+      resolve(value)
+    }
+    let child
+    try {
+      child = spawn(findClaudeCli(), ['-p', prompt, '--output-format', 'json'], {
+        cwd,
+        shell: true,
+        windowsHide: true,
+        env: process.env,
+      })
+    } catch (error) {
+      return finish({ ok: false, error: messageOf(error) })
+    }
+    let stdout = ''
+    let stderr = ''
+    const timer = setTimeout(() => {
+      try {
+        child.kill()
+      } catch {
+        /* already gone */
+      }
+      finish({ ok: false, error: 'Claude Code 超时（180 秒）' })
+    }, timeoutMs)
+    child.stdout.on('data', (chunk) => {
+      stdout += String(chunk)
+    })
+    child.stderr.on('data', (chunk) => {
+      stderr += String(chunk)
+    })
+    child.on('error', (error) => {
+      clearTimeout(timer)
+      finish({ ok: false, error: messageOf(error) })
+    })
+    child.on('close', (code) => {
+      clearTimeout(timer)
+      if (code !== 0) {
+        return finish({ ok: false, error: (stderr || stdout || `claude 退出码 ${code}`).slice(0, 2000) })
+      }
+      let text = stdout.trim()
+      try {
+        const parsed = JSON.parse(text)
+        if (parsed && typeof parsed.result === 'string') text = parsed.result
+      } catch {
+        /* 不是 JSON 就原样返回 */
+      }
+      finish({ ok: true, text: text.slice(0, 20000) })
+    })
+  })
 }
 
 function withGuard(ctx, handler) {

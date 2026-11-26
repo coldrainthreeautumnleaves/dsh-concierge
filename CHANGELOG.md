@@ -6,6 +6,24 @@
 
 ## [Unreleased]
 
+## [0.21.5] - 2026-11-26
+
+> 维护中心里能直接跑 Claude Code（走 magpie）
+
+### Added
+
+- 维护中心: 新增「Claude Code（走 magpie）」卡片。填一句话任务 → 点运行 → 插件在宿主侧起 `claude -p <任务> --output-format json`，把 `result` 显示出来
+- 路由: 不自己拼路由——Claude Code 读 `~/.claude/settings.json`，那里 `ANTHROPIC_BASE_URL` 指向 magpie，所以模型走的是 magpie 里配的那条
+- 路由: `POST /dsh-concierge/claude-run`，body `{ prompt, cwd? }`，返回 `{ ok, text }` 或 `{ ok: false, error }`
+
+### 实测
+
+```
+claude --version → 2.1.332
+claude -p "只回复两个字：可用" --output-format json
+  → {"result":"可用","modelUsage":{"group/never-stuck[1m]":…}}
+```
+
 ## [0.21.4] - 2026-11-26
 
 > 自定义三色改成一张卡片

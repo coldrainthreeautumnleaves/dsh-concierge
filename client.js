@@ -3355,6 +3355,30 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       const [filter, setFilter] = React.useState('all')
       const [tab, setTab] = React.useState('update')
 
+      // 用本机 Claude Code 跑一次性任务（路由走 ~/.claude/settings.json 里的 magpie）
+      const [claudePrompt, setClaudePrompt] = React.useState('')
+      const [claudeBusy, setClaudeBusy] = React.useState(false)
+      const [claudeOut, setClaudeOut] = React.useState('')
+      const runClaude = React.useCallback(async () => {
+        const prompt = claudePrompt.trim()
+        if (!prompt || claudeBusy) return
+        setClaudeBusy(true)
+        setClaudeOut('运行中…')
+        try {
+          const res = await fetch(`${API}/claude-run`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ prompt }),
+          })
+          const body = await res.json()
+          setClaudeOut(body.ok ? body.text || '（无输出）' : `失败：${body.error || '未知错误'}`)
+        } catch (error) {
+          setClaudeOut(`请求失败：${(error && error.message) || String(error)}`)
+        } finally {
+          setClaudeBusy(false)
+        }
+      }, [claudePrompt, claudeBusy])
+
       const [query, setQuery] = React.useState('')
       const [gitUrl, setGitUrl] = React.useState('')
       const [addingSource, setAddingSource] = React.useState(false)
@@ -4270,6 +4294,53 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
               ),
             )
           : null,
+        tab === 'update'
+          ? h('section', { className: 'uc-card' },
+              h('div', { className: 'uc-card-head' },
+                h('div', { className: 'uc-card-title' }, 'Claude Code（走 magpie）'),
+              ),
+              h('div', { className: 'uc-perf' },
+                settingRow(
+                  '任务',
+                  '调用本机 Claude Code 跑一次；模型路由由 ~/.claude/settings.json 决定（现在指向 magpie）。',
+                  h('textarea', {
+                    className: 'uc-select',
+                    style: { width: '100%', minHeight: '64px', resize: 'vertical' },
+                    placeholder: '例如：用一句话总结这个仓库的用途',
+                    value: claudePrompt,
+                    disabled: claudeBusy,
+                    onChange: (event) => setClaudePrompt(event.target.value),
+                  }),
+                ),
+                h('div', { style: { padding: '0 16px 12px', display: 'flex', gap: '8px', alignItems: 'center' } },
+                  h('button', {
+                    type: 'button',
+                    className: 'uc-btn uc-btn-accent',
+                    disabled: claudeBusy || !claudePrompt.trim(),
+                    onClick: runClaude,
+                  }, claudeBusy ? '运行中…' : '运行'),
+                ),
+                claudeOut
+                  ? h('pre', {
+                      style: {
+                        margin: '0 16px 14px',
+                        padding: '10px 12px',
+                        maxHeight: '240px',
+                        overflow: 'auto',
+                        whiteSpace: 'pre-wrap',
+                        wordBreak: 'break-word',
+                        fontSize: '12px',
+                        lineHeight: '1.6',
+                        borderRadius: '8px',
+                        background: 'var(--uc-surface-2)',
+                        color: 'var(--dsw-alias-label-primary)',
+                      },
+                    }, claudeOut)
+                  : null,
+              ),
+            )
+          : null,
+
 
         data && tab === 'update'
           ? h('section', { className: 'uc-card' },

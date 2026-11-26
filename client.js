@@ -271,7 +271,7 @@ html[data-dsh-edge="1"][data-dsh-edge-settle="1"] #root {
   inset: 0;
   /* 单层渐变：多层 background-image + background-size/repeat 一旦有一处写错，
      整条声明会被丢弃，表现为「这一层什么都不画」。单层最不容易出错。 */
-  background: linear-gradient(160deg, #ffe6f2 0%, #e8efff 46%, #efe6ff 100%);
+  /* 配色可切（LOOK_PALETTES）：--dsh-wall 由 applyPalette() 写到 html 上，
 }
 /* 彩色光斑用伪元素各铺一层：每个元素只有**一条** background，不会像多层
    background-image 那样一处不合法就整条丢弃（0.17.4 之前就是这么白的）。 */
@@ -283,14 +283,14 @@ html[data-dsh-edge="1"][data-dsh-edge-settle="1"] #root {
   pointer-events: none;
 }
 #dsh-concierge-glass > div:first-child::before {
-  background: radial-gradient(1150px 860px at 14% -8%, rgba(255, 224, 240, 0.95) 0%, rgba(255, 224, 240, 0) 58%);
+  background: var(--dsh-blob-a, radial-gradient(1150px 860px at 14% -8%, rgba(255, 224, 240, 0.95) 0%, rgba(255, 224, 240, 0) 58%));
 }
 #dsh-concierge-glass > div:first-child::after {
-  background: radial-gradient(1000px 780px at 90% 2%, rgba(212, 228, 255, 0.95) 0%, rgba(212, 228, 255, 0) 60%);
+  background: var(--dsh-blob-b, radial-gradient(1000px 780px at 90% 2%, rgba(212, 228, 255, 0.95) 0%, rgba(212, 228, 255, 0) 60%));
 }
 
 html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-glass > div:first-child {
-  background: linear-gradient(160deg, #12161f 0%, #0f141c 46%, #141220 100%);
+  background: var(--dsh-wall-dark, linear-gradient(160deg, #12161f 0%, #0f141c 46%, #141220 100%));
 }
 html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-glass > div:first-child::before {
   background: radial-gradient(1150px 860px at 14% -8%, rgba(72, 44, 78, 0.75) 0%, rgba(72, 44, 78, 0) 58%);
@@ -1584,6 +1584,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       edgeGlass: false,
       // 背景：预设渐变 / 图片 / 视频（Wallpaper Engine 导出的 mp4/webm 走视频）
       wall: { mode: 'preset', src: '' },
+      palette: 'default',
       // 存档版本：配色方案改版时用来做一次性迁移
       lookRev: 0,
     }
@@ -1610,6 +1611,75 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       violet: { light: '#8b5cf6', dark: '#b79bff' },
       green: { light: '#16a34a', dark: '#4ade80' },
       amber: { light: '#d97706', dark: '#fbbf24' },
+    }
+
+    // 整页渐变底色的配色。每组给「底色 + 两团光斑」的浅/深两套；
+    // null 表示用 CSS 里的默认（粉蓝紫），不写变量。
+    const LOOK_PALETTES = {
+      default: null,
+      mint: {
+        light: {
+          base: 'linear-gradient(160deg, #e9f8f2 0%, #e7f2fb 46%, #eef4ff 100%)',
+          a: 'radial-gradient(1150px 860px at 14% -8%, rgba(198, 242, 222, 0.9) 0%, rgba(198, 242, 222, 0) 58%)',
+          b: 'radial-gradient(1000px 780px at 90% 2%, rgba(206, 232, 255, 0.92) 0%, rgba(206, 232, 255, 0) 60%)',
+        },
+        dark: {
+          base: 'linear-gradient(160deg, #101a18 0%, #0f161c 46%, #111820 100%)',
+          a: 'radial-gradient(1150px 860px at 14% -8%, rgba(40, 78, 66, 0.72) 0%, rgba(40, 78, 66, 0) 58%)',
+          b: 'radial-gradient(1000px 780px at 90% 2%, rgba(30, 56, 84, 0.78) 0%, rgba(30, 56, 84, 0) 60%)',
+        },
+      },
+      sunset: {
+        light: {
+          base: 'linear-gradient(160deg, #ffe9e0 0%, #fff0f5 46%, #f5e9ff 100%)',
+          a: 'radial-gradient(1150px 860px at 14% -8%, rgba(255, 206, 186, 0.95) 0%, rgba(255, 206, 186, 0) 58%)',
+          b: 'radial-gradient(1000px 780px at 90% 2%, rgba(232, 200, 255, 0.92) 0%, rgba(232, 200, 255, 0) 60%)',
+        },
+        dark: {
+          base: 'linear-gradient(160deg, #1a1310 0%, #171218 46%, #15121f 100%)',
+          a: 'radial-gradient(1150px 860px at 14% -8%, rgba(96, 56, 40, 0.75) 0%, rgba(96, 56, 40, 0) 58%)',
+          b: 'radial-gradient(1000px 780px at 90% 2%, rgba(64, 44, 92, 0.8) 0%, rgba(64, 44, 92, 0) 60%)',
+        },
+      },
+      ocean: {
+        light: {
+          base: 'linear-gradient(160deg, #e5f1fc 0%, #e9f7f8 46%, #eaf1ff 100%)',
+          a: 'radial-gradient(1150px 860px at 14% -8%, rgba(198, 230, 255, 0.95) 0%, rgba(198, 230, 255, 0) 58%)',
+          b: 'radial-gradient(1000px 780px at 90% 2%, rgba(190, 240, 244, 0.9) 0%, rgba(190, 240, 244, 0) 60%)',
+        },
+        dark: {
+          base: 'linear-gradient(160deg, #0e1620 0%, #0d1a1c 46%, #0f1522 100%)',
+          a: 'radial-gradient(1150px 860px at 14% -8%, rgba(34, 62, 96, 0.78) 0%, rgba(34, 62, 96, 0) 58%)',
+          b: 'radial-gradient(1000px 780px at 90% 2%, rgba(28, 74, 80, 0.75) 0%, rgba(28, 74, 80, 0) 60%)',
+        },
+      },
+      sand: {
+        light: {
+          base: 'linear-gradient(160deg, #fdf4e8 0%, #faf2ec 46%, #f4eef7 100%)',
+          a: 'radial-gradient(1150px 860px at 14% -8%, rgba(255, 232, 200, 0.95) 0%, rgba(255, 232, 200, 0) 58%)',
+          b: 'radial-gradient(1000px 780px at 90% 2%, rgba(236, 224, 255, 0.9) 0%, rgba(236, 224, 255, 0) 60%)',
+        },
+        dark: {
+          base: 'linear-gradient(160deg, #191510 0%, #171412 46%, #15121a 100%)',
+          a: 'radial-gradient(1150px 860px at 14% -8%, rgba(88, 68, 40, 0.72) 0%, rgba(88, 68, 40, 0) 58%)',
+          b: 'radial-gradient(1000px 780px at 90% 2%, rgba(60, 48, 86, 0.75) 0%, rgba(60, 48, 86, 0) 60%)',
+        },
+      },
+    }
+
+    // 把选中的配色写到 html 上；选「默认」时把变量删掉，回落到 CSS 里的那组。
+    function applyPalette() {
+      if (typeof document === 'undefined') return
+      const root = document.documentElement
+      const p = LOOK_PALETTES[look.palette] || null
+      const put = (name, value) => {
+        if (value) root.style.setProperty(name, value)
+        else root.style.removeProperty(name)
+      }
+      put('--dsh-wall', p && p.light && p.light.base)
+      put('--dsh-blob-a', p && p.light && p.light.a)
+      put('--dsh-blob-b', p && p.light && p.light.b)
+      put('--dsh-wall-dark', p && p.dark && p.dark.base)
     }
 
     const BRAND_TOKEN_NAMES = [
@@ -1760,6 +1830,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         // 否则下拉框会因为找不到匹配项而显示成空白。
         if (look.skin !== 'glass' && look.skin !== 'native') look.skin = 'glass'
         if (typeof parsed.brand === 'string' && parsed.brand in LOOK_BRANDS) look.brand = parsed.brand
+        if (typeof parsed.palette === 'string' && parsed.palette in LOOK_PALETTES) look.palette = parsed.palette
         if (typeof parsed.preference === 'string' && LOOK_PREFERENCES.includes(parsed.preference)) look.preference = parsed.preference
         if (LOOK_FONT_STEPS.includes(parsed.fontStep)) look.fontStep = parsed.fontStep
         if (typeof parsed.codeFont === 'string' && parsed.codeFont in LOOK_CODE_FONTS) look.codeFont = parsed.codeFont
@@ -1888,6 +1959,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
           enabled: look.enabled,
           skin: look.skin,
           brand: look.brand,
+          palette: look.palette,
           transparency: look.transparency,
           wall: look.wall,
           preference: look.preference,
@@ -2094,6 +2166,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       } else {
         clearGlassLayer()
       }
+      applyPalette()
       applyWallpaper()
     }
 
@@ -2483,6 +2556,13 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       lookBrandViolet: '紫',
       lookBrandGreen: '绿',
       lookBrandAmber: '橙',
+      lookPalette: '背景配色',
+      lookPaletteHint: '整页渐变底色',
+      lookPaletteDefault: '粉蓝紫（默认）',
+      lookPaletteMint: '薄荷',
+      lookPaletteSunset: '晚霞',
+      lookPaletteOcean: '海盐',
+      lookPaletteSand: '奶油',
       lookHint: '默认关闭；这些设置只在玻璃皮肤下生效',
       foldersTitle: '目录与配置',
       safeModeAuto: '自动安全模式',
@@ -2750,6 +2830,13 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       lookBrandViolet: 'Violet',
       lookBrandGreen: 'Green',
       lookBrandAmber: 'Amber',
+      lookPalette: 'Background palette',
+      lookPaletteHint: 'Gradient of the whole page',
+      lookPaletteDefault: 'Blush blue (default)',
+      lookPaletteMint: 'Mint',
+      lookPaletteSunset: 'Sunset',
+      lookPaletteOcean: 'Ocean',
+      lookPaletteSand: 'Cream',
       lookHint: 'Off by default; these settings apply to the Glass skin only',
       foldersTitle: 'Folders',
       safeModeAuto: 'Automatic safe mode',
@@ -4337,6 +4424,24 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
                     h('option', { value: 'violet' }, t('lookBrandViolet')),
                     h('option', { value: 'green' }, t('lookBrandGreen')),
                     h('option', { value: 'amber' }, t('lookBrandAmber')),
+                  )),
+                settingRow(t('lookPalette'), t('lookPaletteHint'),
+                  h('select', {
+                    className: 'uc-select',
+                    value: lookSnapshot.palette,
+                    disabled: !lookSnapshot.enabled,
+                    onChange: (event) => {
+                      look.palette = event.target.value
+                      saveLookPrefs()
+                      applyLook()
+                      lookUpdate()
+                    },
+                  },
+                    h('option', { value: 'default' }, t('lookPaletteDefault')),
+                    h('option', { value: 'mint' }, t('lookPaletteMint')),
+                    h('option', { value: 'sunset' }, t('lookPaletteSunset')),
+                    h('option', { value: 'ocean' }, t('lookPaletteOcean')),
+                    h('option', { value: 'sand' }, t('lookPaletteSand')),
                   )),
                 settingRow(t('lookFont'), null,
                   h('select', {

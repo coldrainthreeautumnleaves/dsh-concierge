@@ -381,15 +381,7 @@ export function apply(ctx) {
             switcher: await readCcSwitch(),
             routing: await readRoutingTools(),
             models: await readRouteModels(),
-            currentModel: (() => {
-              const routeModel = (route && route.model) || ""
-              const strip = (value) => String(value || "").replace(/\[[^\]]*\]$/, "")
-              const options = route && Array.isArray(route.options) ? route.options : []
-              for (const option of options) {
-                if (option && strip(option.model) === strip(routeModel)) return String(option.label || routeModel)
-              }
-              return strip(routeModel)
-            })(),
+            currentModel: resolveRouteModelName(route),
             route,
           }, 200)
         } catch (error) {
@@ -2210,6 +2202,25 @@ async function readClaudeVersion() {
 
 // 列出这条路由实际提供的模型：优先 settings.json 里的 modelPicker，
 // 本机 magpie 再补一份 /v1/models（OpenAI 形状）。
+// settings.json 的 model 可能是 sonnet/opus/haiku 这种别名，
+// 真正的路由模型在 ANTHROPIC_DEFAULT_*_MODEL 里。先还原，再找展示名。
+function resolveRouteModelName(route) {
+  const strip = (value) => String(value || '').replace(/\[[^\]]*\]$/, '')
+  const raw = (route && route.model) || ''
+  const alias = strip(raw).toLowerCase()
+  const map = {
+    sonnet: route && route.sonnet,
+    opus: route && route.opus,
+    haiku: route && route.haiku,
+  }
+  const target = map[alias] || raw
+  const options = route && Array.isArray(route.options) ? route.options : []
+  for (const option of options) {
+    if (option && strip(option.model) === strip(target)) return String(option.label || strip(target))
+  }
+  return strip(target)
+}
+
 async function readRouteModels() {
   const route = await readClaudeRoute()
   const options = route && Array.isArray(route.options) ? route.options : []
@@ -2280,6 +2291,7 @@ async function readClaudeRoute() {
       model: typeof json.model === 'string' ? json.model : '',
       sonnet: typeof env.ANTHROPIC_DEFAULT_SONNET_MODEL === 'string' ? env.ANTHROPIC_DEFAULT_SONNET_MODEL : '',
       haiku: typeof env.ANTHROPIC_DEFAULT_HAIKU_MODEL === 'string' ? env.ANTHROPIC_DEFAULT_HAIKU_MODEL : '',
+      opus: typeof env.ANTHROPIC_DEFAULT_OPUS_MODEL === 'string' ? env.ANTHROPIC_DEFAULT_OPUS_MODEL : '',
       options: Array.isArray(json.modelPicker && json.modelPicker.options)
         ? json.modelPicker.options.map((option) => ({
             label: option && option.label,
@@ -2307,24 +2319,11 @@ function createClaudeCodeAdapter(version) {
     providerRetryPolicy: () => undefined,
     imageRequestPricing: () => undefined,
     imageRequestTarget: () => ({ width: 0, height: 0, maxBytes: 0 }),
-    // 路由上同一时间只勾一个模型，菜单里也只报这一个：
-    // 名字跟着 settings.json 的 model / modelPicker 走，请求时不传 --model，
-    // 让 Claude Code 用它自己当前选中的那个。
+    // 路由上同一时间只勾一个模型，菜单里也只报这一个
     listModels: async () => {
       const route = await readClaudeRoute()
-      const options = route && Array.isArray(route.options) ? route.options : []
-      const current = (route && route.model) || ''
-      const strip = (value) => String(value || "").replace(/\[[^\]]*\]$/, "")
-      let label = ""
-      for (const option of options) {
-        if (!option || !option.model) continue
-        if (strip(option.model) === strip(current)) {
-          label = String(option.label || "")
-          break
-        }
-      }
-      const suffix = label || strip(current) || version || ""
-      return [{ ...model, id: 'claude-code', name: suffix ? 'Claude Code · ' + suffix : 'Claude Code' }]
+      const label = resolveRouteModelName(route)
+      return [{ ...model, id: 'claude-code', name: label ? 'Claude Code · ' + label : 'Claude Code' }]
     },
     resolveModel: async (_provider, id) => ({ ...model, id }),
     prepareCall: async (_provider, id) => ({ model: { ...model, id }, stream: streamClaudeCode }),

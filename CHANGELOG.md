@@ -6,6 +6,15 @@
 
 ## [Unreleased]
 
+## [0.22.9] - 2026-11-26
+
+> `Claude Code · sonnet` 这个名字是错的
+
+### Fixed
+
+- 模型: 菜单里原来显示 `Claude Code · sonnet`——`sonnet` 只是 `settings.json` 里 `model` 的**别名**，真正的路由模型在 `ANTHROPIC_DEFAULT_SONNET_MODEL` 里。现在先做别名还原（sonnet / opus / haiku → `ANTHROPIC_DEFAULT_*_MODEL`），再去 `modelPicker` 里找展示名，所以会显示成 `Claude Code · 永不卡住 · routing group` 这种真实的名字
+- 外观: Claude Code 页的「当前模型」也用同一套还原
+
 ## [0.22.8] - 2026-11-26
 
 > 设置行不再被长文本挤成竖排

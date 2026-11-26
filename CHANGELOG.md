@@ -6,6 +6,20 @@
 
 ## [Unreleased]
 
+## [0.22.2] - 2026-11-26
+
+> 路由工具自动检测；两个同时在用就顶部报警
+
+### Added
+
+- 路由: `readRoutingTools()` 自动检测本机在用的路由工具——Magpie（3425 端口探活）、CC Switch（`~/.cc-switch`）、Claude Code Router（`~/.claude-code-router`）
+- 外观: Claude Code 页多一行「路由工具」，显示检测到哪些；**检测到两个以上时页面顶部弹红色提示**，写明它们改的是同一份 `~/.claude/settings.json` 的 `env.ANTHROPIC_*`，同时用会互相覆盖
+- 外观: 模型菜单里的名字带上 CLI 版本（`Claude Code · 2.1.332`），注册前读一次版本号；两个同名条目因此也能区分
+
+### Changed
+
+- 外观: Claude Code 页每 5 秒自动重读一次状态——CC Switch 切供应商是自动生效的，这边跟着变，不用手动刷新
+
 ## [0.22.1] - 2026-11-26
 
 > Claude Code 页认 CC Switch

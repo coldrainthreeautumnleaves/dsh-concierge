@@ -320,7 +320,7 @@ export function apply(ctx) {
     }
   }
   // 注册 Claude Code 提供方（聊天框模型菜单里出现「Claude Code」）
-  function applyClaudeProvider(enabled) {
+  async function applyClaudeProvider(enabled) {
     const llm = ctx.get('llm')
     if (!llm || typeof llm.registerAdapter !== 'function') return
     if (!enabled) {
@@ -330,7 +330,7 @@ export function apply(ctx) {
     }
     if (state.claudeHandle) return
     try {
-      state.claudeHandle = llm.registerAdapter([CLAUDE_PROVIDER], createClaudeCodeAdapter())
+      state.claudeHandle = llm.registerAdapter([CLAUDE_PROVIDER], createClaudeCodeAdapter(await readClaudeVersion()))
     } catch (error) {
       // 注册失败不能把插件带崩：记一条日志，其余功能照常
       console.warn('[dsh-concierge] Claude Code provider registration failed:', messageOf(error))
@@ -340,9 +340,9 @@ export function apply(ctx) {
 
   ctx.effect(() => {
     readClaudeEnabled()
-      .then((enabled) => {
+      .then(async (enabled) => {
         state.claudeEnabled = enabled
-        applyClaudeProvider(enabled)
+        await applyClaudeProvider(enabled)
       })
       .catch(() => applyClaudeProvider(true))
     return () => {
@@ -379,6 +379,7 @@ export function apply(ctx) {
             installed: !!findClaudeCli(),
             version: await readClaudeVersion(),
             switcher: await readCcSwitch(),
+            routing: await readRoutingTools(),
             route,
           }, 200)
         } catch (error) {
@@ -400,7 +401,7 @@ export function apply(ctx) {
           const enabled = !body || body.enabled !== false
           await writeClaudeEnabled(enabled)
           state.claudeEnabled = enabled
-          applyClaudeProvider(enabled)
+          await applyClaudeProvider(enabled)
           return sendNodeJson(response, { ok: true, enabled, registered: !!state.claudeHandle }, 200)
         } catch (error) {
           return sendNodeJson(response, { ok: false, error: messageOf(error) }, 400)
@@ -2069,6 +2070,46 @@ async function* streamClaudeCode(options) {
 // v3.2~v3.7 是 config.json，可以读出供应商列表和当前指针。
 // 它切换供应商的方式就是改写 ~/.claude/settings.json 的 env.ANTHROPIC_*，
 // 所以卡片上的「路由」永远是最终生效的那份。
+// 自动检测本机有哪些「路由工具」在起作用。它们都在改写同一份
+// ~/.claude/settings.json 的 env.ANTHROPIC_*，同时用两个就会互相覆盖。
+async function readRoutingTools() {
+  const tools = []
+
+  // Magpie：本机 3425 端口（OpenAI 兼容 + Anthropic 兼容都在这个端口）
+  let magpieUp = false
+  try {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 800)
+    const res = await fetch('http://127.0.0.1:3425/v1/models', { signal: controller.signal })
+    clearTimeout(timer)
+    magpieUp = res.ok
+  } catch {
+    magpieUp = false
+  }
+  tools.push({ id: 'magpie', name: 'Magpie', found: magpieUp, detail: magpieUp ? '127.0.0.1:3425' : '' })
+
+  const cc = await readCcSwitch()
+  tools.push({
+    id: 'cc-switch',
+    name: 'CC Switch',
+    found: cc.found,
+    detail: cc.current || (cc.found ? cc.storage || '已装' : ''),
+  })
+
+  const ccr = path.join(homedir(), '.claude-code-router')
+  const ccrFound = existsSync(ccr)
+  tools.push({ id: 'ccr', name: 'Claude Code Router', found: ccrFound, detail: ccrFound ? ccr : '' })
+
+  const found = tools.filter((tool) => tool.found)
+  return {
+    tools,
+    count: found.length,
+    names: found.map((tool) => tool.name),
+    // 两个以上同时在用就会打架
+    conflict: found.length >= 2,
+  }
+}
+
 async function readCcSwitch() {
   const dir = path.join(homedir(), '.cc-switch')
   if (!existsSync(dir)) return { found: false, dir }
@@ -2181,11 +2222,11 @@ async function readClaudeRoute() {
   }
 }
 
-function createClaudeCodeAdapter() {
+function createClaudeCodeAdapter(version) {
   const model = {
     provider: CLAUDE_PROVIDER,
     id: 'claude-code',
-    name: 'Claude Code',
+    name: version ? 'Claude Code · ' + version : 'Claude Code · 本机 CLI',
     description: '本机 Claude Code，模型路由由 ~/.claude/settings.json（magpie）决定',
     // DSH 切模型前要压缩上下文，必须知道窗口大小，否则报 MODEL_SWITCH_COMPACTION_FAILED
     context: { contextWindow: 1048576 },

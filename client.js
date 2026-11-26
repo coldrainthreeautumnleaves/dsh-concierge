@@ -3374,7 +3374,12 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         }
       }, [])
       React.useEffect(() => {
-        if (tab === 'claude') loadClaudeInfo()
+        if (tab !== 'claude') return
+        loadClaudeInfo()
+        // CC Switch 切供应商是自动生效的（它改的就是 settings.json），
+        // 这边每 5 秒跟着读一次，切完不用手动刷新
+        const timer = setInterval(loadClaudeInfo, 5000)
+        return () => clearInterval(timer)
       }, [tab, loadClaudeInfo])
       const toggleClaude = React.useCallback(async () => {
         if (claudeBusy) return
@@ -4314,6 +4319,13 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
               ),
             )
           : null,
+        tab === 'claude' && claudeInfo && claudeInfo.routing && claudeInfo.routing.conflict
+          ? h('div', { className: 'uc-notice uc-notice-err' },
+              h('span', null,
+                `检测到 ${claudeInfo.routing.count} 个路由工具（${(claudeInfo.routing.names || []).join('、')}）同时在用。` +
+                  '请只保留一个——它们改的都是 ~/.claude/settings.json 的 env.ANTHROPIC_*，同时用会互相覆盖。'))
+          : null,
+
         tab === 'claude'
           ? h('section', { className: 'uc-card' },
               h('div', { className: 'uc-card-head' },
@@ -4345,6 +4357,13 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
                         : claudeInfo.switcher.current
                           ? `CC Switch · 当前 ${claudeInfo.switcher.current}`
                           : `CC Switch · 已装（${claudeInfo.switcher.storage || '未知存储'}）`)),
+                settingRow('路由工具', '自动检测；同时用两个会打架',
+                  h('span', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-secondary)' } },
+                    !claudeInfo || !claudeInfo.routing
+                      ? '—'
+                      : claudeInfo.routing.count > 0
+                        ? `${claudeInfo.routing.names.join('、')}${claudeInfo.routing.conflict ? '（冲突）' : ''}`
+                        : '未检测到')),
                 settingRow('状态', null,
                   h('span', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-secondary)' } },
                     !claudeInfo

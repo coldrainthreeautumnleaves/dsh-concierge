@@ -14,10 +14,10 @@ const u = (text, kind) => ({
 const a = (text) => ({ role: 'assistant', content: [{ type: 'text', text }] })
 
 const messages = [
-  a('你好！我在 `C:/Users/d2129/.dsh/profiles/desktop`。你想让我帮你做什么？'),
+  a('你好！我在 `<home>/.dsh/profiles/desktop`。你想让我帮你做什么？'),
   u('<memory_handoff>\n以下是已保存的近期对话原文，用于接续。', 'memory-handoff-context'),
   u(process.env.E2E_QUESTION || '能够干什么', 'user'),
-  u('<system-reminder>\nCurrent working directory: "E:\\\\全局".', 'runtime-context'),
+  u('<system-reminder>\nCurrent working directory: "<workspace>".', 'runtime-context'),
   u('Time sampled while preparing turn 10, step 1: 2026-11-27T22:57:52+08:00', 'time-context'),
   u('<memory_prefetch>\n- [原话 · 用户说 · 2026-11-27 22:42 +08:00（今天）] 能够干什么', 'memory-prefetch'),
   u('<memory_answer_rules>\n当前本地时间：2026-11-27 22:57 +08:00 星期五', 'memory-answer-rules'),

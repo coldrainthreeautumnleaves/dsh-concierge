@@ -6,6 +6,25 @@
 
 ## [Unreleased]
 
+## [0.25.1] - 2026-11-27
+
+> 模态确认框拉回正中
+
+### Fixed
+
+- 外观: 「关闭整个 MattSkillsDeck」这类确认框跑到右下角。实测它的样式是
+
+  ```html
+  <div role="dialog" aria-modal="true" style="position: fixed; left: 1057px; top: 506px; …">
+  ```
+
+  写死的像素坐标，窗口尺寸一变就跑到角落。现在把它拉回屏幕正中（`left/top: 50%` + `translate(-50%,-50%)`）
+- 外观: 选择器限定为 `[role="dialog"][aria-modal="true"]` + 内联 `position: fixed` + 内联 `left:`/`top:`，并排除已经用 `left: 50%` 的。**不用全局 `[aria-modal="true"]`**——DSH 自己在用 `MutationObserver` 监听 `role` 和 `aria-modal` 管理模态行为，而且设置面板这类本来就居中的对话框再套一层 translate 会偏
+
+### 修正
+
+- 0.25.0 把「输入框塌陷」误判成了 `sticky` 父级高度问题，实测数据前后一致（`root` 124px / `stack` 166px），并没有随修复改变。真正在右下角的是这个确认框。输入区那两条兜底规则留着，尺寸正常时不生效
+
 ## [0.25.0] - 2026-11-27
 
 > 修输入框塌陷：父级少算了 sticky 子元素的高度

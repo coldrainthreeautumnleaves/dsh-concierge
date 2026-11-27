@@ -702,6 +702,22 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
     inset 0 1px 0 rgba(255, 255, 255, 0.12),
     0 10px 30px rgba(0, 0, 0, 0.35);
 }
+/* 模态确认框（如「关闭整个 MattSkillsDeck」）用的是**写死的像素坐标**
+   （实测 left:1057px; top:506px），窗口尺寸一变它就跑到右下角去。
+   这里把它拉回屏幕正中。
+
+   不用 [role="dialog"][aria-modal="true"] 这种全局选择器：DSH 自己在监听
+   aria-modal 的变化来管理模态行为（asar 里有 MutationObserver 盯着 role 和
+   aria-modal），而且设置面板这类本来就居中的对话框再套一层 translate 会偏。
+   这里只认「fixed + 写了内联 left/top」的浮层，并且排除已经用 50% 居中的。 */
+html[data-dsh-glass="1"] [role="dialog"][aria-modal="true"][style*="position: fixed"][style*="left:"][style*="top:"]:not([style*="left: 50%"]) {
+  left: 50% !important;
+  top: 50% !important;
+  right: auto !important;
+  bottom: auto !important;
+  transform: translate(-50%, -50%) !important;
+  margin: 0 !important;
+}
 /* 输入框底座的兜底：底栏上的工具条收起后，dock 偶尔会塌成很小的一块
    （实测 280×26），整块输入区被顶到上面，下面留一大片空白。
    这里只约束「最小可用尺寸」，不参与正常布局——尺寸正常时这条不生效。 */
@@ -718,9 +734,14 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
      an3WzG_composerSeat  position: sticky
    sticky 元素不参与父级的 auto 高度计算，父级因此少算了自己孩子的高度，
    卡片被挤到父级外面，看着就是「输入框上移、下面空一片」。
-   修法：把 root 的高度从「算出来的定值」改成由内容撑开。不动 sticky 的定位
-   ——那是「滚动时输入框吸底」的效果，改了会破坏正常滚动。 */
-html[data-dsh-glass="1"] div[class*="_root"]:has(> [data-composer-dock]) {
+
+   注意：dock 不是 root 的直接子元素，中间还隔着一层 display:contents 的 div，
+   所以这里用后代选择器 :has(...) 而不是子选择器 :has(> ...)——用子选择器
+   一个都匹配不上，这就是上一版没生效的原因。
+
+   只把 root 的高度改成由内容撑开，不动 sticky 定位——那是「滚动时输入框吸底」
+   的效果，改了会破坏正常滚动。 */
+html[data-dsh-glass="1"] div[class*="_root"]:has([data-composer-dock]) {
   height: auto !important;
   min-height: fit-content !important;
 }

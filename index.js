@@ -406,34 +406,6 @@ export function apply(ctx) {
     'dsh-concierge claude toggle route',
   )
 
-  // 把 magpie 写进 profile 的模型列表裁到只剩当前勾选的那个
-  // 切换 Claude Code 用的模型：改 ~/.claude/settings.json 的 model 字段。
-  // 先备份，只动这一个字段，其余原样写回（保持 2 空格缩进）。
-  ctx.effect(
-    () => ctx.webServer.register({
-      kind: 'exact',
-      path: `${ROUTE}/claude-model`,
-      handler: withGuard(ctx, async (request, response) => {
-        if (request.method !== 'POST') return sendNodeJson(response, { ok: false }, 405)
-        try {
-          const body = await readNodeJson(request)
-          const model = body && typeof body.model === 'string' ? body.model.trim() : ''
-          if (!model) return sendNodeJson(response, { ok: false, error: '缺少 model' }, 400)
-          // 交给 magpie 自己切：它同时更新 settings.json 和 applied.json
-          const result = await runMagpieCli(['claude', model])
-          if (!result.ok) {
-            return sendNodeJson(response, { ok: false, error: result.error || result.output || 'magpie 切换失败' }, 400)
-          }
-          const applied = await readMagpieApplied()
-          return sendNodeJson(response, { ok: true, model, applied: applied.claude, output: result.output }, 200)
-        } catch (error) {
-          return sendNodeJson(response, { ok: false, error: messageOf(error) }, 400)
-        }
-      }),
-    }),
-    'dsh-concierge claude model route',
-  )
-
   // magpie 的路由：读现状 / 合并成一个协议
   ctx.effect(
     () => ctx.webServer.register({

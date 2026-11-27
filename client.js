@@ -3413,28 +3413,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
           setClaudeBusy(false)
         }
       }, [claudeBusy, claudeInfo, loadClaudeInfo])
-      const setClaudeModel = React.useCallback(async (model) => {
-        if (claudeBusy || !model) return
-        setClaudeBusy(true)
-        setClaudeError('')
-        try {
-          const res = await fetch(`${API}/claude-model`, {
-            method: 'POST',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ model }),
-          })
-          const body = await res.json()
-          if (!body || !body.ok) {
-            setClaudeError((body && body.error) || `切换失败（HTTP ${res.status}）`)
-          }
-          await loadClaudeInfo()
-        } catch (error) {
-          setClaudeError(`切换失败：${(error && error.message) || String(error)}`)
-        } finally {
-          setClaudeBusy(false)
-        }
-      }, [claudeBusy, loadClaudeInfo])
-
       const trimModels = React.useCallback(async () => {        if (claudeBusy) return
         setClaudeBusy(true)
         setClaudeError('')
@@ -4443,17 +4421,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
                         : claudeInfo.routing.count > 0
                           ? `${claudeInfo.routing.names.join('、')}${claudeInfo.routing.conflict ? '（冲突）' : ''}`
                           : '未检测到')),
-                settingRow('模型', '选完交给 magpie 自己切（magpie claude <模型>），settings.json 和 Agent 页同时更新',
-                  h('select', {
-                    className: 'uc-select',
-                    style: { maxWidth: '280px' },
-                    value: (claudeInfo && claudeInfo.route && claudeInfo.route.model) || '',
-                    disabled: claudeBusy || !claudeInfo,
-                    onChange: (event) => setClaudeModel(event.target.value),
-                  },
-                    ((claudeInfo && claudeInfo.route && claudeInfo.route.options) || []).map((option) =>
-                      h('option', { key: option.model, value: option.model }, option.label || option.model)),
-                  )),
                 settingRow('状态', null,
                   h('span', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-secondary)' } },
                     !claudeInfo

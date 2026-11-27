@@ -6,6 +6,15 @@
 
 ## [Unreleased]
 
+## [0.23.8] - 2026-11-27
+
+> 删掉没用的模型下拉
+
+### Removed
+
+- 外观: Claude Code 页去掉「模型」下拉，以及 `POST /dsh-concierge/claude-model` 路由和 `setClaudeModel`。它改的是 `~/.claude/settings.json`，但 DSH 聊天框走的是自己的 provider，只有插件调 `claude.exe` 那条路才吃它——那条路在 0.23.6 已经删了，所以这个下拉是孤立设置，改了不影响任何行为
+- Claude Code 的模型仍由 magpie 的 Agent 页管理，这一页只显示只读信息
+
 ## [0.23.7] - 2026-11-27
 
 > 模型下拉真的生效了；去掉没用的网关合并

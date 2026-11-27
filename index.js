@@ -2202,16 +2202,33 @@ async function readRoutingTools() {
   const baseUrl = (route && route.baseUrl) || ''
   const isLocal = /^https?:\/\/(127\.0\.0\.1|localhost)([:/]|$)/i.test(baseUrl)
   const relay = baseUrl && !isLocal ? baseUrl : ''
+
+  // 谁在「实际接管」：settings.json 指向哪个本机端口，就算哪个在用。
+  // 装了但没接管的不算冲突——之前按「装了」判断，装过 magpie 就永远报警。
+  let activeId = ''
+  if (isLocal) {
+    try {
+      const port = new URL(baseUrl).port || '80'
+      if (port === '19999') activeId = 'route'
+      else if (port === '3425') activeId = 'magpie'
+      else if (port === '3456') activeId = 'ccr'
+    } catch {
+      /* 解析失败就当没有 */
+    }
+  }
   for (const tool of tools) {
-    tool.active = tool.id === 'magpie' ? isLocal && tool.found : false
+    tool.active = tool.found && tool.id === activeId
   }
   const found = tools.filter((tool) => tool.found)
+  const active = tools.filter((tool) => tool.active)
   return {
     tools,
     count: found.length,
     names: found.map((tool) => tool.name),
-    // 两个以上同时在用就会打架
-    conflict: found.length >= 2,
+    activeNames: active.map((tool) => tool.name),
+    activeId,
+    // 只有多个同时「在用」才真会打架
+    conflict: active.length >= 2,
     relay,
   }
 }

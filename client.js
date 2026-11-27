@@ -4397,7 +4397,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         tab === 'claude' && claudeInfo && claudeInfo.routing && claudeInfo.routing.conflict
           ? h('div', { className: 'uc-notice uc-notice-err' },
               h('span', null,
-                `检测到 ${claudeInfo.routing.count} 个路由工具（${(claudeInfo.routing.names || []).join('、')}）同时在用。` +
+                `检测到 ${(claudeInfo.routing.activeNames || []).length} 个路由工具同时在接管（${(claudeInfo.routing.activeNames || []).join('、')}）。` +
                   '请只保留一个——它们改的都是 ~/.claude/settings.json 的 env.ANTHROPIC_*，同时用会互相覆盖。'))
           : null,
 
@@ -4446,9 +4446,11 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
                       ? '—'
                       : claudeInfo.routing.relay
                         ? `中转 · ${String(claudeInfo.routing.relay).replace(/^https?:\/\//, '')}`
-                        : claudeInfo.routing.count > 0
-                          ? `${claudeInfo.routing.names.join('、')}${claudeInfo.routing.conflict ? '（冲突）' : ''}`
-                          : '未检测到')),
+                        : claudeInfo.routing.activeNames && claudeInfo.routing.activeNames.length > 0
+                          ? `${claudeInfo.routing.activeNames.join('、')}（在用）${claudeInfo.routing.count > claudeInfo.routing.activeNames.length ? ` · 另装了 ${claudeInfo.routing.count - claudeInfo.routing.activeNames.length} 个未接管` : ''}`
+                          : claudeInfo.routing.count > 0
+                            ? `装了 ${claudeInfo.routing.names.join('、')}，但都没接管`
+                            : '未检测到')),
                 settingRow('状态', null,
                   h('span', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-secondary)' } },
                     !claudeInfo

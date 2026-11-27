@@ -6,6 +6,15 @@
 
 ## [Unreleased]
 
+## [0.26.1] - 2026-11-28
+
+> 接管时保留路由台这个 provider，只把模型挪走
+
+### Fixed
+
+- Claude Code（ACP）: 上一版接管时把 `magpie-route` 整条从 DSH 配置里删掉，结果模型页里连「路由台」这一项都不见了，看着像坏了。现在改成保留 provider、只清空 `models`，`displayName` 改成「路由台（由插件接管）」。这样模型页里还在（能看出是插件在管），聊天框的模型菜单里也不会和插件那份重复
+
+  让出时按备份原样写回，模型和 `displayName` 一起恢复
 ## [0.26.0] - 2026-11-28
 
 > 网关候选覆盖三个来源：路由台、magpie、Claude Code Router

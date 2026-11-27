@@ -6,6 +6,15 @@
 
 ## [Unreleased]
 
+## [0.26.2] - 2026-11-28
+
+> 修掉「resolves no models」红色报错
+
+### Fixed
+
+- Claude Code（ACP）: 上一版接管时保留 `magpie-route` 这个 provider、只把 `models` 清空，DSH 的模型页会报错：`llm-pi-ai: provider "magpie-route" resolves no models; the installed catalog does not describe this route, so its models must be listed in configuration`。原因是 `llm-pi-ai` 校验里，provider 解析出的模型数为 0 就判无效——内置目录只描述它认识的 route（`deepseek` 之类），自定义名字不在里面，所以 `models` 不能空着。既然不能空着、又不能和插件那份重复，就只能整条移走，回到 0.26.0 的做法
+
+  让出时按备份原样写回，16 个模型和全部规格字段一起恢复
 ## [0.26.1] - 2026-11-28
 
 > 接管时保留路由台这个 provider，只把模型挪走

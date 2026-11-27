@@ -6,6 +6,22 @@
 
 ## [Unreleased]
 
+## [0.24.6] - 2026-11-27
+
+> 网关改走路由台，magpie 只作后备
+
+### Changed
+
+- 模型: 新增 `pickGatewayBase()` —— 先试**路由台** `127.0.0.1:19999`，不通才回落到 magpie `127.0.0.1:3425`；结果缓存到 `lastGatewayBase`，启动时预热一次
+- 模型: `probeGatewayModels` 的模型清单和探测请求都改用选中的网关，不再硬编码 3425
+- 模型: ACP 子进程的 `ANTHROPIC_BASE_URL` 也跟着走选中的网关
+- 外观: 路由工具检测多一项「路由台」；Claude Code 页文案从「走 magpie」改成「走路由台 / 中转」
+
+### 说明
+
+- 路由台的接口和 magpie 一致（`/v1/models`、`/v1/messages`），所以换过去不用改协议层
+- magpie 那组 provider（`magpie-anthropic`）仍在配置里，由路由台的接入页决定去留
+
 ## [0.24.5] - 2026-11-27
 
 > 菜单里只列网关真能用的模型

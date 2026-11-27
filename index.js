@@ -344,6 +344,8 @@ export function apply(ctx) {
 
   // 按开关状态决定是否注册；插件卸载时撤销
   ctx.effect(() => {
+    // 启动时先探一次网关（路由台优先），后面同步取用
+    pickGatewayBase().catch(() => {})
     readClaudeEnabled()
       .then((enabled) => applyClaudeProvider(enabled))
       .catch(() => applyClaudeProvider(true))
@@ -2081,7 +2083,7 @@ function runClaudeOnce(prompt, cwd, timeoutMs = 180000, signal = null, model = "
       // 指定了 magpie 的模型就走它的网关，不吃 ~/.claude/settings.json
       const childEnv = Object.assign({}, process.env)
       if (model) {
-        childEnv.ANTHROPIC_BASE_URL = "http://127.0.0.1:3425"
+        childEnv.ANTHROPIC_BASE_URL = lastGatewayBase || MAGPIE_GATEWAY_BASE
         childEnv.ANTHROPIC_AUTH_TOKEN = childEnv.ANTHROPIC_AUTH_TOKEN || "magpie"
       }
       child = spawn(cli, args, {
@@ -2156,6 +2158,19 @@ function runClaudeOnce(prompt, cwd, timeoutMs = 180000, signal = null, model = "
 // ~/.claude/settings.json 的 env.ANTHROPIC_*，同时用两个就会互相覆盖。
 async function readRoutingTools() {
   const tools = []
+
+  // 路由台：本机 19999（自己写的 Go 网关）
+  let routeUp = false
+  try {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 800)
+    const res = await fetch('http://127.0.0.1:19999/v1/models', { signal: controller.signal })
+    clearTimeout(timer)
+    routeUp = res.ok
+  } catch {
+    routeUp = false
+  }
+  tools.push({ id: 'route', name: '路由台', found: routeUp, detail: routeUp ? '127.0.0.1:19999' : '' })
 
   // Magpie：本机 3425 端口（OpenAI 兼容 + Anthropic 兼容都在这个端口）
   let magpieUp = false
@@ -2404,7 +2419,31 @@ function runMagpieCli(args, timeoutMs = 60000) {
 
 // 探测 magpie 网关上哪些模型真的能用：对每个模型发一次最小请求，
 // 只保留返回 200 的。结果缓存 10 分钟，避免每轮都测。
+// 网关：优先用路由台（19999），没有就回落到 magpie（3425）。
+// 路由台自己也支持 /v1/models 和 /v1/messages，接口和 magpie 一致。
+const ROUTE_GATEWAY_BASE = 'http://127.0.0.1:19999'
 const MAGPIE_GATEWAY_BASE = 'http://127.0.0.1:3425'
+
+let lastGatewayBase = ''
+
+async function pickGatewayBase() {
+  if (lastGatewayBase) return lastGatewayBase
+  for (const base of [ROUTE_GATEWAY_BASE, MAGPIE_GATEWAY_BASE]) {
+    try {
+      const controller = new AbortController()
+      const timer = setTimeout(() => controller.abort(), 1500)
+      const res = await fetch(base + '/v1/models', { signal: controller.signal })
+      clearTimeout(timer)
+      if (res.ok) {
+        lastGatewayBase = base
+        return base
+      }
+    } catch {
+      /* 试下一个 */
+    }
+  }
+  return MAGPIE_GATEWAY_BASE
+}
 let modelProbeCache = { at: 0, models: null }
 
 async function probeGatewayModels() {
@@ -2413,10 +2452,11 @@ async function probeGatewayModels() {
     return modelProbeCache.models
   }
   let ids = []
+  const gateway = await pickGatewayBase()
   try {
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), 3000)
-    const res = await fetch(MAGPIE_GATEWAY_BASE + '/v1/models', { signal: controller.signal })
+    const res = await fetch(gateway + '/v1/models', { signal: controller.signal })
     clearTimeout(timer)
     if (res.ok) {
       const body = await res.json()
@@ -2440,9 +2480,9 @@ async function probeGatewayModels() {
       try {
         const controller = new AbortController()
         const timer = setTimeout(() => controller.abort(), 15000)
-        const res = await fetch(MAGPIE_GATEWAY_BASE + '/v1/messages', {
+        const res = await fetch(gateway + '/v1/messages', {
           method: 'POST',
-          headers: { 'content-type': 'application/json', 'x-api-key': 'magpie', 'anthropic-version': '2023-06-01' },
+          headers: { 'content-type': 'application/json', 'x-api-key': 'magpie-route', 'anthropic-version': '2023-06-01' },
           body: JSON.stringify({ model: id, max_tokens: 1, messages: [{ role: 'user', content: 'ping' }] }),
           signal: controller.signal,
         })

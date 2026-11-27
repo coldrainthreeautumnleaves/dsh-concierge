@@ -4404,7 +4404,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         tab === 'claude'
           ? h('section', { className: 'uc-card' },
               h('div', { className: 'uc-card-head' },
-                h('div', { className: 'uc-card-title' }, 'Claude Code（走 magpie / 中转）'),
+                h('div', { className: 'uc-card-title' }, 'Claude Code（走路由台 / 中转）'),
                 h('div', { className: 'uc-card-actions' },
                   h('button', {
                     type: 'button',
@@ -4456,7 +4456,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
                       : claudeInfo.installed
                         ? '已接入（聊天框模型菜单里选 Claude Code）'
                         : '没找到 claude.exe')),
-                settingRow('跑一次', '调本机 Claude Code，走 magpie 的 Agent 页选的那个模型',
+                settingRow('跑一次', '调本机 Claude Code，模型由路由台决定',
                   h('div', { style: { display: 'flex', gap: '8px', alignItems: 'center' } },
                     h('input', {
                       className: 'uc-select',

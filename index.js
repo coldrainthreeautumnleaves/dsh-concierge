@@ -2488,7 +2488,7 @@ async function probeGatewayModels() {
   if (modelProbeCache.models && now - modelProbeCache.at < 10 * 60 * 1000) {
     return modelProbeCache.models
   }
-  let ids = []
+  let entries = []
   const gateway = await pickGatewayBase()
   try {
     const controller = new AbortController()
@@ -2498,11 +2498,43 @@ async function probeGatewayModels() {
     if (res.ok) {
       const body = await res.json()
       const list = Array.isArray(body && body.data) ? body.data : []
-      ids = list.map((item) => (item && typeof item.id === 'string' ? item.id : '')).filter(Boolean)
+      entries = list
+        .filter((item) => item && typeof item.id === 'string' && item.id)
+        .map((item) => ({
+          id: item.id,
+          name: typeof item.name === 'string' && item.name.trim() ? item.name.trim() : '',
+        }))
     }
   } catch {
     /* 网关不在，返回空 */
   }
+  // OpenAI 的 /v1/models 只有 id，没有显示名；菜单里直接显示裸 id（claude-opus-5-5）
+  // 看着像没配上。路由台另外有 /api/models 带着 name，能问到就用它补上。
+  // magpie 没有这个端点，问不到就保持原样，不报错。
+  if (entries.some((entry) => !entry.name)) {
+    try {
+      const controller = new AbortController()
+      const timer = setTimeout(() => controller.abort(), 2000)
+      const res = await fetch(gateway + '/api/models', { signal: controller.signal })
+      clearTimeout(timer)
+      if (res.ok) {
+        const body = await res.json()
+        const list = Array.isArray(body && body.models) ? body.models : []
+        const names = new Map()
+        for (const item of list) {
+          if (item && typeof item.id === 'string' && typeof item.name === 'string' && item.name.trim()) {
+            names.set(item.id, item.name.trim())
+          }
+        }
+        for (const entry of entries) {
+          if (!entry.name && names.has(entry.id)) entry.name = names.get(entry.id)
+        }
+      }
+    } catch {
+      /* 没有这个端点就算了 */
+    }
+  }
+  const ids = entries.map((entry) => entry.id)
   if (!ids.length) {
     // 网关不通时，退回 applied.json 里 magpie 给 Claude Code 选的那个
     const applied = await readMagpieApplied()
@@ -2511,6 +2543,7 @@ async function probeGatewayModels() {
     modelProbeCache = { at: now, models }
     return models
   }
+  const labelOf = new Map(entries.map((entry) => [entry.id, entry.name || entry.id]))
   const usable = []
   await Promise.all(
     ids.map(async (id) => {
@@ -2524,7 +2557,7 @@ async function probeGatewayModels() {
           signal: controller.signal,
         })
         clearTimeout(timer)
-        if (res.ok) usable.push({ id, name: id })
+        if (res.ok) usable.push({ id, name: labelOf.get(id) || id })
       } catch {
         /* 超时或报错就算不可用 */
       }
@@ -2934,11 +2967,14 @@ function createClaudeCodeAdapter(version) {
     listModels: async () => {
       const usable = await probeGatewayModels()
       if (usable.length) {
+        // 来源写清楚：探的是哪个网关就写哪个，别一律写 magpie——
+        // 换成路由台之后菜单里还写 via magpie，排查时会被带偏。
+        const via = lastGatewayBase.includes(ROUTE_GATEWAY_BASE) ? 'via 路由台' : 'via magpie'
         return usable.map((entry) => ({
           ...base,
           id: entry.id,
           name: entry.name || entry.id,
-          description: 'via magpie',
+          description: via,
         }))
       }
       return [await currentModel()]

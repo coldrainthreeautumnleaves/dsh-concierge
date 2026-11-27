@@ -6,6 +6,18 @@
 
 ## [Unreleased]
 
+## [0.25.5] - 2026-11-27
+
+> 模型菜单显示真名，不再是裸 id
+
+### Fixed
+
+- 模型菜单: 走路由台时菜单里显示 `claude-opus-5-5` 这种裸 id，看着像没配好。原因是 OpenAI 规范的 `/v1/models` 只有 `id`，没有显示名，`probeGatewayModels` 又把 `name` 硬写成 `id`。现在：
+  - `/v1/models` 返回了 `name` 就用它
+  - 没返回时问路由台的 `/api/models`（带 `name`）补上；magpie 没这个端点，问不到就保持原样
+  - 菜单显示 `Claude Opus 5.5` / `DeepSeek V4.1 Flash`
+- 模型菜单: 描述从固定 `via magpie` 改成按实际探测的网关写（`via 路由台` / `via magpie`），排查时不会被带偏
+
 ## [0.25.4] - 2026-11-27
 
 > Claude Code 的网关地址跟随 settings.json，不再两边打架

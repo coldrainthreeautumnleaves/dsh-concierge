@@ -6,6 +6,24 @@
 
 ## [Unreleased]
 
+## [0.23.3] - 2026-11-27
+
+> Claude Code 页里能把 magpie 的多条协议路由合成一条
+
+### Added
+
+- 外观: Claude Code 页新增「Magpie 网关」卡片——显示 magpie 注入了几条路由、共几个模型，选一个协议（OpenAI Chat Completions / OpenAI Responses / Anthropic Messages），点「合并成一条路由」
+- 路由: `GET /dsh-concierge/magpie-route`（读现状）、`POST /dsh-concierge/magpie-route`（合并）
+- 实现: 借鉴 `dsh-x-magpie` 的思路——把 `llm-pi-ai` 里各 provider 的模型**原样搬运**（`id` / `name` / `contextWindow` / `maxTokens` / `input` / `reasoningEfforts` / `compat` 一个字段不改），合并去重后只留一个 `magpie` provider，只换 `api`、`baseURL`、`apiKeyEnv` 三样；`baseURL` 按协议给（OpenAI 类带 `/v1`，Anthropic 用根地址）
+
+### 安全
+
+- 写前备份成 `cordis.patch.yml.bak-merge2-<毫秒时间戳>`，写后用 js-yaml 回读校验，失败就不写盘
+
+### 背景
+
+- magpie 官方设计就是**按协议拆路由**（源码注释 `dshKinds`：DSH 的 `llm-pi-ai` 一条路由只能有一种协议），所以它写出 `magpie` + `magpie-anthropic` 两条；合并只能由外部改配置完成
+
 ## [0.23.2] - 2026-11-27
 
 > Claude Code 页可以直接切换模型

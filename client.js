@@ -3359,6 +3359,22 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       const [claudeInfo, setClaudeInfo] = React.useState(null)
       const [claudeBusy, setClaudeBusy] = React.useState(false)
       const [claudeError, setClaudeError] = React.useState('')
+      const [magpieInfo, setMagpieInfo] = React.useState(null)
+      const [magpieBusy, setMagpieBusy] = React.useState(false)
+      const [magpieMsg, setMagpieMsg] = React.useState('')
+      const [magpieProtocol, setMagpieProtocol] = React.useState('openai-completions')
+      const loadMagpieInfo = React.useCallback(async () => {
+        try {
+          const res = await fetch(`${API}/magpie-route`)
+          const body = await res.json()
+          if (body && body.ok) {
+            setMagpieInfo(body)
+            if (body.protocol) setMagpieProtocol(body.protocol)
+          }
+        } catch {
+          /* 读不到就保持空 */
+        }
+      }, [])
       const loadClaudeInfo = React.useCallback(async () => {
         try {
           const res = await fetch(`${API}/claude-info`)
@@ -3374,8 +3390,10 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         }
       }, [])
       React.useEffect(() => {
-        if (tab === 'claude') loadClaudeInfo()
-      }, [tab, loadClaudeInfo])
+        if (tab !== 'claude') return
+        loadClaudeInfo()
+        loadMagpieInfo()
+      }, [tab, loadClaudeInfo, loadMagpieInfo])
       const toggleClaude = React.useCallback(async () => {
         if (claudeBusy) return
         setClaudeBusy(true)
@@ -3418,6 +3436,30 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
           setClaudeBusy(false)
         }
       }, [claudeBusy, loadClaudeInfo])
+
+      const mergeMagpie = React.useCallback(async () => {
+        if (magpieBusy) return
+        setMagpieBusy(true)
+        setMagpieMsg('')
+        try {
+          const res = await fetch(`${API}/magpie-route`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ protocol: magpieProtocol }),
+          })
+          const body = await res.json()
+          if (body && body.ok) {
+            setMagpieMsg(`已合并：${body.count} 个模型、1 个路由（${body.protocol}），去掉了 ${body.dropped} 条重复路由。重启 DSH 生效。`)
+          } else {
+            setMagpieMsg(`失败：${(body && body.error) || `HTTP ${res.status}`}`)
+          }
+          await loadMagpieInfo()
+        } catch (error) {
+          setMagpieMsg(`失败：${(error && error.message) || String(error)}`)
+        } finally {
+          setMagpieBusy(false)
+        }
+      }, [magpieBusy, magpieProtocol, loadMagpieInfo])
 
       const trimModels = React.useCallback(async () => {        if (claudeBusy) return
         setClaudeBusy(true)
@@ -4461,6 +4503,44 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
                         : '没找到 claude.exe')),
                 claudeError
                   ? h('div', { style: { padding: '0 16px 12px', fontSize: '12px', color: 'var(--dsw-alias-state-error-primary, #d33)' } }, claudeError)
+                  : null,
+              ),
+            )
+          : null,
+
+        tab === 'claude' && magpieInfo && magpieInfo.found
+          ? h('section', { className: 'uc-card' },
+              h('div', { className: 'uc-card-head' },
+                h('div', { className: 'uc-card-title' }, 'Magpie 网关'),
+              ),
+              h('div', { className: 'uc-perf' },
+                settingRow('现状', 'magpie 按协议拆成多条路由；这里可以合成一条',
+                  h('span', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-secondary)' } },
+                    `${(magpieInfo.providers || []).length} 条路由（${(magpieInfo.providers || []).join('、')}）· ${(magpieInfo.models || []).length} 个模型`)),
+                settingRow('协议', 'DSH 的 llm-pi-ai 一条路由只能有一种协议',
+                  h('select', {
+                    className: 'uc-select',
+                    style: { maxWidth: '240px' },
+                    value: magpieProtocol,
+                    disabled: magpieBusy,
+                    onChange: (event) => setMagpieProtocol(event.target.value),
+                  },
+                    [
+                      ['openai-completions', 'OpenAI Chat Completions'],
+                      ['openai-responses', 'OpenAI Responses'],
+                      ['anthropic-messages', 'Anthropic Messages'],
+                    ].map((pair) => h('option', { key: pair[0], value: pair[0] }, pair[1])),
+                  )),
+                h('div', { style: { padding: '4px 0 8px', display: 'flex', gap: '8px', flexWrap: 'wrap' } },
+                  h('button', {
+                    type: 'button',
+                    className: 'uc-btn uc-btn-accent',
+                    disabled: magpieBusy || (magpieInfo.providers || []).length < 2,
+                    onClick: mergeMagpie,
+                  }, magpieBusy ? '合并中…' : '合并成一条路由'),
+                ),
+                magpieMsg
+                  ? h('div', { style: { padding: '0 16px 12px', fontSize: '12px', color: 'var(--dsw-alias-label-secondary)' } }, magpieMsg)
                   : null,
               ),
             )

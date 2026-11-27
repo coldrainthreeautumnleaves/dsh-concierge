@@ -445,6 +445,32 @@ export function apply(ctx) {
     'dsh-concierge claude model route',
   )
 
+  // magpie 的路由：读现状 / 合并成一个协议
+  ctx.effect(
+    () => ctx.webServer.register({
+      kind: 'exact',
+      path: `${ROUTE}/magpie-route`,
+      handler: withGuard(ctx, async (request, response) => {
+        try {
+          if (request.method === 'GET') {
+            const info = await readMagpieRoute()
+            return sendNodeJson(response, info, info.ok ? 200 : 400)
+          }
+          if (request.method === 'POST') {
+            const body = await readNodeJson(request)
+            const protocol = body && typeof body.protocol === 'string' ? body.protocol : 'openai-completions'
+            const result = await mergeMagpieRoute(protocol)
+            return sendNodeJson(response, result, result.ok ? 200 : 400)
+          }
+          return sendNodeJson(response, { ok: false }, 405)
+        } catch (error) {
+          return sendNodeJson(response, { ok: false, error: messageOf(error) }, 400)
+        }
+      }),
+    }),
+    'dsh-concierge magpie route',
+  )
+
   ctx.effect(
     () => ctx.webServer.register({
       kind: 'exact',
@@ -2429,6 +2455,96 @@ function createClaudeCodeAdapter(version) {
 }
 
 // 找到 profile 里那份被 magpie 写过的 cordis.patch.yml
+// 借鉴 dsh-x-magpie 的做法：把 magpie 注入的多条「按协议拆开」的路由，
+// 合成一个 llm-pi-ai provider。模型原样搬运（字段一个不改），只换
+// api / baseURL / apiKeyEnv 这三样。
+const MAGPIE_GW = 'http://127.0.0.1:3425'
+
+async function readMagpieRoute() {
+  const file = await findProfileConfig()
+  if (!file) return { ok: false, error: '没找到 profile 配置' }
+  const yaml = loadYamlFromProfile()
+  if (!yaml) return { ok: false, error: '读不到 js-yaml' }
+  const text = await readFile(file, 'utf8')
+  const doc = yaml.load(text)
+  const list = Array.isArray(doc) ? doc : (doc && doc.entries) || []
+  const entry = list.find((item) => item && item.id === 'llm-pi-ai')
+  if (!entry || !entry.config || !entry.config.providers) {
+    return { ok: true, file, found: false, providers: [], models: [], protocol: '' }
+  }
+  const providers = entry.config.providers
+  const names = Object.keys(providers)
+  const first = names.length ? providers[names[0]] : null
+  const seen = new Map()
+  for (const name of names) {
+    const models = providers[name] && Array.isArray(providers[name].models) ? providers[name].models : []
+    for (const model of models) {
+      if (!model || !model.id || seen.has(model.id)) continue
+      seen.set(model.id, { id: model.id, name: model.name || model.id })
+    }
+  }
+  return {
+    ok: true,
+    file,
+    found: true,
+    providers: names,
+    protocol: first ? first.api : '',
+    models: Array.from(seen.values()),
+  }
+}
+
+async function mergeMagpieRoute(protocol) {
+  const allowed = ['openai-completions', 'openai-responses', 'anthropic-messages']
+  if (!allowed.includes(protocol)) return { ok: false, error: '协议不合法' }
+  const file = await findProfileConfig()
+  if (!file) return { ok: false, error: '没找到 profile 配置' }
+  const yaml = loadYamlFromProfile()
+  if (!yaml) return { ok: false, error: '读不到 js-yaml' }
+
+  const text = await readFile(file, 'utf8')
+  const doc = yaml.load(text)
+  const list = Array.isArray(doc) ? doc : (doc && doc.entries) || []
+  const entry = list.find((item) => item && item.id === 'llm-pi-ai')
+  if (!entry || !entry.config || !entry.config.providers) {
+    return { ok: false, error: '配置里没有 magpie 的路由，先在 magpie 里接入 DSH' }
+  }
+
+  const providers = entry.config.providers
+  const names = Object.keys(providers)
+  const base = Object.assign({}, providers[names[0]] || {})
+  const merged = []
+  const seen = new Set()
+  for (const name of names) {
+    const models = providers[name] && Array.isArray(providers[name].models) ? providers[name].models : []
+    for (const model of models) {
+      if (!model || !model.id || seen.has(model.id)) continue
+      seen.add(model.id)
+      merged.push(model)
+    }
+  }
+  if (!merged.length) return { ok: false, error: '没读到任何模型' }
+
+  base.displayName = 'Magpie'
+  base.apiKeyEnv = 'MAGPIE_DS_KEY'
+  base.api = protocol
+  base.baseURL = protocol === 'anthropic-messages' ? MAGPIE_GW : `${MAGPIE_GW}/v1`
+  base.models = merged
+  delete base.compat
+  entry.config.providers = { magpie: base }
+
+  const next = yaml.dump(doc, { lineWidth: -1, noRefs: true })
+  try {
+    yaml.load(next)
+  } catch (error) {
+    return { ok: false, error: `改完解析失败，已放弃：${messageOf(error)}` }
+  }
+
+  const backup = `${file}.bak-merge2-${Date.now()}`
+  await writeFile(backup, text, 'utf8')
+  await writeFile(file, next, 'utf8')
+  return { ok: true, file, backup, count: merged.length, protocol, dropped: names.length - 1 }
+}
+
 async function findProfileConfig() {
   const base = path.join(homedir(), '.dsh', 'profiles')
   try {

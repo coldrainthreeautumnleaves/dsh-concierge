@@ -508,8 +508,12 @@ export function apply(ctx) {
           const prompt = body && typeof body.prompt === 'string' ? body.prompt.trim() : ''
           if (!prompt) return sendNodeJson(response, { ok: false, error: '缺少 prompt' }, 400)
           const cwd = body && typeof body.cwd === 'string' && body.cwd.trim() ? body.cwd.trim() : process.cwd()
-          const result = await runClaudeOnce(prompt, cwd)
-          return sendNodeJson(response, result, result.ok ? 200 : 400)
+          // 用 magpie 的 Agent 页给 Claude Code 选的那个模型（applied.json），
+          // 没选就回落到 settings.json 里的配置
+          const applied = await readMagpieApplied()
+          const wanted = String((body && body.model) || applied.claude || '').replace(/\[[^\]]*\]$/, '')
+          const result = await runClaudeOnce(prompt, cwd, 180000, null, wanted)
+          return sendNodeJson(response, { ...result, model: wanted }, result.ok ? 200 : 400)
         } catch (error) {
           return sendNodeJson(response, { ok: false, error: messageOf(error) }, 400)
         }

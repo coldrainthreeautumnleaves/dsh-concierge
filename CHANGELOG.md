@@ -6,6 +6,28 @@
 
 ## [Unreleased]
 
+## [0.23.9] - 2026-11-27
+
+> Claude Code 页能真的调一次了，走 magpie 选的模型
+
+### Added
+
+- 外观: Claude Code 页加回「跑一次」——输入框 + 运行按钮 + 输出框
+- 路由: `POST /dsh-concierge/claude-run` 现在会先读 `~/.config/magpie/applied.json` 里 **magpie 的 Agent 页给 Claude Code 选的模型**（去掉 `[1m]` 后缀），再起 `claude -p <任务> --output-format json --model <模型>`，子进程环境设 `ANTHROPIC_BASE_URL=http://127.0.0.1:3425`、`ANTHROPIC_AUTH_TOKEN=magpie`
+- 返回里带上实际用的模型名，输出框第一行显示它
+
+### 实测
+
+```
+claude -p "只回复两个字：可用" --output-format json --model codeflow/claude-haiku-5-5
+  env: ANTHROPIC_BASE_URL=http://127.0.0.1:3425 / ANTHROPIC_AUTH_TOKEN=magpie
+  → {"result":"可用","is_error":false}
+```
+
+### 说明
+
+- 不碰 DSH 的 provider、不碰凭据，只起一个子进程，坏了也影响不到应用启动
+
 ## [0.23.8] - 2026-11-27
 
 > 删掉没用的模型下拉

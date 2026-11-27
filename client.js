@@ -3359,6 +3359,34 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       const [claudeInfo, setClaudeInfo] = React.useState(null)
       const [claudeBusy, setClaudeBusy] = React.useState(false)
       const [claudeError, setClaudeError] = React.useState('')
+      const [claudePrompt, setClaudePrompt] = React.useState('')
+      const [claudeOutput, setClaudeOutput] = React.useState('')
+      const runClaudeOnceNow = React.useCallback(async () => {
+        const prompt = claudePrompt.trim()
+        if (!prompt || claudeBusy) return
+        setClaudeBusy(true)
+        setClaudeOutput('运行中…')
+        setClaudeError('')
+        try {
+          const res = await fetch(`${API}/claude-run`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ prompt }),
+          })
+          const body = await res.json()
+          if (body && body.ok) {
+            setClaudeOutput(`模型：${body.model || '默认'}\n\n${body.text || '（无输出）'}`)
+          } else {
+            setClaudeOutput('')
+            setClaudeError(`失败：${(body && body.error) || `HTTP ${res.status}`}`)
+          }
+        } catch (error) {
+          setClaudeOutput('')
+          setClaudeError(`失败：${(error && error.message) || String(error)}`)
+        } finally {
+          setClaudeBusy(false)
+        }
+      }, [claudePrompt, claudeBusy])
       const [magpieInfo, setMagpieInfo] = React.useState(null)
       const [magpieBusy, setMagpieBusy] = React.useState(false)
       const [magpieMsg, setMagpieMsg] = React.useState('')
@@ -4428,6 +4456,40 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
                       : claudeInfo.installed
                         ? '已安装（借用 magpie 的模型，不单独占一条）'
                         : '没找到 claude.exe')),
+                settingRow('跑一次', '调本机 Claude Code，走 magpie 的 Agent 页选的那个模型',
+                  h('div', { style: { display: 'flex', gap: '8px', alignItems: 'center' } },
+                    h('input', {
+                      className: 'uc-select',
+                      style: { width: '240px' },
+                      placeholder: '例如：用一句话总结这个仓库',
+                      value: claudePrompt,
+                      disabled: claudeBusy,
+                      onChange: (event) => setClaudePrompt(event.target.value),
+                    }),
+                    h('button', {
+                      type: 'button',
+                      className: 'uc-btn uc-btn-accent',
+                      disabled: claudeBusy || !claudePrompt.trim(),
+                      onClick: runClaudeOnceNow,
+                    }, claudeBusy ? '运行中…' : '运行'),
+                  )),
+                claudeOutput
+                  ? h('pre', {
+                      style: {
+                        margin: '0 16px 12px',
+                        padding: '10px 12px',
+                        maxHeight: '220px',
+                        overflow: 'auto',
+                        whiteSpace: 'pre-wrap',
+                        wordBreak: 'break-word',
+                        fontSize: '12px',
+                        lineHeight: '1.6',
+                        borderRadius: '8px',
+                        background: 'var(--uc-surface-2)',
+                        color: 'var(--dsw-alias-label-primary)',
+                      },
+                    }, claudeOutput)
+                  : null,
                 claudeError
                   ? h('div', { style: { padding: '0 16px 12px', fontSize: '12px', color: 'var(--dsw-alias-state-error-primary, #d33)' } }, claudeError)
                   : null,

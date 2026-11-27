@@ -6,6 +6,16 @@
 
 ## [Unreleased]
 
+## [0.23.2] - 2026-11-27
+
+> Claude Code 页可以直接切换模型
+
+### Added
+
+- 外观: Claude Code 页的「当前模型」从只读文字改成**下拉**，选项来自 `~/.claude/settings.json` 的 `modelPicker.options`；选完立即写回该文件的 `model` 字段
+- 路由: `POST /dsh-concierge/claude-model`，body `{ model }`；写之前把原文件备份成 `settings.json.bak-<毫秒时间戳>`，只改 `model` 一个字段，其余原样保留（2 空格缩进）
+- 模型: 切换后 Claude Code 下次请求就走新模型，不需要重启
+
 ## [0.23.1] - 2026-11-26
 
 > 裁剪失败时留下可查的记录

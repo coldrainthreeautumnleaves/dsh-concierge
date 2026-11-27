@@ -415,6 +415,36 @@ export function apply(ctx) {
   )
 
   // 把 magpie 写进 profile 的模型列表裁到只剩当前勾选的那个
+  // 切换 Claude Code 用的模型：改 ~/.claude/settings.json 的 model 字段。
+  // 先备份，只动这一个字段，其余原样写回（保持 2 空格缩进）。
+  ctx.effect(
+    () => ctx.webServer.register({
+      kind: 'exact',
+      path: `${ROUTE}/claude-model`,
+      handler: withGuard(ctx, async (request, response) => {
+        if (request.method !== 'POST') return sendNodeJson(response, { ok: false }, 405)
+        try {
+          const body = await readNodeJson(request)
+          const model = body && typeof body.model === 'string' ? body.model.trim() : ''
+          if (!model) return sendNodeJson(response, { ok: false, error: '缺少 model' }, 400)
+          const file = path.join(homedir(), '.claude', 'settings.json')
+          const text = await readFile(file, 'utf8')
+          const json = JSON.parse(text)
+          const previous = typeof json.model === 'string' ? json.model : ''
+          if (previous === model) return sendNodeJson(response, { ok: true, model, previous }, 200)
+          json.model = model
+          const backup = `${file}.bak-${Date.now()}`
+          await writeFile(backup, text, 'utf8')
+          await writeFile(file, JSON.stringify(json, null, 2) + '\n', 'utf8')
+          return sendNodeJson(response, { ok: true, model, previous, backup }, 200)
+        } catch (error) {
+          return sendNodeJson(response, { ok: false, error: messageOf(error) }, 400)
+        }
+      }),
+    }),
+    'dsh-concierge claude model route',
+  )
+
   ctx.effect(
     () => ctx.webServer.register({
       kind: 'exact',

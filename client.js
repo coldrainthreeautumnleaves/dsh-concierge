@@ -3397,8 +3397,29 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
           setClaudeBusy(false)
         }
       }, [claudeBusy, claudeInfo, loadClaudeInfo])
-      const trimModels = React.useCallback(async () => {
-        if (claudeBusy) return
+      const setClaudeModel = React.useCallback(async (model) => {
+        if (claudeBusy || !model) return
+        setClaudeBusy(true)
+        setClaudeError('')
+        try {
+          const res = await fetch(`${API}/claude-model`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ model }),
+          })
+          const body = await res.json()
+          if (!body || !body.ok) {
+            setClaudeError((body && body.error) || `切换失败（HTTP ${res.status}）`)
+          }
+          await loadClaudeInfo()
+        } catch (error) {
+          setClaudeError(`切换失败：${(error && error.message) || String(error)}`)
+        } finally {
+          setClaudeBusy(false)
+        }
+      }, [claudeBusy, loadClaudeInfo])
+
+      const trimModels = React.useCallback(async () => {        if (claudeBusy) return
         setClaudeBusy(true)
         setClaudeError('')
         try {
@@ -4420,11 +4441,17 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
                     onClick: restoreConfig,
                   }, '恢复配置'),
                 ),
-                settingRow('当前模型', '路由上勾选的那个；菜单里也只听它',
-                  h('span', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-secondary)' } },
-                    claudeInfo && claudeInfo.currentModel
-                      ? claudeInfo.currentModel
-                      : '—')),
+                settingRow('当前模型', '选完写回 ~/.claude/settings.json 的 model 字段',
+                  h('select', {
+                    className: 'uc-select',
+                    style: { maxWidth: '280px' },
+                    value: (claudeInfo && claudeInfo.route && claudeInfo.route.model) || '',
+                    disabled: claudeBusy || !claudeInfo,
+                    onChange: (event) => setClaudeModel(event.target.value),
+                  },
+                    ((claudeInfo && claudeInfo.route && claudeInfo.route.options) || []).map((option) =>
+                      h('option', { key: option.model, value: option.model }, option.label || option.model)),
+                  )),
                 settingRow('状态', null,
                   h('span', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-secondary)' } },
                     !claudeInfo

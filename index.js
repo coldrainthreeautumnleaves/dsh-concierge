@@ -330,17 +330,50 @@ export function apply(ctx) {
     if (!enabled) {
       if (typeof state.claudeHandle === 'function') state.claudeHandle()
       state.claudeHandle = null
+      // 插件不再接管，把路由台放回 DSH
+      await releaseRouteProvider()
       return
     }
     if (state.claudeHandle) return
     try {
       const version = await readClaudeVersion()
       state.claudeHandle = llm.registerAdapter([CLAUDE_PROVIDER], createClaudeCodeAdapter(version))
+      // 插件接管了，把路由台从 DSH 配置里摘掉——不然模型菜单里
+      // 会有两份一模一样的模型，用户不知道点哪个
+      await takeOverRouteProvider()
     } catch (error) {
       console.warn('[dsh-concierge] Claude Code provider registration failed:', messageOf(error))
       state.claudeHandle = null
     }
   }
+
+  // 两条链路是二选一：
+  //   装了插件：路由台 → 模型 → 插件 → 聊天框
+  //   没装插件：路由台 → 模型 → 聊天框
+  //
+  // 插件注册成功后调 /api/takeover 让路由台把自己从 DSH 摘掉，
+  // 卸载/禁用时再调一次放回来。路由台不在就静默跳过。
+  async function takeoverRoute(action) {
+    try {
+      const gateway = await pickGatewayBase()
+      const controller = new AbortController()
+      const timer = setTimeout(() => controller.abort(), 3000)
+      const res = await fetch(gateway + '/api/takeover', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ action }),
+        signal: controller.signal,
+      })
+      clearTimeout(timer)
+      if (!res.ok) return false
+      const body = await res.json()
+      return Boolean(body && body.ok)
+    } catch {
+      return false // 路由台没开，或不是路由台
+    }
+  }
+  const takeOverRouteProvider = () => takeoverRoute('hide')
+  const releaseRouteProvider = () => takeoverRoute('show')
 
   // 按开关状态决定是否注册；插件卸载时撤销
   ctx.effect(() => {
@@ -353,6 +386,8 @@ export function apply(ctx) {
       if (typeof state.claudeHandle === 'function') state.claudeHandle()
       state.claudeHandle = null
       disposeAcpClient()
+      // 插件被卸载/禁用：把路由台放回 DSH，让「没插件」那条链路恢复
+      void releaseRouteProvider()
     }
   }, 'dsh-concierge claude-code switch')
 

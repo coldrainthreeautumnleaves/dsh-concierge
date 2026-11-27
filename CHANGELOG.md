@@ -6,6 +6,18 @@
 
 ## [Unreleased]
 
+## [0.25.8] - 2026-11-27
+
+> 模型菜单不再逐个探测，改从路由台直接拿结果
+
+### Changed
+
+- Claude Code（ACP）: `listModels` 从 16 个模型各发一次 `/v1/messages` 探测改成直接读路由台的 `/api/models`。路由台本来就探过了（它有「全部探测」按钮，启动时也会拉清单），插件再探一遍是重复劳动，还拖慢菜单——原来 16 个请求各超时 15 秒，现在 41ms 返回。不是路由台（老的 magpie 3425）时退回 `/v1/models`，那个列表本来就是网关认为可用的
+
+### Fixed
+
+- Claude Code（ACP）: 模型菜单里出现两条一样的「DeepSeek V4.1 Flash」——DeepSeek 官方和 codeflow 中转都提供这个模型，id 不同但名字相同（一个带空格、一个带连字符），选起来分不清。现在重名时给名字加上上游名（`DeepSeek V4.1 Flash · codeflow`、`DeepSeek-V4.1-Flash · deepseek`）
+
 ## [0.25.7] - 2026-11-27
 
 > ACP 通道不再卡死，提问也不会被注入的上下文挤掉

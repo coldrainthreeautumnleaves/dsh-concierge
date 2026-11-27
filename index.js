@@ -2483,91 +2483,114 @@ async function pickGatewayBase() {
 }
 let modelProbeCache = { at: 0, models: null }
 
+// 网关上有哪些模型可以用。
+//
+// 这里是「路由台 → 模型 → 插件 → 聊天框」这条链路的中转层：
+// 路由台自己已经探测过每个模型的可用性（它有「全部探测」按钮，
+// 启动时也会拉清单），插件不该再探一遍。
+//
+// 原来这里对每个模型发一次 /v1/messages，16 个模型就是 16 个请求，
+// 每个超时 15 秒——菜单要等好几秒才出来，还白烧 token。
+// 现在直接问路由台的 /api/models，它返回的是探测结果（ok 字段），
+// 秒回。
+//
+// 不是路由台（比如老的 magpie 3425）时没有这个端点，退回 /v1/models，
+// 那个列表里的模型本来就是网关认为可用的，一样不用再探。
 async function probeGatewayModels() {
   const now = Date.now()
   if (modelProbeCache.models && now - modelProbeCache.at < 10 * 60 * 1000) {
     return modelProbeCache.models
   }
-  let entries = []
   const gateway = await pickGatewayBase()
+
+  // 先问路由台的探测结果：/api/models 带 ok 和 name
+  let entries = []
   try {
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), 3000)
-    const res = await fetch(gateway + '/v1/models', { signal: controller.signal })
+    const res = await fetch(gateway + '/api/models', { signal: controller.signal })
     clearTimeout(timer)
     if (res.ok) {
       const body = await res.json()
-      const list = Array.isArray(body && body.data) ? body.data : []
+      const list = Array.isArray(body && body.models) ? body.models : []
       entries = list
-        .filter((item) => item && typeof item.id === 'string' && item.id)
+        .filter((item) => item && typeof item.id === 'string' && item.id && item.ok && item.selected !== false)
         .map((item) => ({
           id: item.id,
-          name: typeof item.name === 'string' && item.name.trim() ? item.name.trim() : '',
+          name: typeof item.name === 'string' && item.name.trim() ? item.name.trim() : item.id,
+          upstream: typeof item.upstream === 'string' ? item.upstream : '',
         }))
+      // 不同上游可能有同名模型（DeepSeek 官方和 codeflow 中转都提供 V4.1 Flash，
+      // 但 id 不一样）。菜单里两条一模一样的名字没法选，给它们标上上游名。
+      // 归一化：'DeepSeek V4.1 Flash' 和 'DeepSeek-V4.1-Flash' 是同一个模型
+      const norm = (s) => String(s).toLowerCase().replace(/[\s\-_.]/g, '')
+      const byName = new Map()
+      for (const entry of entries) {
+        const key = norm(entry.name)
+        byName.set(key, (byName.get(key) || 0) + 1)
+      }
+      if ([...byName.values()].some((n) => n > 1)) {
+        // 上游 id 是内部标识（upmwywb0ch），显示出来没意义，换成名字
+        const names = new Map()
+        try {
+          const ctrl = new AbortController()
+          const tm = setTimeout(() => ctrl.abort(), 2000)
+          const res = await fetch(gateway + '/api/state', { signal: ctrl.signal })
+          clearTimeout(tm)
+          if (res.ok) {
+            const body = await res.json()
+            for (const up of (body && body.upstreams) || []) {
+              if (up && up.id) names.set(up.id, up.name || up.id)
+            }
+          }
+        } catch {
+          /* 问不到就用 id */
+        }
+        for (const entry of entries) {
+          if (byName.get(norm(entry.name)) > 1 && entry.upstream) {
+            entry.name = entry.name + ' · ' + (names.get(entry.upstream) || entry.upstream)
+          }
+        }
+      }
     }
   } catch {
-    /* 网关不在，返回空 */
+    /* 不是路由台，或它没开，退回下面的 /v1/models */
   }
-  // OpenAI 的 /v1/models 只有 id，没有显示名；菜单里直接显示裸 id（claude-opus-5-5）
-  // 看着像没配上。路由台另外有 /api/models 带着 name，能问到就用它补上。
-  // magpie 没有这个端点，问不到就保持原样，不报错。
-  if (entries.some((entry) => !entry.name)) {
+
+  // 退路：/v1/models（magpie 只有这个）
+  if (!entries.length) {
     try {
       const controller = new AbortController()
-      const timer = setTimeout(() => controller.abort(), 2000)
-      const res = await fetch(gateway + '/api/models', { signal: controller.signal })
+      const timer = setTimeout(() => controller.abort(), 3000)
+      const res = await fetch(gateway + '/v1/models', { signal: controller.signal })
       clearTimeout(timer)
       if (res.ok) {
         const body = await res.json()
-        const list = Array.isArray(body && body.models) ? body.models : []
-        const names = new Map()
-        for (const item of list) {
-          if (item && typeof item.id === 'string' && typeof item.name === 'string' && item.name.trim()) {
-            names.set(item.id, item.name.trim())
-          }
-        }
-        for (const entry of entries) {
-          if (!entry.name && names.has(entry.id)) entry.name = names.get(entry.id)
-        }
+        const list = Array.isArray(body && body.data) ? body.data : []
+        entries = list
+          .filter((item) => item && typeof item.id === 'string' && item.id)
+          .map((item) => ({
+            id: item.id,
+            name: typeof item.name === 'string' && item.name.trim() ? item.name.trim() : item.id,
+          }))
       }
     } catch {
-      /* 没有这个端点就算了 */
+      /* 网关不在，返回空 */
     }
   }
-  const ids = entries.map((entry) => entry.id)
-  if (!ids.length) {
-    // 网关不通时，退回 applied.json 里 magpie 给 Claude Code 选的那个
+
+  // 一个都没有：退回 applied.json 里 magpie 给 Claude Code 选的那个，
+  // 至少菜单里不会空着。
+  if (!entries.length) {
     const applied = await readMagpieApplied()
     const fallback = String(applied.claude || '').replace(/\[[^\]]*\]$/, '')
-    const models = fallback ? [{ id: fallback, name: fallback }] : []
-    modelProbeCache = { at: now, models }
-    return models
+    entries = fallback ? [{ id: fallback, name: fallback }] : []
   }
-  const labelOf = new Map(entries.map((entry) => [entry.id, entry.name || entry.id]))
-  const usable = []
-  await Promise.all(
-    ids.map(async (id) => {
-      try {
-        const controller = new AbortController()
-        const timer = setTimeout(() => controller.abort(), 15000)
-        const res = await fetch(gateway + '/v1/messages', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json', 'x-api-key': 'magpie-route', 'anthropic-version': '2023-06-01' },
-          body: JSON.stringify({ model: id, max_tokens: 1, messages: [{ role: 'user', content: 'ping' }] }),
-          signal: controller.signal,
-        })
-        clearTimeout(timer)
-        if (res.ok) usable.push({ id, name: labelOf.get(id) || id })
-      } catch {
-        /* 超时或报错就算不可用 */
-      }
-    }),
-  )
-  usable.sort((a, b) => a.id.localeCompare(b.id))
-  modelProbeCache = { at: now, models: usable }
-  return usable
-}
 
+  entries.sort((a, b) => a.id.localeCompare(b.id))
+  modelProbeCache = { at: now, models: entries }
+  return entries
+}
 async function readClaudeRoute() {
   const file = path.join(homedir(), '.claude', 'settings.json')
   try {
@@ -2920,7 +2943,7 @@ function withModelHint(message) {
 
 // 导出给测试用（scripts/test-turn-prompt.mjs）：喂一段和会话日志里形状相同的
 // 消息，检查挑出来的提问对不对。运行时不消费这个导出。
-export { turnPromptText }
+export { turnPromptText, probeGatewayModels }
 
 // 导出给冒烟测试用（scripts/smoke-stream.mjs）：直接喂一段对话，检查吐出来的
 // StreamChunk 里有没有 reasoning 块、正文块顺序对不对。运行时不消费这个导出。

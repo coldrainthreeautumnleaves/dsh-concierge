@@ -6,6 +6,20 @@
 
 ## [Unreleased]
 
+## [0.23.5] - 2026-11-27
+
+> Claude Code 的路由直接从 magpie 的 Agent 页取
+
+### Added
+
+- 外观: Claude Code 页多了「magpie 路由」一行，显示 magpie 的 Agent 页给 Claude Code 选的是哪个模型
+- 路由: 新增 `readMagpieApplied()`，读 `~/.config/magpie/applied.json`（magpie 每次应用设置都会写这里：`{ "claude": { "fields": { "model": "…" } } }`）；`/claude-info` 多返回 `magpieRoute`
+- 运行: 跑 Claude Code 时优先用 magpie 页面上选的那个模型（去掉 `[1m]` 这类后缀），并给子进程设 `ANTHROPIC_BASE_URL=http://127.0.0.1:3425`、`ANTHROPIC_AUTH_TOKEN=magpie`——**不再依赖 `~/.claude/settings.json`**
+
+### 说明
+
+- magpie 在 Agent 页给某个 agent 点了「断开」时，`applied.json` 里对应那条会消失，本行会显示「—」，此时回落到 `settings.json` 的路由
+
 ## [0.23.4] - 2026-11-27
 
 > Claude Code 在模型菜单里只出现一条

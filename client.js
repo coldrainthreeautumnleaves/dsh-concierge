@@ -4494,6 +4494,11 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
                     ((claudeInfo && claudeInfo.route && claudeInfo.route.options) || []).map((option) =>
                       h('option', { key: option.model, value: option.model }, option.label || option.model)),
                   )),
+                settingRow('magpie 路由', 'Agent 页给 Claude Code 选的那个；运行时就按它走',
+                  h('span', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-secondary)' } },
+                    claudeInfo && claudeInfo.magpieRoute && claudeInfo.magpieRoute.claude
+                      ? claudeInfo.magpieRoute.claude
+                      : '—（magpie 的 Agent 页里没给 Claude Code 选模型）')),
                 settingRow('状态', null,
                   h('span', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-secondary)' } },
                     !claudeInfo

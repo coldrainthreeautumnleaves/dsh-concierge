@@ -380,6 +380,7 @@ export function apply(ctx) {
             installed: !!findClaudeCli(),
             version: await readClaudeVersion(),
             switcher: await readCcSwitch(),
+            magpieRoute: await readMagpieApplied(),
             routing: await readRoutingTools(),
             models: await readRouteModels(),
             currentModel: resolveRouteModelName(route),
@@ -2102,10 +2103,16 @@ function runClaudeOnce(prompt, cwd, timeoutMs = 180000, signal = null, model = "
       if (!cli) return finish({ ok: false, error: "没找到 claude.exe，请先安装 Claude Code CLI" })
       const args = ["-p", prompt, "--output-format", "json"]
       if (model && model !== "claude-code") args.push("--model", model)
+      // 指定了 magpie 的模型就走它的网关，不吃 ~/.claude/settings.json
+      const childEnv = Object.assign({}, process.env)
+      if (model) {
+        childEnv.ANTHROPIC_BASE_URL = "http://127.0.0.1:3425"
+        childEnv.ANTHROPIC_AUTH_TOKEN = childEnv.ANTHROPIC_AUTH_TOKEN || "magpie"
+      }
       child = spawn(cli, args, {
         cwd,
         windowsHide: true,
-        env: process.env,
+        env: childEnv,
       })
     } catch (error) {
       return finish({ ok: false, error: messageOf(error) })
@@ -2187,7 +2194,13 @@ async function* streamClaudeCode(options) {
     yield { type: 'finish', reason: { kind: 'stop' } }
     return
   }
-  const result = await runClaudeOnce(prompt, process.cwd(), 180000, options && options.signal, (options && options.model) || "")
+  // 模型优先用 magpie Agent 页给 Claude Code 选的那个，其次才是请求里带的
+  const magpie = await readMagpieApplied()
+  const pick = (options && options.model) || ''
+  const wanted = pick && pick !== 'claude-code' ? pick : magpie.claude || ''
+  // magpie 的 id 可能带 [1m] 这种后缀，传给 CLI 前去掉
+  const model = String(wanted || '').replace(/\[[^\]]*\]$/, '')
+  const result = await runClaudeOnce(prompt, process.cwd(), 180000, options && options.signal, model)
   if (!result.ok) {
     yield {
       type: 'finish',
@@ -2399,6 +2412,25 @@ async function writeClaudeEnabled(enabled) {
   const file = claudeFlagFile()
   await mkdir(path.dirname(file), { recursive: true })
   await writeFile(file, JSON.stringify({ enabled: !!enabled }, null, 2) + '\n', 'utf8')
+}
+
+// magpie 的 Agent 页给每个 agent 选了什么模型，记在 ~/.config/magpie/applied.json。
+// 插件直接照这个跑：网关固定 127.0.0.1:3425，模型用它页面上选的那个，
+// 不依赖 ~/.claude/settings.json。
+async function readMagpieApplied() {
+  const file = path.join(homedir(), '.config', 'magpie', 'applied.json')
+  try {
+    const text = await readFile(file, 'utf8')
+    const json = JSON.parse(text)
+    const pick = (key) => {
+      const node = json && json[key]
+      const model = node && node.fields && node.fields.model
+      return typeof model === 'string' ? model : ''
+    }
+    return { ok: true, file, claude: pick('claude'), dsh: pick('dsh') }
+  } catch {
+    return { ok: false, file, claude: '', dsh: '' }
+  }
 }
 
 async function readClaudeRoute() {

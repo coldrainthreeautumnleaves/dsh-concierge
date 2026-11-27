@@ -6,6 +6,22 @@
 
 ## [Unreleased]
 
+## [0.24.3] - 2026-11-27
+
+> 模型名跟着 magpie 给 DSH 选的那个走
+
+### Changed
+
+- 模型: `currentModel()` 现在优先读 `~/.config/magpie/applied.json` 里 **`dsh`** 那一项（magpie 的 Agent 页给 DeepSeek Harness 选的模型，去掉 `magpie/` 前缀和 `[1m]` 后缀），没选才回落到 `claude` 那一项
+- 效果: 你在 magpie 的 Agent 页换模型，DSH 模型菜单里这一条的名字跟着变，不用改插件
+
+### 当前值（实测）
+
+```
+applied.json → dsh: magpie/codeflow/deepseek-ai/DeepSeek-V4.1-Flash
+菜单里显示   → codeflow/deepseek-ai/DeepSeek-V4.1-Flash
+```
+
 ## [0.24.2] - 2026-11-27
 
 > 模型菜单只剩一组：显示名改成 Magpie · Anthropic

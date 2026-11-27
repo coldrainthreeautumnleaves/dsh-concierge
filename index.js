@@ -2734,17 +2734,20 @@ function createClaudeCodeAdapter(version) {
     context: { contextWindow: 1048576 },
     defaultMaxTokens: 32000,
   }
-  // 名字只在一处算，三处共用，避免同一个 id 出现两条
+  // 名字只在一处算，三处共用，避免同一个 id 出现两条。
+  // 跟随 magpie 的 Agent 页：它在「DeepSeek Harness」那一行选了什么模型，
+  // 这里就显示什么；没选就回落到 Claude Code 自己的选择。
   const currentModel = async () => {
     let label = ''
     try {
       const applied = await readMagpieApplied()
-      label = String(applied.claude || '').replace(/\[[^\]]*\]$/, '')
+      const dshPick = String(applied.dsh || '').replace(/^magpie\//, '').replace(/\[[^\]]*\]$/, '')
+      const claudePick = String(applied.claude || '').replace(/\[[^\]]*\]$/, '')
+      label = dshPick || claudePick
     } catch {
       label = ''
     }
     if (!label) label = version ? 'Claude Code · ' + version : 'Claude Code'
-    else label = 'Claude Code · ' + label
     return { ...base, name: label }
   }
   return {

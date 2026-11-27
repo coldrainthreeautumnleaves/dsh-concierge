@@ -4504,7 +4504,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
                     !claudeInfo
                       ? '读取中…'
                       : claudeInfo.installed
-                        ? claudeInfo.registered ? '已接入，模型菜单里可选' : '已安装，未接入'
+                        ? '已安装（借用 magpie 的模型，不单独占一条）'
                         : '没找到 claude.exe')),
                 claudeError
                   ? h('div', { style: { padding: '0 16px 12px', fontSize: '12px', color: 'var(--dsw-alias-state-error-primary, #d33)' } }, claudeError)

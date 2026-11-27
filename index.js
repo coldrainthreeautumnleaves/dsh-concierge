@@ -321,36 +321,27 @@ export function apply(ctx) {
     }
   }
   // 注册 Claude Code 提供方（聊天框模型菜单里出现「Claude Code」）
-  async function applyClaudeProvider(enabled) {
-    const llm = ctx.get('llm')
-    if (!llm || typeof llm.registerAdapter !== 'function') return
-    if (!enabled) {
-      if (typeof state.claudeHandle === "function") state.claudeHandle()
-      state.claudeHandle = null
-      return
-    }
-    if (state.claudeHandle) return
-    try {
-      state.claudeHandle = llm.registerAdapter([CLAUDE_PROVIDER], createClaudeCodeAdapter(await readClaudeVersion()))
-    } catch (error) {
-      // 注册失败不能把插件带崩：记一条日志，其余功能照常
-      console.warn('[dsh-concierge] Claude Code provider registration failed:', messageOf(error))
-      state.claudeHandle = null
-    }
+  // 注册已停用：留着这个函数只是为了让开关路由照常工作（只改状态，不碰 llm）。
+  function applyClaudeProvider(enabled) {
+    state.claudeEnabled = !!enabled
   }
 
+  // 不再往 DSH 注册自己的 provider：Claude Code 直接借用 magpie 的
+  // 「Magpie · Anthropic」那一组模型，模型菜单里因此只有一组。
+  // 开关仍然保留，用来控制 Claude Code 这一页的功能是否启用。
   ctx.effect(() => {
     readClaudeEnabled()
-      .then(async (enabled) => {
+      .then((enabled) => {
         state.claudeEnabled = enabled
-        await applyClaudeProvider(enabled)
       })
-      .catch(() => applyClaudeProvider(true))
+      .catch(() => {
+        state.claudeEnabled = true
+      })
     return () => {
-      if (typeof state.claudeHandle === "function") state.claudeHandle()
+      if (typeof state.claudeHandle === 'function') state.claudeHandle()
       state.claudeHandle = null
     }
-  }, 'dsh-concierge claude-code provider')
+  }, 'dsh-concierge claude-code switch')
 
   ctx.effect(() => {
     const first = setTimeout(autoTick, 90 * 1000)
@@ -405,8 +396,8 @@ export function apply(ctx) {
           const enabled = !body || body.enabled !== false
           await writeClaudeEnabled(enabled)
           state.claudeEnabled = enabled
-          await applyClaudeProvider(enabled)
-          return sendNodeJson(response, { ok: true, enabled, registered: !!state.claudeHandle }, 200)
+          applyClaudeProvider(enabled)
+          return sendNodeJson(response, { ok: true, enabled }, 200)
         } catch (error) {
           return sendNodeJson(response, { ok: false, error: messageOf(error) }, 400)
         }
@@ -2169,7 +2160,6 @@ function runClaudeOnce(prompt, cwd, timeoutMs = 180000, signal = null, model = "
 // 把本机 Claude Code 注册成 DSH 的一个模型提供方（provider = "claude-code"），
 // 这样聊天框的模型菜单里能直接选。工具调用留在 Claude Code 自己那边（它有自己的
 // 工具循环），这里只把最终文本以一条流交给 DSH；不做工具卡片映射。
-const CLAUDE_PROVIDER = 'claude-code'
 
 function lastUserText(messages) {
   const list = Array.isArray(messages) ? messages : []
@@ -2186,33 +2176,6 @@ function lastUserText(messages) {
     }
   }
   return ''
-}
-
-async function* streamClaudeCode(options) {
-  const prompt = lastUserText(options && options.messages)
-  if (!prompt) {
-    yield { type: 'finish', reason: { kind: 'stop' } }
-    return
-  }
-  // 模型优先用 magpie Agent 页给 Claude Code 选的那个，其次才是请求里带的
-  const magpie = await readMagpieApplied()
-  const pick = (options && options.model) || ''
-  const wanted = pick && pick !== 'claude-code' ? pick : magpie.claude || ''
-  // magpie 的 id 可能带 [1m] 这种后缀，传给 CLI 前去掉
-  const model = String(wanted || '').replace(/\[[^\]]*\]$/, '')
-  const result = await runClaudeOnce(prompt, process.cwd(), 180000, options && options.signal, model)
-  if (!result.ok) {
-    yield {
-      type: 'finish',
-      reason: { kind: 'error', failure: { message: result.error || 'Claude Code 失败', code: 'claude-code-failed' } },
-    }
-    return
-  }
-  const text = result.text || ''
-  yield { type: 'block-start', index: 0, blockType: 'text' }
-  if (text) yield { type: 'text-delta', index: 0, text }
-  yield { type: 'block-end', index: 0, block: { type: 'text', text } }
-  yield { type: 'finish', reason: { kind: 'stop' } }
 }
 
 // 读 ~/.claude/settings.json 里的路由信息（magpie 的 base URL、模型映射）
@@ -2456,39 +2419,6 @@ async function readClaudeRoute() {
     }
   } catch (error) {
     return { ok: false, file, error: messageOf(error) }
-  }
-}
-
-function createClaudeCodeAdapter(version) {
-  const base = {
-    provider: CLAUDE_PROVIDER,
-    id: 'claude-code',
-    description: '本机 Claude Code，模型路由由 ~/.claude/settings.json（magpie）决定',
-    // DSH 切模型前要压缩上下文，必须知道窗口大小，否则报 MODEL_SWITCH_COMPACTION_FAILED
-    context: { contextWindow: 1048576 },
-    defaultMaxTokens: 32000,
-  }
-  // 名字只在一个地方算：listModels / resolveModel / prepareCall 拿到的是同一个对象，
-  // 否则同一个 id 会以两个名字出现，菜单里就成了两条一样的模型。
-  const currentModel = async () => {
-    let label = ''
-    try {
-      label = resolveRouteModelName(await readClaudeRoute())
-    } catch {
-      label = ''
-    }
-    if (!label) label = version ? String(version) : '本机 CLI'
-    return { ...base, name: 'Claude Code · ' + label }
-  }
-  return {
-    providerInfo: () => ({ id: CLAUDE_PROVIDER, name: 'Claude Code' }),
-    providerRetryPolicy: () => undefined,
-    imageRequestPricing: () => undefined,
-    imageRequestTarget: () => ({ width: 0, height: 0, maxBytes: 0 }),
-    listModels: async () => [await currentModel()],
-    resolveModel: async (_provider, id) => ({ ...(await currentModel()), id }),
-    prepareCall: async (_provider, id) => ({ model: { ...(await currentModel()), id }, stream: streamClaudeCode }),
-    stream: streamClaudeCode,
   }
 }
 

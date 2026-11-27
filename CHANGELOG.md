@@ -6,6 +6,20 @@
 
 ## [Unreleased]
 
+## [0.23.6] - 2026-11-27
+
+> 不再单独占一条 Claude Code，并进 magpie 那一组
+
+### Removed
+
+- 模型: 去掉 `ctx.llm.registerAdapter` 的 provider 注册（0.21.6 加的），以及配套的 `createClaudeCodeAdapter` / `streamClaudeCode` / `CLAUDE_PROVIDER`。模型菜单里不再出现独立的「Claude Code」分组
+- 现在 Claude Code 直接借用 magpie 的模型（`Magpie · Anthropic` 那一组里的 `codeflow/claude-haiku-5-5` 等），插件不再往 DSH 塞 provider
+
+### Changed
+
+- 外观: 状态行文案改成「已安装（借用 magpie 的模型，不单独占一条）」；开关只控制本页功能，不再影响 DSH 的模型菜单
+- 保留: `magpie 路由` 一行仍显示 magpie 的 Agent 页给 Claude Code 选了什么
+
 ## [0.23.5] - 2026-11-27
 
 > Claude Code 的路由直接从 magpie 的 Agent 页取

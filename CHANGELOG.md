@@ -6,6 +6,21 @@
 
 ## [Unreleased]
 
+## [0.24.0] - 2026-11-27
+
+> Claude Code 接回聊天框的模型菜单
+
+### Added
+
+- 模型: 重新注册 `ctx.llm.registerAdapter(['claude-code'], …)`，聊天框的模型菜单里会出现「Claude Code」，选中后这一轮对话直接交给本机 Claude Code
+- 模型: 只报一个模型、只用一个名字（`listModels` / `resolveModel` / `prepareCall` 共用同一个 `currentModel()`），并带 `context: { contextWindow: 1048576 }`——避免之前出现过的「同一条目显示两次」和「切模型报 `MODEL_SWITCH_COMPACTION_FAILED`」
+- 路由: `stream` 里的模型优先取 `~/.config/magpie/applied.json` 中 magpie 给 Claude Code 选的那个（去掉 `[1m]` 后缀），走 `127.0.0.1:3425` 网关
+- 开关仍然有效：关掉会立刻注销这个 provider，模型菜单里就不出现；注册失败只记一条 `console.warn`，不影响其余功能
+
+### 说明
+
+- 不碰 DSH 凭据、不改 `package.json` 的插件列表，只注册一个 llm adapter
+
 ## [0.23.9] - 2026-11-27
 
 > Claude Code 页能真的调一次了，走 magpie 选的模型

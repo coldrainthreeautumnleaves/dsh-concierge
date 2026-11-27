@@ -320,23 +320,32 @@ export function apply(ctx) {
       state.autoBusy = false
     }
   }
-  // 注册 Claude Code 提供方（聊天框模型菜单里出现「Claude Code」）
-  // 注册已停用：留着这个函数只是为了让开关路由照常工作（只改状态，不碰 llm）。
-  function applyClaudeProvider(enabled) {
+  // 注册 Claude Code 提供方（聊天框模型菜单里出现「Claude Code」）。
+  // 失败不能把插件带崩：只记一条日志。
+  async function applyClaudeProvider(enabled) {
     state.claudeEnabled = !!enabled
+    const llm = ctx.get('llm')
+    if (!llm || typeof llm.registerAdapter !== 'function') return
+    if (!enabled) {
+      if (typeof state.claudeHandle === 'function') state.claudeHandle()
+      state.claudeHandle = null
+      return
+    }
+    if (state.claudeHandle) return
+    try {
+      const version = await readClaudeVersion()
+      state.claudeHandle = llm.registerAdapter([CLAUDE_PROVIDER], createClaudeCodeAdapter(version))
+    } catch (error) {
+      console.warn('[dsh-concierge] Claude Code provider registration failed:', messageOf(error))
+      state.claudeHandle = null
+    }
   }
 
-  // 不再往 DSH 注册自己的 provider：Claude Code 直接借用 magpie 的
-  // 「Magpie · Anthropic」那一组模型，模型菜单里因此只有一组。
-  // 开关仍然保留，用来控制 Claude Code 这一页的功能是否启用。
+  // 按开关状态决定是否注册；插件卸载时撤销
   ctx.effect(() => {
     readClaudeEnabled()
-      .then((enabled) => {
-        state.claudeEnabled = enabled
-      })
-      .catch(() => {
-        state.claudeEnabled = true
-      })
+      .then((enabled) => applyClaudeProvider(enabled))
+      .catch(() => applyClaudeProvider(true))
     return () => {
       if (typeof state.claudeHandle === 'function') state.claudeHandle()
       state.claudeHandle = null
@@ -396,8 +405,8 @@ export function apply(ctx) {
           const enabled = !body || body.enabled !== false
           await writeClaudeEnabled(enabled)
           state.claudeEnabled = enabled
-          applyClaudeProvider(enabled)
-          return sendNodeJson(response, { ok: true, enabled }, 200)
+          await applyClaudeProvider(enabled)
+          return sendNodeJson(response, { ok: true, enabled, registered: !!state.claudeHandle }, 200)
         } catch (error) {
           return sendNodeJson(response, { ok: false, error: messageOf(error) }, 400)
         }
@@ -2134,23 +2143,6 @@ function runClaudeOnce(prompt, cwd, timeoutMs = 180000, signal = null, model = "
 // 这样聊天框的模型菜单里能直接选。工具调用留在 Claude Code 自己那边（它有自己的
 // 工具循环），这里只把最终文本以一条流交给 DSH；不做工具卡片映射。
 
-function lastUserText(messages) {
-  const list = Array.isArray(messages) ? messages : []
-  for (let i = list.length - 1; i >= 0; i -= 1) {
-    const message = list[i]
-    if (!message || message.role !== 'user') continue
-    const content = message.content
-    if (typeof content === 'string') return content
-    if (Array.isArray(content)) {
-      return content
-        .filter((block) => block && block.type === 'text' && typeof block.text === 'string')
-        .map((block) => block.text)
-        .join('\n')
-    }
-  }
-  return ''
-}
-
 // 读 ~/.claude/settings.json 里的路由信息（magpie 的 base URL、模型映射）
 // 读已装 Claude Code CLI 的版本号：直接读包的 package.json，不起进程
 // CC Switch（第三方路由/供应商切换器）的痕迹与当前供应商。
@@ -2630,6 +2622,92 @@ async function trimRouteModels(keepIds) {
   await writeFile(backup, text, 'utf8')
   await writeFile(file, next, 'utf8')
   return { ok: true, file, backup, kept, removed, lists }
+}
+
+// 把 Claude Code 作为一个模型提供方挂进 DSH，聊天框的模型菜单里就能选它。
+// 只报一个模型、只用一个名字（之前两个名字会变成两条），并带上 contextWindow
+//（DSH 切模型前要压缩上下文，没有窗口大小会报 MODEL_SWITCH_COMPACTION_FAILED）。
+const CLAUDE_PROVIDER = 'claude-code'
+
+function lastUserText(messages) {
+  const list = Array.isArray(messages) ? messages : []
+  for (let i = list.length - 1; i >= 0; i -= 1) {
+    const message = list[i]
+    if (!message || message.role !== 'user') continue
+    const content = message.content
+    if (typeof content === 'string') return content
+    if (Array.isArray(content)) {
+      return content
+        .filter((block) => block && block.type === 'text' && typeof block.text === 'string')
+        .map((block) => block.text)
+        .join('\n')
+    }
+  }
+  return ''
+}
+
+async function* streamClaudeCode(options) {
+  const prompt = lastUserText(options && options.messages)
+  if (!prompt) {
+    yield { type: 'finish', reason: { kind: 'stop' } }
+    return
+  }
+  // 模型优先用 magpie 的 Agent 页给 Claude Code 选的那个
+  let model = String((options && options.model) || '').replace(/\[[^\]]*\]$/, '')
+  if (!model || model === CLAUDE_PROVIDER) {
+    try {
+      const applied = await readMagpieApplied()
+      model = String(applied.claude || '').replace(/\[[^\]]*\]$/, '')
+    } catch {
+      model = ''
+    }
+  }
+  const result = await runClaudeOnce(prompt, process.cwd(), 180000, options && options.signal, model)
+  if (!result.ok) {
+    yield {
+      type: 'finish',
+      reason: { kind: 'error', failure: { message: result.error || 'Claude Code 失败', code: 'claude-code-failed' } },
+    }
+    return
+  }
+  const text = result.text || ''
+  yield { type: 'block-start', index: 0, blockType: 'text' }
+  if (text) yield { type: 'text-delta', index: 0, text }
+  yield { type: 'block-end', index: 0, block: { type: 'text', text } }
+  yield { type: 'finish', reason: { kind: 'stop' } }
+}
+
+function createClaudeCodeAdapter(version) {
+  const base = {
+    provider: CLAUDE_PROVIDER,
+    id: CLAUDE_PROVIDER,
+    description: '本机 Claude Code，走 magpie 的 Agent 页选的那个模型',
+    context: { contextWindow: 1048576 },
+    defaultMaxTokens: 32000,
+  }
+  // 名字只在一处算，三处共用，避免同一个 id 出现两条
+  const currentModel = async () => {
+    let label = ''
+    try {
+      const applied = await readMagpieApplied()
+      label = String(applied.claude || '').replace(/\[[^\]]*\]$/, '')
+    } catch {
+      label = ''
+    }
+    if (!label) label = version ? 'Claude Code · ' + version : 'Claude Code'
+    else label = 'Claude Code · ' + label
+    return { ...base, name: label }
+  }
+  return {
+    providerInfo: () => ({ id: CLAUDE_PROVIDER, name: 'Claude Code' }),
+    providerRetryPolicy: () => undefined,
+    imageRequestPricing: () => undefined,
+    imageRequestTarget: () => ({ width: 0, height: 0, maxBytes: 0 }),
+    listModels: async () => [await currentModel()],
+    resolveModel: async (_provider, id) => ({ ...(await currentModel()), id }),
+    prepareCall: async (_provider, id) => ({ model: { ...(await currentModel()), id }, stream: streamClaudeCode }),
+    stream: streamClaudeCode,
+  }
 }
 
 function withGuard(ctx, handler) {

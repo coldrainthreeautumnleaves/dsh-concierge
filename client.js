@@ -4454,7 +4454,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
                     !claudeInfo
                       ? '读取中…'
                       : claudeInfo.installed
-                        ? '已安装（借用 magpie 的模型，不单独占一条）'
+                        ? '已接入（聊天框模型菜单里选 Claude Code）'
                         : '没找到 claude.exe')),
                 settingRow('跑一次', '调本机 Claude Code，走 magpie 的 Agent 页选的那个模型',
                   h('div', { style: { display: 'flex', gap: '8px', alignItems: 'center' } },

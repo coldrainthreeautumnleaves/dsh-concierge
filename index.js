@@ -26,6 +26,25 @@ import { fileURLToPath } from 'node:url'
 export const inject = ['webServer']
 
 const ROUTE = '/dsh-concierge'
+
+// 本机可能存在的网关，按优先级排。
+//
+//   19999  路由台（自研）
+//   3425   magpie
+//   3456   Claude Code Router（CCR）默认端口
+//
+// CC Switch 本身不是网关，它是「配置切换器」——把 settings.json 指向
+// 不同的 provider。所以它的作用体现在 settingsGatewayBase() 里：
+// 切到本机网关时那个地址会出现在候选最前面；切到外部中转站时这里
+// 探测不到，插件就按「直连中转」处理，不碰网关。
+//
+// 必须放在文件顶部：const 有暂时性死区，定义在用到它的函数后面，
+// 那些函数执行时会抛 ReferenceError。
+const LOCAL_GATEWAYS = [
+  { base: 'http://127.0.0.1:19999', id: 'route', name: '路由台' },
+  { base: 'http://127.0.0.1:3425', id: 'magpie', name: 'Magpie' },
+  { base: 'http://127.0.0.1:3456', id: 'ccr', name: 'Claude Code Router' },
+]
 const PLUGIN_DIR = path.dirname(fileURLToPath(import.meta.url))
 const CACHE_TTL_MS = 5 * 60 * 1000
 const FETCH_TIMEOUT_MS = 12_000
@@ -2244,9 +2263,15 @@ async function readRoutingTools() {
   if (isLocal) {
     try {
       const port = new URL(baseUrl).port || '80'
-      if (port === '19999') activeId = 'route'
-      else if (port === '3425') activeId = 'magpie'
-      else if (port === '3456') activeId = 'ccr'
+      // 用同一张 LOCAL_GATEWAYS 表判断，别在两处各写一遍端口
+      const hit = LOCAL_GATEWAYS.find((gw) => {
+        try {
+          return new URL(gw.base).port === port
+        } catch {
+          return false
+        }
+      })
+      if (hit) activeId = hit.id
     } catch {
       /* 解析失败就当没有 */
     }
@@ -2495,10 +2520,11 @@ function settingsGatewayBase() {
 async function pickGatewayBase() {
   if (lastGatewayBase) return lastGatewayBase
   const candidates = []
+  // settings.json 里写的地址优先——那是用户/CC Switch 明确选的
   const fromSettings = settingsGatewayBase()
   if (fromSettings) candidates.push(fromSettings)
-  for (const base of [ROUTE_GATEWAY_BASE, MAGPIE_GATEWAY_BASE]) {
-    if (!candidates.includes(base)) candidates.push(base)
+  for (const gw of LOCAL_GATEWAYS) {
+    if (!candidates.includes(gw.base)) candidates.push(gw.base)
   }
   for (const base of candidates) {
     try {

@@ -6,6 +6,22 @@
 
 ## [Unreleased]
 
+## [0.26.0] - 2026-11-28
+
+> 网关候选覆盖三个来源：路由台、magpie、Claude Code Router
+
+### Changed
+
+- Claude Code（ACP）: 探测本机网关时只试了路由台（19999）和 magpie（3425），漏了 Claude Code Router 默认的 3456。现在抽成一张 `LOCAL_GATEWAYS` 表，三个都试，`settings.json` 里写的地址仍然最优先
+- Claude Code（ACP）: 「谁在实际接管」的判断原来把端口硬编码在 `if (port === '19999') …` 里，和候选列表各写一份。现在统一查 `LOCAL_GATEWAYS`，加新网关只改一处
+
+### Fixed
+
+- Claude Code（ACP）: `LOCAL_GATEWAYS` 定义在用到它的 `readRoutingTools` 后面，`const` 的暂时性死区会让那个函数执行时抛 `ReferenceError`。已挪到文件顶部
+
+### 关于 CC Switch
+
+CC Switch 不是网关，是「配置切换器」——把 `~/.claude/settings.json` 指向不同的 provider。所以它不在这张表里：切到本机网关时那个地址会出现在候选最前面（`settingsGatewayBase()` 读的），切到外部中转站时插件探测不到本机网关，就按「直连中转」处理，不碰网关。
 ## [0.25.9] - 2026-11-27
 
 > 装了插件就不再显示路由台那份模型，两条链路二选一

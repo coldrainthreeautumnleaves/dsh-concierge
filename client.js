@@ -711,6 +711,19 @@ html[data-dsh-glass="1"] [data-composer-dock] {
 html[data-dsh-glass="1"] [data-composer-dock] > * {
   min-width: 0;
 }
+/* 输入区高度塌陷的修复。
+   实测（点掉底栏工具条之后）：
+     GRgSLq_root          height 124px   ← 父
+     an3WzG_composerStack height 166px   ← 子，比父高 42px
+     an3WzG_composerSeat  position: sticky
+   sticky 元素不参与父级的 auto 高度计算，父级因此少算了自己孩子的高度，
+   卡片被挤到父级外面，看着就是「输入框上移、下面空一片」。
+   修法：把 root 的高度从「算出来的定值」改成由内容撑开。不动 sticky 的定位
+   ——那是「滚动时输入框吸底」的效果，改了会破坏正常滚动。 */
+html[data-dsh-glass="1"] div[class*="_root"]:has(> [data-composer-dock]) {
+  height: auto !important;
+  min-height: fit-content !important;
+}
 `
 
     function installLookCss() {

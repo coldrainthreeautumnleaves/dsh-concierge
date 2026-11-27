@@ -6,6 +6,27 @@
 
 ## [Unreleased]
 
+## [0.25.0] - 2026-11-27
+
+> 修输入框塌陷：父级少算了 sticky 子元素的高度
+
+### Fixed
+
+- 外观: 点掉底栏工具条（如「关闭整个 MattSkillsDeck」）后，输入区上移、下方留一大片空白。用 `dockChain` 实测出根因：
+
+  ```
+  GRgSLq_root          height 124px   ← 父
+  an3WzG_composerStack height 166px   ← 子，比父高 42px
+  an3WzG_composerSeat  position: sticky
+  ```
+
+  `sticky` 元素不参与父级 `auto` 高度计算，`root` 因此少算了孩子的高度，卡片被挤到父级外面。修法是把 `root` 的高度改成由内容撑开（`height: auto` + `min-height: fit-content`），**不动 sticky 定位**——那是「滚动时输入框吸底」的效果，改了会破坏正常滚动
+- 外观: 选择器用 `div[class*="_root"]:has(> [data-composer-dock])` 精确锁到「直接包着 dock 的那一层」，避免误伤 `#root` 和别的 `_root`（页面上同时存在 `an3WzG_root` 和 `GRgSLq_root`）
+
+### 诊断
+
+- 新增 `dockChain` 上报（0.24.9 加的）：`[data-composer-dock]` 的父级链最多 8 层，带 `display/position/height/minHeight/flex/gridTemplate/overflow`。这次就是靠它定位到 `root` 和 `stack` 的 42px 差值
+
 ## [0.24.9] - 2026-11-27
 
 > 输入框塌陷的兜底 + 诊断

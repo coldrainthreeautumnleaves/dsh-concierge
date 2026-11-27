@@ -20,6 +20,7 @@ import { mkdir, readFile, readdir, rm, stat as statOf, writeFile } from 'node:fs
 import { homedir } from 'node:os'
 import { createRequire } from 'node:module'
 import path from 'node:path'
+import { createAcpClient, ACP_GATEWAY_ENV } from './acp.js'
 import { fileURLToPath } from 'node:url'
 
 export const inject = ['webServer']
@@ -349,6 +350,7 @@ export function apply(ctx) {
     return () => {
       if (typeof state.claudeHandle === 'function') state.claudeHandle()
       state.claudeHandle = null
+      disposeAcpClient()
     }
   }, 'dsh-concierge claude-code switch')
 
@@ -2646,34 +2648,81 @@ function lastUserText(messages) {
   return ''
 }
 
+// 常驻一个 ACP 客户端：复用 CLI 进程和它自己的会话，省掉每轮冷启动
+let acpClient = null
+
+function getAcpClient() {
+  if (acpClient) return acpClient
+  acpClient = createAcpClient({ env: ACP_GATEWAY_ENV, cwd: process.cwd() })
+  return acpClient
+}
+
+function disposeAcpClient() {
+  if (!acpClient) return
+  try {
+    acpClient.dispose()
+  } catch {
+    /* 已经退出 */
+  }
+  acpClient = null
+}
+
 async function* streamClaudeCode(options) {
   const prompt = lastUserText(options && options.messages)
   if (!prompt) {
     yield { type: 'finish', reason: { kind: 'stop' } }
     return
   }
-  // 模型优先用 magpie 的 Agent 页给 Claude Code 选的那个
-  let model = String((options && options.model) || '').replace(/\[[^\]]*\]$/, '')
-  if (!model || model === CLAUDE_PROVIDER) {
-    try {
-      const applied = await readMagpieApplied()
-      model = String(applied.claude || '').replace(/\[[^\]]*\]$/, '')
-    } catch {
-      model = ''
+  // ACP 会边生成边推增量，用队列把它转成 DSH 的 StreamChunk
+  const queue = []
+  let settled = false
+  let failure = null
+  const client = getAcpClient()
+  const running = client
+    .prompt(prompt, (chunk) => queue.push(chunk), options && options.signal)
+    .then((result) => {
+      settled = true
+      return result
+    })
+    .catch((error) => {
+      settled = true
+      failure = error
+      return null
+    })
+
+  yield { type: 'block-start', index: 0, blockType: 'text' }
+  let text = ''
+  while (!settled || queue.length > 0) {
+    if (queue.length > 0) {
+      const chunk = queue.shift()
+      text += chunk
+      yield { type: 'text-delta', index: 0, text: chunk }
+      continue
     }
+    await new Promise((resolve) => setTimeout(resolve, 15))
   }
-  const result = await runClaudeOnce(prompt, process.cwd(), 180000, options && options.signal, model)
-  if (!result.ok) {
+  const result = await running
+  if (failure) {
+    yield { type: 'block-end', index: 0, block: { type: 'text', text } }
     yield {
       type: 'finish',
-      reason: { kind: 'error', failure: { message: result.error || 'Claude Code 失败', code: 'claude-code-failed' } },
+      reason: { kind: 'error', failure: { message: failure.message || 'Claude Code（ACP）失败', code: 'claude-code-acp-failed' } },
     }
     return
   }
-  const text = result.text || ''
-  yield { type: 'block-start', index: 0, blockType: 'text' }
-  if (text) yield { type: 'text-delta', index: 0, text }
   yield { type: 'block-end', index: 0, block: { type: 'text', text } }
+  if (result && result.usage) {
+    yield {
+      type: 'usage',
+      usage: {
+        inputTokens: result.usage.inputTokens || 0,
+        outputTokens: result.usage.outputTokens || 0,
+        totalTokens: result.usage.totalTokens,
+        cacheReadTokens: result.usage.cachedReadTokens,
+        cacheWriteTokens: result.usage.cachedWriteTokens,
+      },
+    }
+  }
   yield { type: 'finish', reason: { kind: 'stop' } }
 }
 

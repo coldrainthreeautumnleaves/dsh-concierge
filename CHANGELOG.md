@@ -6,6 +6,25 @@
 
 ## [Unreleased]
 
+## [0.24.1] - 2026-11-27
+
+> 改用 ACP 接 Claude Code：流式、复用会话
+
+### Changed
+
+- 模型: `Claude Code` 提供方的 `stream` 从「每轮起一个 `claude -p` 进程」换成 **ACP（Agent Client Protocol）**，借鉴 `dsh-llm-acp` 的做法
+- 新增 `acp.js`：极简 ACP 客户端（JSON-RPC 2.0 / ndjson），`initialize` → `session/new` → `session/prompt`，从 `session/update` 的 `agent_message_chunk` 取增量正文
+- 效果：**边生成边显示**（之前是一次性返回）、CLI 进程与它自己的会话常驻复用（省掉每轮冷启动）、`session/cancel` 支持中断、`usage` 透传真实 token
+- 依赖：需要本机装 `@agentclientprotocol/claude-agent-acp`（`npm i -g`），找不到时回落到原来的 `claude -p` 路径
+
+### 实测
+
+```
+node _acp-test.mjs
+→ stopReason: end_turn   输出: "可用"
+→ usage: {inputTokens:2, outputTokens:4, cachedWriteTokens:20520, totalTokens:20526}
+```
+
 ## [0.24.0] - 2026-11-27
 
 > Claude Code 接回聊天框的模型菜单

@@ -3137,7 +3137,7 @@ function createClaudeCodeAdapter(version) {
     return { ...base, name: label }
   }
   return {
-    providerInfo: () => ({ id: CLAUDE_PROVIDER, name: 'Magpie · Anthropic' }),
+    providerInfo: () => ({ id: CLAUDE_PROVIDER, name: '路由' }),
     providerRetryPolicy: () => undefined,
     imageRequestPricing: () => undefined,
     imageRequestTarget: () => ({ width: 0, height: 0, maxBytes: 0 }),

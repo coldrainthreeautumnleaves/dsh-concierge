@@ -3244,9 +3244,9 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
 .uc-stats-card .uc-stat + .uc-stat { border-left: 1px solid var(--uc-sep); }
 
 .uc-card { border-radius: var(--uc-r-card); background: var(--uc-surface-1); border: 1px solid var(--dsw-alias-border-l1); overflow: hidden; box-shadow: var(--dsw-shadow-lv1), inset 0 1px 0 var(--uc-highlight); animation: uc-fade .15s ease; }
-.uc-card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--uc-sep); flex-wrap: wrap; }
+.uc-card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px; border-bottom: 1px solid var(--uc-sep); flex-wrap: wrap; }
 .uc-card-actions { display: flex; align-items: center; gap: 8px; }
-.uc-card-title { font-size: var(--uc-fs-title); font-weight: 600; }
+.uc-card-title { font-size: var(--uc-fs-title); font-weight: 550; letter-spacing: -.01em; color: var(--dsw-alias-label-primary); }
 
 .uc-segment { display: inline-flex; padding: 4px; gap: 4px; border-radius: var(--uc-r-control); background: var(--uc-surface-2); }
 .uc-segment button { appearance: none; border: none; background: transparent; color: var(--dsw-alias-label-secondary); font-size: var(--uc-fs-small); padding: 4px 8px; border-radius: var(--uc-r-control); cursor: pointer; }
@@ -3311,12 +3311,15 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
 
 .uc-select { border: 1px solid var(--dsw-alias-border-l2); border-radius: var(--uc-r-control); background: var(--uc-surface-1); color: var(--dsw-alias-label-primary); font-size: var(--uc-fs-body); padding: 4px 8px; }
 
-.uc-row-setting { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--uc-sep); }
+.uc-row-setting { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--uc-sep); }
 .uc-row-setting:last-of-type { border-bottom: none; }
 .uc-row-text { min-width: 0; flex: 1 1 auto; }
 .uc-row-title { font-size: var(--uc-fs-body); font-weight: 500; color: var(--dsw-alias-label-primary); white-space: nowrap; }
 .uc-row-hint { margin-top: 4px; font-size: var(--uc-fs-small); line-height: 1.5; color: var(--dsw-alias-label-secondary); }
 .uc-row-control { flex: 0 1 auto; max-width: 62%; text-align: right; overflow-wrap: anywhere; }
+/* 右侧的值：和左边标题同字号，只用颜色区分主次——
+   原来这里内联写了 12px，比正文 13px 小一档，一行里两种字号看着发虚 */
+.uc-row-value { font-size: var(--uc-fs-body); color: var(--dsw-alias-label-secondary); font-variant-numeric: tabular-nums; }
 
 .uc-progress { position: relative; height: 2px; border-radius: 999px; overflow: hidden; background: var(--uc-surface-2); margin: 0 0 8px; }
 .uc-progress::after { content: ''; position: absolute; top: 0; bottom: 0; width: 35%; border-radius: 999px; background: var(--uc-accent); animation: uc-progress-slide 1.1s ease-in-out infinite; }
@@ -3400,7 +3403,7 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
 
 .uc-toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 
-.uc-perf { padding: 8px 16px 16px; display: flex; flex-direction: column; gap: 12px; }
+.uc-perf { padding: 4px 16px 16px; display: flex; flex-direction: column; gap: 0; }
 .uc-perf-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
 .uc-perf-stat { border-radius: var(--uc-r-card); padding: 12px 16px; background: var(--uc-surface-2); }
 .uc-perf-value { font-size: var(--uc-fs-title); font-weight: 650; font-variant-numeric: tabular-nums; }
@@ -4443,7 +4446,7 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
           tabButton('plugins', t('tabPlugins')),
           tabButton('look', t('tabLook')),
           tabButton('perf', t('tabPerf')),
-          tabButton('claude', 'Claude Code'),
+          tabButton('claude', '路由'),
           tabButton('about', t('tabAbout')),
         ),
 
@@ -4588,7 +4591,7 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
         tab === 'claude'
           ? h('section', { className: 'uc-card' },
               h('div', { className: 'uc-card-head' },
-                h('div', { className: 'uc-card-title' }, 'Claude Code（走路由台 / 中转）'),
+                h('div', { className: 'uc-card-title' }, '路由'),
                 h('div', { className: 'uc-card-actions' },
                   h('button', {
                     type: 'button',
@@ -4600,8 +4603,8 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
                 ),
               ),
               h('div', { className: 'uc-perf' },
-                settingRow('路由', '由 ~/.claude/settings.json 决定，插件不自己拼',
-                  h('span', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-secondary)' } },
+                settingRow('路由', 'settings.json 指向的地址',
+                  h('span', { className: 'uc-row-value' },
                     claudeInfo && claudeInfo.route && claudeInfo.route.baseUrl
                       ? h('span', null,
                           claudeInfo.route.baseUrl,
@@ -4611,18 +4614,18 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
                               ? h('span', { style: { color: 'var(--dsw-alias-state-business-primary, #2a9d6e)' } }, '  · 通')
                               : null)
                       : '未配置')),
-                settingRow('模型', 'settings.json 里的映射',
-                  h('span', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-secondary)' } },
+                settingRow('模型', '当前映射的模型',
+                  h('span', { className: 'uc-row-value' },
                     claudeInfo && claudeInfo.route && claudeInfo.route.sonnet
                       ? claudeInfo.route.sonnet
                       : '—')),
-                settingRow('版本', '已装的 Claude Code CLI',
-                  h('span', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-secondary)' } },
+                settingRow('版本', '已装的 CLI',
+                  h('span', { className: 'uc-row-value' },
                     claudeInfo && claudeInfo.version
                       ? `Claude Code ${claudeInfo.version}`
                       : '未知')),
-                settingRow('切换器', 'CC Switch：第三方供应商切换器，改的也是这份 settings.json',
-                  h('span', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-secondary)' } },
+                settingRow('切换器', 'CC Switch，改的也是这份配置',
+                  h('span', { className: 'uc-row-value' },
                     !claudeInfo || !claudeInfo.switcher
                       ? '—'
                       : !claudeInfo.switcher.found
@@ -4630,8 +4633,8 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
                         : claudeInfo.switcher.current
                           ? `CC Switch · 当前 ${claudeInfo.switcher.current}`
                           : `CC Switch · 已装（${claudeInfo.switcher.storage || '未知存储'}）`)),
-                settingRow('路由工具', '自动检测；同时用两个会打架',
-                  h('span', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-secondary)' } },
+                settingRow('路由工具', '自动检测，同时用两个会冲突',
+                  h('span', { className: 'uc-row-value' },
                     !claudeInfo || !claudeInfo.routing
                       ? '—'
                       : claudeInfo.routing.relay
@@ -4642,13 +4645,13 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
                             ? `装了 ${claudeInfo.routing.names.join('、')}，但都没接管`
                             : '未检测到')),
                 settingRow('状态', null,
-                  h('span', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-secondary)' } },
+                  h('span', { className: 'uc-row-value' },
                     !claudeInfo
                       ? '读取中…'
                       : claudeInfo.installed
                         ? '已接入（聊天框模型菜单里选 Claude Code）'
                         : '没找到 claude.exe')),
-                settingRow('跑一次', '调本机 Claude Code，模型由路由台决定',
+                settingRow('跑一次', '用当前路由跑一轮',
                   h('div', { style: { display: 'flex', gap: '8px', alignItems: 'center' } },
                     h('input', {
                       className: 'uc-select',
@@ -4696,7 +4699,7 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
               ),
               h('div', { className: 'uc-perf' },
                 settingRow('现状', 'magpie 按协议拆成多条路由；也可以裁到只剩一个',
-                  h('span', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-secondary)' } },
+                  h('span', { className: 'uc-row-value' },
                     magpieInfo && magpieInfo.found
                       ? `${(magpieInfo.providers || []).length} 条路由（${(magpieInfo.providers || []).join('、')}）· ${(magpieInfo.models || []).length} 个模型`
                       : '配置里没有 magpie 的路由')),

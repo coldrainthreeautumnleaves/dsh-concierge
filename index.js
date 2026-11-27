@@ -2815,21 +2815,71 @@ async function trimRouteModels(keepIds) {
 //（DSH 切模型前要压缩上下文，没有窗口大小会报 MODEL_SWITCH_COMPACTION_FAILED）。
 const CLAUDE_PROVIDER = 'claude-code'
 
-function lastUserText(messages) {
+// 把一条消息的正文抽成纯文本（只认 text 块，图片等其它块跳过）。
+function messageText(message) {
+  if (!message) return ''
+  const content = message.content
+  if (typeof content === 'string') return content
+  if (!Array.isArray(content)) return ''
+  return content
+    .filter((block) => block && block.type === 'text' && typeof block.text === 'string')
+    .map((block) => block.text)
+    .join('\n')
+}
+
+// 本轮要发给 CLI 的那段文字。
+//
+// 这里曾经是「取最后一条 role === 'user' 的消息」，那是个坑：
+// DSH 把用户那句话之后还会注入好几条 **role 也是 user** 的上下文——
+// 运行时提醒（工作目录、文件策略）、时间戳、记忆预取、记忆回答规则——
+// 它们在会话里排在真实提问之后。于是「最后一条 user 消息」根本不是提问，
+// 而是 `<memory_answer_rules>` 那一坨规则，真实问题被整段丢掉。
+//
+// 实测（会话 session-060a6c91，turn 10）：
+//   seq 198 user  <memory_handoff>…
+//   seq 199 user  能够干什么            ← 真正的提问
+//   seq 200 user  <system-reminder>…
+//   seq 201 user  Time sampled while preparing turn 10…
+//   seq 202 user  <memory_prefetch>…
+//   seq 203 user  <memory_answer_rules>…   ← 旧代码只发这一条
+// CLI 只收到规则、没有问题时，回答就是「你好，我能帮你做什么」这类空话，
+// 甚至蹦出一句用户口吻的句子。界面上看着像模型坏了。
+//
+// 现在的取法：从最后一条 assistant 消息之后开始，就是本轮的输入。
+// 其中 source.kind === 'user' 的才是提问，其余都是注入的上下文。
+// 拼的时候把上下文放前面、提问放最后——提问落在末尾，模型才不会把它当成
+// 又一段背景材料。
+function turnPromptText(messages) {
   const list = Array.isArray(messages) ? messages : []
+  let start = 0
   for (let i = list.length - 1; i >= 0; i -= 1) {
-    const message = list[i]
-    if (!message || message.role !== 'user') continue
-    const content = message.content
-    if (typeof content === 'string') return content
-    if (Array.isArray(content)) {
-      return content
-        .filter((block) => block && block.type === 'text' && typeof block.text === 'string')
-        .map((block) => block.text)
-        .join('\n')
+    if (list[i] && list[i].role === 'assistant') {
+      start = i + 1
+      break
     }
   }
-  return ''
+  const context = []
+  const request = []
+  for (let i = start; i < list.length; i += 1) {
+    const message = list[i]
+    if (!message || message.role !== 'user') continue
+    const text = messageText(message).trim()
+    if (!text) continue
+    const kind = message.source && typeof message.source.kind === 'string' ? message.source.kind : ''
+    if (kind === 'user') request.push(text)
+    else context.push(text)
+  }
+  // 认不出哪条是提问（消息结构变了）时，退回老办法：最后一条 user 消息。
+  if (!request.length) {
+    for (let i = list.length - 1; i >= 0; i -= 1) {
+      const message = list[i]
+      if (!message || message.role !== 'user') continue
+      const text = messageText(message).trim()
+      if (text) return text
+    }
+    return ''
+  }
+  return [...context, ...request].join('\n\n')
 }
 
 // 常驻一个 ACP 客户端：复用 CLI 进程和它自己的会话，省掉每轮冷启动。
@@ -2868,10 +2918,14 @@ function withModelHint(message) {
   return message + '（模型名和网关对不上：去路由台点一次「接入」重写 ~/.claude/settings.json，或把 ANTHROPIC_DEFAULT_*_MODEL 改成网关 /v1/models 里有的 id）'
 }
 
+// 导出给测试用（scripts/test-turn-prompt.mjs）：喂一段和会话日志里形状相同的
+// 消息，检查挑出来的提问对不对。运行时不消费这个导出。
+export { turnPromptText }
+
 // 导出给冒烟测试用（scripts/smoke-stream.mjs）：直接喂一段对话，检查吐出来的
 // StreamChunk 里有没有 reasoning 块、正文块顺序对不对。运行时不消费这个导出。
 export async function* streamClaudeCode(options) {
-  const prompt = lastUserText(options && options.messages)
+  const prompt = turnPromptText(options && options.messages)
   if (!prompt) {
     yield { type: 'finish', reason: { kind: 'stop' } }
     return

@@ -6,6 +6,26 @@
 
 ## [Unreleased]
 
+## [0.25.7] - 2026-11-27
+
+> ACP 通道不再卡死，提问也不会被注入的上下文挤掉
+
+### Fixed
+
+- Claude Code（ACP）: 问一句就永远不返回，实测 240 秒都没结束。原因是 ACP 的 RPC 只处理「我们发出去、CLI 回」的响应，CLI 反过来发来的请求（`session/request_permission` 申请工具权限）被当成通知丢掉了，CLI 就一直在等回复。现在 RPC 支持按 method 注册反向请求处理器，不认识的 method 也会回一个「不支持」错误让 CLI 自己往下走
+- Claude Code（ACP）: 工具调用要权限时没人应答。插件没有画审批框的地方，问也问不到人，现在默认选「总是允许」那一档（`CLAUDE_ACP_PERMISSION=deny` 可以改成拒绝）；一个可选档都没有时回「取消」，让 CLI 按被拒处理并继续，而不是继续等
+- Claude Code（ACP）: 回答开头经常顶着一块 `> **Warning:** …` 的 Claude Code 公告。`initialize` 里的 `clientCapabilities` 原来是空对象，CLI 没有「通知」通道可用，只能把警告塞进 `agent_message_chunk` 混在正文里。现在声明 `session: { notices: {} }`
+- Claude Code（ACP）: 问「你好」时回答「我是 Claude，能帮你写代码…」这类空话，真实问题被整段丢掉。原来取的是「最后一条 `role === 'user'` 的消息」，但 DSH 会在用户那句话**之后**再注入好几条 role 也是 user 的上下文——运行时提醒、时间戳、记忆预取、记忆回答规则——于是最后一条 user 消息根本不是提问。现在从最后一条 assistant 之后开始找，只把 `source.kind === 'user'` 的当提问，其余作为上下文拼在前面，提问落在末尾
+- Claude Code（ACP）: 每个新会话都弹一条「this session isn't eligible for auto mode's no-charge classifier requests」。原因是网关（`127.0.0.1:19999`）只是本机转发到中转站，不是 Anthropic 官方服务端，给不出自动模式要的服务端分类器检查（`safeguard_results`），Claude Code 就退回自己发分类器请求、照 token 计费，并弹这条警告。现在 ACP 子进程默认带 `CLAUDE_CODE_AUTO_MODE_SERVER=0`，`settings.json` 的 `env` 里自己配过就以他的值为准
+
+  关掉之后行为是明确的：分类器请求仍由 Claude Code 自己发、计费照旧，但不再有那条警告。官方说明见 [auto mode classifier billing](https://code.claude.com/docs/en/auto-mode-classifier-billing)
+
+### Added
+
+- `scripts/test-turn-prompt.mjs`: 回归测试，喂一段和会话日志里形状相同的消息，检查挑出来的提问对不对
+- `scripts/fake-acp-server.mjs`、`scripts/test-permission-reply.mjs`: 用假 ACP 服务端复现「CLI 申请权限、客户端不回话」的卡死，并验证修复
+- `scripts/e2e-turn-prompt.mjs`: 端到端跑真模型，验证注入上下文时提问有没有被丢掉
+
 ## [0.25.6] - 2026-11-27
 
 > Claude Code 的思考能看见了，正文逐字显示

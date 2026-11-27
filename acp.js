@@ -34,6 +34,8 @@ function createRpc(child) {
   let buffer = ''
   const pending = new Map()
   const listeners = new Set()
+  /** 服务端（CLI）反过来问客户端的请求处理器，按 method 注册。 */
+  const handlers = new Map()
   let nextId = 1
   let closed = false
 
@@ -59,6 +61,30 @@ function createRpc(child) {
         else entry.resolve(message.result)
         continue
       }
+      // 带 method + id 的是 CLI 发给**我们**的请求（申请权限、建终端之类）。
+      // 原来这里直接当通知丢掉，CLI 就一直等回复——表现是这一轮永远不结束。
+      // 不认识的 method 也要回一个错误，让 CLI 自己往下走。
+      if (message.method && message.id !== undefined) {
+        const handler = handlers.get(message.method)
+        if (!handler) {
+          reply(message.id, undefined, { code: -32601, message: 'unsupported: ' + message.method })
+          continue
+        }
+        let settled = false
+        const finish = (result, error) => {
+          if (settled) return
+          settled = true
+          reply(message.id, result, error)
+        }
+        try {
+          const outcome = handler(message.params || {})
+          if (outcome && typeof outcome.then === 'function') outcome.then((r) => finish(r), (e) => finish(undefined, { code: -32603, message: String(e && e.message) }))
+          else finish(outcome)
+        } catch (error) {
+          finish(undefined, { code: -32603, message: String(error && error.message) })
+        }
+        continue
+      }
       for (const listener of listeners) {
         try {
           listener(message)
@@ -69,6 +95,18 @@ function createRpc(child) {
     }
   })
 
+  function reply(id, result, error) {
+    if (closed) return
+    const payload = error
+      ? { jsonrpc: '2.0', id, error }
+      : { jsonrpc: '2.0', id, result: result === undefined ? {} : result }
+    try {
+      child.stdin.write(JSON.stringify(payload) + '\n')
+    } catch {
+      /* 进程可能已退出 */
+    }
+  }
+
   child.on('exit', (code) => {
     closed = true
     for (const [, entry] of pending) entry.reject(new Error('ACP 进程已退出（code ' + code + '）'))
@@ -76,6 +114,10 @@ function createRpc(child) {
   })
 
   return {
+    onRequest(method, handler) {
+      handlers.set(method, handler)
+      return () => handlers.delete(method)
+    },
     request(method, params, timeoutMs = 180000) {
       if (closed) return Promise.reject(new Error('ACP 进程已退出'))
       const id = nextId++
@@ -132,6 +174,27 @@ export function createAcpClient(options = {}) {
     // CLI 自己往 stderr 打日志，吞掉避免刷屏
     child.stderr.on('data', () => {})
     rpc = createRpc(child)
+    // 工具调用要权限时 CLI 会发 session/request_permission 并等回复。
+    // 之前没人回，这一轮就永远不结束（实测：问一句就卡住，240 秒都不返回）。
+    //
+    // 这里直接选「总是允许」那一档：DSH 自己的权限由用户在外层选
+    //（本会话是完全权限），这个 CLI 子进程是替 DSH 干活的，插件又没有画
+    // 审批框的地方——问也问不到人。宁可放行，也不能让整轮卡死。
+    // 想收紧就把 CLAUDE_ACP_PERMISSION=deny，那样会选拒绝档。
+    rpc.onRequest('session/request_permission', (params) => {
+      const options = Array.isArray(params && params.options) ? params.options : []
+      const deny = String(process.env.CLAUDE_ACP_PERMISSION || '')
+        .trim()
+        .toLowerCase() === 'deny'
+      const wanted = deny ? ['reject_always', 'reject_once'] : ['allow_always', 'allow_once']
+      for (const kind of wanted) {
+        const hit = options.find((option) => option && option.kind === kind && option.optionId)
+        if (hit) return { outcome: { outcome: 'selected', optionId: hit.optionId } }
+      }
+      // 一个可选档都没有（或用户选了 deny 且没有拒绝档）：取消掉，
+      // 让 CLI 按「被拒」处理并继续，而不是继续等。
+      return { outcome: { outcome: 'cancelled' } }
+    })
     sessionId = null
     ready = null
     return { child, rpc }
@@ -142,7 +205,18 @@ export function createAcpClient(options = {}) {
     if (ready) return ready
     const { rpc: client } = ensureChild()
     ready = (async () => {
-      await client.request('initialize', { protocolVersion: 1, clientCapabilities: {} }, 60000)
+      // 声明能收 session 通知：CLI 有「通知」通道时会把警告走 sessionUpdate:
+      // 'notice'，没有时只能把 `> **Warning:** …` 塞进 agent_message_chunk。
+      // 原来 clientCapabilities 是空对象，于是那段警告混在正文里，用户看到的
+      // 回答开头就顶着一块 Claude Code 的公告（实测 23:07 那一轮）。
+      await client.request(
+        'initialize',
+        {
+          protocolVersion: 1,
+          clientCapabilities: { session: { notices: {} } },
+        },
+        60000,
+      )
       const result = await client.request('session/new', { cwd: options.cwd || process.cwd(), mcpServers: [] }, 120000)
       sessionId = result && result.sessionId
       if (!sessionId) throw new Error('ACP 会话创建失败')
@@ -256,6 +330,11 @@ export function claudeGatewayEnv() {
     ANTHROPIC_AUTH_TOKEN: 'magpie',
     CLAUDE_CODE_THINKING_DISPLAY: 'summarized',
     MAX_THINKING_TOKENS: '8000',
+    // 网关是本地转发到中转站，不是 Anthropic 官方服务端，提供不了自动模式
+    // 的服务端分类器检查。不关这个开关，每个新会话都会弹一条
+    // 「this session isn't eligible」的警告。
+    // 关掉后分类器请求由 Claude Code 自己发、照常计费，但没有那条警告。
+    CLAUDE_CODE_AUTO_MODE_SERVER: '0',
   }
   try {
     const raw = readFileSync(path.join(homedir(), '.claude', 'settings.json'), 'utf8')
@@ -269,6 +348,8 @@ export function claudeGatewayEnv() {
     if (typeof display === 'string' && display.trim()) env.CLAUDE_CODE_THINKING_DISPLAY = display.trim()
     const tokens = fileEnv.MAX_THINKING_TOKENS
     if (typeof tokens === 'string' && tokens.trim()) env.MAX_THINKING_TOKENS = tokens.trim()
+    const autoMode = fileEnv.CLAUDE_CODE_AUTO_MODE_SERVER
+    if (typeof autoMode === 'string' && autoMode.trim()) env.CLAUDE_CODE_AUTO_MODE_SERVER = autoMode.trim()
   } catch {
     /* 没有 settings.json 就用默认端口 */
   }

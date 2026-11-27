@@ -2521,10 +2521,28 @@ async function readClaudeRoute() {
     const text = await readFile(file, 'utf8')
     const json = JSON.parse(text)
     const env = json && json.env ? json.env : {}
+    const baseUrl = typeof env.ANTHROPIC_BASE_URL === 'string' ? env.ANTHROPIC_BASE_URL : ''
+    // settings.json 指向本机端口时，探一下那个端口还活着没——路由台退出后
+    // 这个指向会变成死地址，界面上却看不出问题。
+    let alive = null
+    const localMatch = /^https?:\/\/(127\.0\.0\.1|localhost)(?::(\d+))?/i.exec(baseUrl)
+    if (localMatch) {
+      const port = localMatch[2] || '80'
+      try {
+        const controller = new AbortController()
+        const timer = setTimeout(() => controller.abort(), 1200)
+        const res = await fetch(`http://127.0.0.1:${port}/v1/models`, { signal: controller.signal })
+        clearTimeout(timer)
+        alive = res.ok
+      } catch {
+        alive = false
+      }
+    }
     return {
       ok: true,
       file,
-      baseUrl: typeof env.ANTHROPIC_BASE_URL === 'string' ? env.ANTHROPIC_BASE_URL : '',
+      baseUrl,
+      alive,
       model: typeof json.model === 'string' ? json.model : '',
       sonnet: typeof env.ANTHROPIC_DEFAULT_SONNET_MODEL === 'string' ? env.ANTHROPIC_DEFAULT_SONNET_MODEL : '',
       haiku: typeof env.ANTHROPIC_DEFAULT_HAIKU_MODEL === 'string' ? env.ANTHROPIC_DEFAULT_HAIKU_MODEL : '',

@@ -6,6 +6,34 @@
 
 ## [Unreleased]
 
+## [0.24.9] - 2026-11-27
+
+> 输入框塌陷的兜底 + 诊断
+
+### Added
+
+- 诊断: 新增 `collectDockChain()` —— 把 `[data-composer-dock]` 的父级链（最多 8 层）连同 `display / position / height / minHeight / maxHeight / flex / gridTemplate / alignSelf / overflow` 一起上报到 `perf-report.json` 的 `dockChain`。dock 塌掉时只有往上看才知道是谁把它压扁的
+- 外观: `[data-composer-dock]` 加最小宽度兜底（`min-width: min(100%, 320px)`），尺寸正常时不生效
+
+### 已知
+
+- 截图里点掉底栏工具条后输入区上移、下方留白，实测 `dock` 只有 **280×26**，而外壳 `_frame` 是满尺寸 1281×821。插件 CSS 只改背景色和透明度（49 处 height 规则全是 `.uc-*` 自己的控件），**不改任何 DSH 布局尺寸**，所以这更像 DSH 自身的收起行为；`dockChain` 就是为定位这个加的
+
+## [0.24.8] - 2026-11-27
+
+> 路由连不上时能看出来
+
+### Added
+
+- 外观: 「路由」一行加了连通性判断——`settings.json` 指向本机端口时，插件探一次 `/v1/models`，通就标「· 通」，不通就标红「· 连不上（网关没启动？）」。之前路由台退出后 `settings.json` 还指着 `127.0.0.1:19999`，界面上完全看不出问题
+
+### 实测
+
+```
+baseUrl: http://127.0.0.1:19999
+alive: false（连不上）
+```
+
 ## [0.24.7] - 2026-11-27
 
 > 路由工具不再误报冲突

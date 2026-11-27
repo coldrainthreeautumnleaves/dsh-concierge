@@ -702,6 +702,15 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
     inset 0 1px 0 rgba(255, 255, 255, 0.12),
     0 10px 30px rgba(0, 0, 0, 0.35);
 }
+/* 输入框底座的兜底：底栏上的工具条收起后，dock 偶尔会塌成很小的一块
+   （实测 280×26），整块输入区被顶到上面，下面留一大片空白。
+   这里只约束「最小可用尺寸」，不参与正常布局——尺寸正常时这条不生效。 */
+html[data-dsh-glass="1"] [data-composer-dock] {
+  min-width: min(100%, 320px);
+}
+html[data-dsh-glass="1"] [data-composer-dock] > * {
+  min-width: 0;
+}
 `
 
     function installLookCss() {
@@ -875,6 +884,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
     let probeSentAt = 0
     let probeBlurList = null
     let probeComposerTree = null
+    let probeDockChain = null
     let probeShell = null
     let probeColumns = null
     let probeWhiteBoxes = null
@@ -933,6 +943,39 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
         for (const child of el.children) walk(child, depth + 1)
       }
       walk(dock, 0)
+      return rows
+    }
+
+    // dock 的父级链 + 每层的布局属性。dock 塌掉时只有往上看才知道是谁把它压扁的
+    // （display/grid-template/height/min-height/flex 都可能）。
+    function collectDockChain() {
+      if (typeof document === 'undefined') return []
+      const dock = document.querySelector('[data-composer-dock]')
+      if (!dock) return []
+      const rows = []
+      let el = dock
+      for (let depth = 0; el && depth < 8; depth++) {
+        const style = getComputedStyle(el)
+        const rect = el.getBoundingClientRect()
+        rows.push({
+          d: depth,
+          tag: el.tagName.toLowerCase(),
+          cls: String(el.className || '').slice(0, 70),
+          attr: el.hasAttribute('data-composer-dock') ? 'data-composer-dock' : '',
+          display: style.display,
+          position: style.position,
+          height: style.height,
+          minHeight: style.minHeight,
+          maxHeight: style.maxHeight,
+          flex: style.flex,
+          gridTemplate: style.gridTemplateRows ? style.gridTemplateRows.slice(0, 60) : '',
+          alignSelf: style.alignSelf,
+          overflow: style.overflow,
+          w: Math.round(rect.width),
+          h: Math.round(rect.height),
+        })
+        el = el.parentElement
+      }
       return rows
     }
 
@@ -1291,6 +1334,8 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       payload.blurs = probeBlurList
       if (probeComposerTree === null) probeComposerTree = collectComposerTree()
       payload.composer = probeComposerTree
+      if (probeDockChain === null) probeDockChain = collectDockChain()
+      payload.dockChain = probeDockChain
       if (probeShell === null) probeShell = collectShell()
       payload.shell = probeShell
       if (probeColumns === null) probeColumns = collectColumns()
@@ -4419,7 +4464,13 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
                 settingRow('路由', '由 ~/.claude/settings.json 决定，插件不自己拼',
                   h('span', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-secondary)' } },
                     claudeInfo && claudeInfo.route && claudeInfo.route.baseUrl
-                      ? claudeInfo.route.baseUrl
+                      ? h('span', null,
+                          claudeInfo.route.baseUrl,
+                          claudeInfo.route.alive === false
+                            ? h('span', { style: { color: 'var(--dsw-alias-state-error-primary, #d33)' } }, '  · 连不上（网关没启动？）')
+                            : claudeInfo.route.alive === true
+                              ? h('span', { style: { color: 'var(--dsw-alias-state-business-primary, #2a9d6e)' } }, '  · 通')
+                              : null)
                       : '未配置')),
                 settingRow('模型', 'settings.json 里的映射',
                   h('span', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-secondary)' } },

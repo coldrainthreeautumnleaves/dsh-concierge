@@ -704,7 +704,10 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
 }
 /* 模态确认框（如「关闭整个 MattSkillsDeck」）用的是**写死的像素坐标**
    （实测 left:1057px; top:506px），窗口尺寸一变它就跑到右下角去。
-   这里把它拉回屏幕正中。
+
+   这一条只是兜底：先按视口 50%/50% 拉回正中，避免第一帧还挂在角落。
+   真正的落点由 installDeckDialogPlacement() 按**会话区**算——矮窗口里视口正中
+   正好压在输入卡上，看起来就像弹窗掉进了输入框，那样不行。
 
    不用 [role="dialog"][aria-modal="true"] 这种全局选择器：DSH 自己在监听
    aria-modal 的变化来管理模态行为（asar 里有 MutationObserver 盯着 role 和
@@ -762,6 +765,96 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
       style.id = 'dsh-concierge-look-css'
       style.textContent = LOOK_CSS
       document.head.appendChild(style)
+    }
+
+    // 「关闭整个 MattSkillsDeck」那张确认卡的定位。
+    //
+    // deck 插件自己算位置：渲染时抓一个锚点矩形，再按锚点算卡片的 left/top。
+    // 但锚点是渲染那一刻记下的，窗口尺寸一变就过期——实测会落到
+    // left:1057px; top:506px 这种地方（窗口变小后就在右下角），或者干脆压到
+    // 输入卡上。
+    //
+    // 外观样式里已经把它按视口 50%/50% 拉回正中，那是兜底；可视口正中在矮窗口
+    // 里正好是输入卡的位置，看着像「弹窗掉进输入框」。所以这里再按**会话区**
+    // 居中：它是确认卡，落在消息区中间才对，不该盖住输入区。
+    //
+    // 用内联 !important 写 left/top：样式表里的 !important 输给内联 !important，
+    // 而 deck 的 ref 每次重渲染只会写不带优先级的 inline 值，压不动它。
+    function installDeckDialogPlacement() {
+      if (typeof document === 'undefined' || typeof window === 'undefined') return
+      if (typeof MutationObserver !== 'function') return
+      const DIALOG = '[role="dialog"][aria-modal="true"][aria-label*="MattSkillsDeck"]'
+      let frame = 0
+      const timers = []
+
+      const findDialog = () => document.querySelector(DIALOG)
+
+      function place() {
+        frame = 0
+        try {
+          if (document.documentElement.getAttribute('data-dsh-glass') !== '1') return
+          const card = findDialog()
+          if (!card) return
+          // 目标区域 = 会话区里**输入区以上**那块。
+          // data-conversation-region="chat" 挂在整个 .body 上，它把 composerSeat
+          // 也包在里面（实测 asar 里 chat 区和 composer 区是同一棵树的父子），
+          // 所以不能直接拿它的中心——那还是落在输入卡上。改成：
+          //   上边界 = 会话区顶
+          //   下边界 = 输入区座位的顶（拿不到就用会话区底）
+          const host = document.querySelector('[data-conversation-region="chat"]') || document.querySelector('[class*="_centerCol"]')
+          const seat = document.querySelector('[data-composer-seat]') || document.querySelector('[data-composer-dock]')
+          let x = window.innerWidth / 2
+          let y = window.innerHeight / 2
+          if (host) {
+            const r = host.getBoundingClientRect()
+            let top = r.top
+            let bottom = r.bottom
+            if (seat) {
+              const s = seat.getBoundingClientRect()
+              if (s.height > 0 && s.top > top) bottom = Math.min(bottom, s.top)
+            }
+            if (r.width > 240 && bottom - top > 120) {
+              x = r.left + r.width / 2
+              y = top + (bottom - top) / 2
+            }
+          }
+          card.style.setProperty('left', Math.round(x) + 'px', 'important')
+          card.style.setProperty('top', Math.round(y) + 'px', 'important')
+          card.style.setProperty('right', 'auto', 'important')
+          card.style.setProperty('bottom', 'auto', 'important')
+          card.style.setProperty('transform', 'translate(-50%, -50%)', 'important')
+          card.style.setProperty('margin', '0', 'important')
+        } catch {
+          /* 定位失败就留着样式表里的视口居中 */
+        }
+      }
+
+      function schedule() {
+        // deck 的卡片是 React 渲染的：挂载后还会因为状态更新重渲染一次，而重渲染
+        // 会用 JSX 的 style 对象重写 left/top（不带优先级，等于把我们写的值抹掉）。
+        // 所以除了下一帧，再补两次延迟落位，把重渲染之后的窗口也盖住。
+        for (const id of timers.splice(0)) clearTimeout(id)
+        if (!frame) frame = requestAnimationFrame(place)
+        for (const delay of [120, 400]) timers.push(setTimeout(place, delay))
+      }
+
+      const observer = new MutationObserver((records) => {
+        for (const record of records) {
+          for (const node of record.addedNodes) {
+            if (node.nodeType !== 1) continue
+            if (node.matches(DIALOG) || node.querySelector(DIALOG)) {
+              schedule()
+              return
+            }
+          }
+        }
+      })
+      observer.observe(document.body, { childList: true, subtree: true })
+      // 窗口缩放时会话区矩形会变，卡片还开着就重新居中一次。
+      window.addEventListener('resize', () => {
+        if (findDialog()) schedule()
+      })
+      schedule()
     }
 
     // 宿主在启动过程中还会往 head 里追加样式表，追加在后面的同权重规则会赢。
@@ -5977,6 +6070,7 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
         readLookPrefs()
         installPerfCss()
         installLookCss()
+        installDeckDialogPlacement()
         ensureGlassNodes()
         lookCtx = ctx
         applyLook()

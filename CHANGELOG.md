@@ -6,6 +6,20 @@
 
 ## [Unreleased]
 
+## [0.25.3] - 2026-11-27
+
+> 确认卡改落在消息区中间，不再压在输入卡上
+
+### Fixed
+
+- 外观: 0.25.2 把 deck 的确认卡按视口 `50%/50%` 居中之后，矮窗口里视口正中正好是输入卡的位置，看着像「弹窗掉进了输入框」。现在改成按**输入区以上那块消息区**居中：
+  - 上边界取 `[data-conversation-region="chat"]` 的顶
+  - 下边界取 `[data-composer-seat]`（拿不到就 `[data-composer-dock]`）的顶
+
+  不能直接拿 `data-conversation-region="chat"` 的中心：那个属性挂在 `.body` 上，`composerSeat` 是它的子节点（asar 里实测），算出来的中心还在输入卡上
+- 外观: 落位用内联 `!important` 写 `left/top`。样式表的 `!important` 输给内联 `!important`，而 deck 的 ref 重渲染只写不带优先级的 inline 值，压不动它；再补 120ms / 400ms 两次延迟落位，覆盖 React 重渲染重写 style 的那一帧
+- 外观: 样式表里的视口居中保留，作为卡片出现那一帧的兜底
+
 ## [0.25.2] - 2026-11-27
 
 > 撤掉把整页压扁的高度通配规则

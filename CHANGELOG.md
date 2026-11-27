@@ -6,6 +6,20 @@
 
 ## [Unreleased]
 
+## [0.23.7] - 2026-11-27
+
+> 模型下拉真的生效了；去掉没用的网关合并
+
+### Fixed
+
+- 外观: 「当前模型」下拉原来只写 `~/.claude/settings.json`，但运行时按 magpie 的选择走，**选了不生效**。现在下拉改成调 `magpie claude <model>`，由 magpie 自己同时更新 `settings.json` 和 `applied.json`，选完即生效
+- 外观: 去掉重复的「模型」和「magpie 路由」两行（同一个值显示两遍），只留「模型」一行
+
+### Removed
+
+- 外观: 删掉「Magpie 网关」卡片里的协议选择和「合并成一条路由」——magpie 每次同步都会拆回去，这个功能实际没用
+- 卡片改名「DSH provider 配置」，只保留「只留当前模型 / 恢复配置」两个按钮，并注明它们操作的是 `cordis.patch.yml`、和上面的模型选择无关
+
 ## [0.23.6] - 2026-11-27
 
 > 不再单独占一条 Claude Code，并进 magpie 那一组

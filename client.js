@@ -3362,14 +3362,12 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
       const [magpieInfo, setMagpieInfo] = React.useState(null)
       const [magpieBusy, setMagpieBusy] = React.useState(false)
       const [magpieMsg, setMagpieMsg] = React.useState('')
-      const [magpieProtocol, setMagpieProtocol] = React.useState('openai-completions')
       const loadMagpieInfo = React.useCallback(async () => {
         try {
           const res = await fetch(`${API}/magpie-route`)
           const body = await res.json()
           if (body && body.ok) {
             setMagpieInfo(body)
-            if (body.protocol) setMagpieProtocol(body.protocol)
           }
         } catch {
           /* 读不到就保持空 */
@@ -3436,30 +3434,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
           setClaudeBusy(false)
         }
       }, [claudeBusy, loadClaudeInfo])
-
-      const mergeMagpie = React.useCallback(async () => {
-        if (magpieBusy) return
-        setMagpieBusy(true)
-        setMagpieMsg('')
-        try {
-          const res = await fetch(`${API}/magpie-route`, {
-            method: 'POST',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ protocol: magpieProtocol }),
-          })
-          const body = await res.json()
-          if (body && body.ok) {
-            setMagpieMsg(`已合并：${body.count} 个模型、1 个路由（${body.protocol}），去掉了 ${body.dropped} 条重复路由。重启 DSH 生效。`)
-          } else {
-            setMagpieMsg(`失败：${(body && body.error) || `HTTP ${res.status}`}`)
-          }
-          await loadMagpieInfo()
-        } catch (error) {
-          setMagpieMsg(`失败：${(error && error.message) || String(error)}`)
-        } finally {
-          setMagpieBusy(false)
-        }
-      }, [magpieBusy, magpieProtocol, loadMagpieInfo])
 
       const trimModels = React.useCallback(async () => {        if (claudeBusy) return
         setClaudeBusy(true)
@@ -4469,21 +4443,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
                         : claudeInfo.routing.count > 0
                           ? `${claudeInfo.routing.names.join('、')}${claudeInfo.routing.conflict ? '（冲突）' : ''}`
                           : '未检测到')),
-                h('div', { style: { padding: '4px 0 8px', display: 'flex', gap: '8px', flexWrap: 'wrap' } },
-                  h('button', {
-                    type: 'button',
-                    className: 'uc-btn',
-                    disabled: claudeBusy,
-                    onClick: trimModels,
-                  }, '只留当前模型'),
-                  h('button', {
-                    type: 'button',
-                    className: 'uc-btn',
-                    disabled: claudeBusy,
-                    onClick: restoreConfig,
-                  }, '恢复配置'),
-                ),
-                settingRow('当前模型', '选完写回 ~/.claude/settings.json 的 model 字段',
+                settingRow('模型', '选完交给 magpie 自己切（magpie claude <模型>），settings.json 和 Agent 页同时更新',
                   h('select', {
                     className: 'uc-select',
                     style: { maxWidth: '280px' },
@@ -4494,11 +4454,6 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
                     ((claudeInfo && claudeInfo.route && claudeInfo.route.options) || []).map((option) =>
                       h('option', { key: option.model, value: option.model }, option.label || option.model)),
                   )),
-                settingRow('magpie 路由', 'Agent 页给 Claude Code 选的那个；运行时就按它走',
-                  h('span', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-secondary)' } },
-                    claudeInfo && claudeInfo.magpieRoute && claudeInfo.magpieRoute.claude
-                      ? claudeInfo.magpieRoute.claude
-                      : '—（magpie 的 Agent 页里没给 Claude Code 选模型）')),
                 settingRow('状态', null,
                   h('span', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-secondary)' } },
                     !claudeInfo
@@ -4513,36 +4468,32 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
             )
           : null,
 
-        tab === 'claude' && magpieInfo && magpieInfo.found
+        tab === 'claude'
           ? h('section', { className: 'uc-card' },
               h('div', { className: 'uc-card-head' },
-                h('div', { className: 'uc-card-title' }, 'Magpie 网关'),
+                h('div', { className: 'uc-card-title' }, 'DSH provider 配置'),
               ),
               h('div', { className: 'uc-perf' },
-                settingRow('现状', 'magpie 按协议拆成多条路由；这里可以合成一条',
+                settingRow('现状', 'magpie 按协议拆成多条路由；也可以裁到只剩一个',
                   h('span', { style: { fontSize: '12px', color: 'var(--dsw-alias-label-secondary)' } },
-                    `${(magpieInfo.providers || []).length} 条路由（${(magpieInfo.providers || []).join('、')}）· ${(magpieInfo.models || []).length} 个模型`)),
-                settingRow('协议', 'DSH 的 llm-pi-ai 一条路由只能有一种协议',
-                  h('select', {
-                    className: 'uc-select',
-                    style: { maxWidth: '240px' },
-                    value: magpieProtocol,
-                    disabled: magpieBusy,
-                    onChange: (event) => setMagpieProtocol(event.target.value),
-                  },
-                    [
-                      ['openai-completions', 'OpenAI Chat Completions'],
-                      ['openai-responses', 'OpenAI Responses'],
-                      ['anthropic-messages', 'Anthropic Messages'],
-                    ].map((pair) => h('option', { key: pair[0], value: pair[0] }, pair[1])),
-                  )),
-                h('div', { style: { padding: '4px 0 8px', display: 'flex', gap: '8px', flexWrap: 'wrap' } },
+                    magpieInfo && magpieInfo.found
+                      ? `${(magpieInfo.providers || []).length} 条路由（${(magpieInfo.providers || []).join('、')}）· ${(magpieInfo.models || []).length} 个模型`
+                      : '配置里没有 magpie 的路由')),
+                h('div', { style: { padding: '8px 0 4px', fontSize: '12px', color: 'var(--dsw-alias-label-secondary)' } },
+                  '下面两个按钮操作 DSH 的 provider 配置（cordis.patch.yml），和上面的模型选择无关：'),
+                h('div', { style: { padding: '0 0 8px', display: 'flex', gap: '8px', flexWrap: 'wrap' } },
                   h('button', {
                     type: 'button',
-                    className: 'uc-btn uc-btn-accent',
-                    disabled: magpieBusy || (magpieInfo.providers || []).length < 2,
-                    onClick: mergeMagpie,
-                  }, magpieBusy ? '合并中…' : '合并成一条路由'),
+                    className: 'uc-btn',
+                    disabled: claudeBusy,
+                    onClick: trimModels,
+                  }, '只留当前模型'),
+                  h('button', {
+                    type: 'button',
+                    className: 'uc-btn',
+                    disabled: claudeBusy,
+                    onClick: restoreConfig,
+                  }, '恢复配置'),
                 ),
                 magpieMsg
                   ? h('div', { style: { padding: '0 16px 12px', fontSize: '12px', color: 'var(--dsw-alias-label-secondary)' } }, magpieMsg)

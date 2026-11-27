@@ -419,16 +419,13 @@ export function apply(ctx) {
           const body = await readNodeJson(request)
           const model = body && typeof body.model === 'string' ? body.model.trim() : ''
           if (!model) return sendNodeJson(response, { ok: false, error: '缺少 model' }, 400)
-          const file = path.join(homedir(), '.claude', 'settings.json')
-          const text = await readFile(file, 'utf8')
-          const json = JSON.parse(text)
-          const previous = typeof json.model === 'string' ? json.model : ''
-          if (previous === model) return sendNodeJson(response, { ok: true, model, previous }, 200)
-          json.model = model
-          const backup = `${file}.bak-${Date.now()}`
-          await writeFile(backup, text, 'utf8')
-          await writeFile(file, JSON.stringify(json, null, 2) + '\n', 'utf8')
-          return sendNodeJson(response, { ok: true, model, previous, backup }, 200)
+          // 交给 magpie 自己切：它同时更新 settings.json 和 applied.json
+          const result = await runMagpieCli(['claude', model])
+          if (!result.ok) {
+            return sendNodeJson(response, { ok: false, error: result.error || result.output || 'magpie 切换失败' }, 400)
+          }
+          const applied = await readMagpieApplied()
+          return sendNodeJson(response, { ok: true, model, applied: applied.claude, output: result.output }, 200)
         } catch (error) {
           return sendNodeJson(response, { ok: false, error: messageOf(error) }, 400)
         }
@@ -2394,6 +2391,45 @@ async function readMagpieApplied() {
   } catch {
     return { ok: false, file, claude: '', dsh: '' }
   }
+}
+
+// 让 magpie 把 Claude Code 切到某个模型：调官方 CLI `magpie claude <model>`，
+// 由 magpie 自己写进 settings.json 和 applied.json，插件不去改它的文件。
+function runMagpieCli(args, timeoutMs = 60000) {
+  return new Promise((resolve) => {
+    const exe = path.join(homedir(), 'AppData', 'Local', 'Programs', 'magpie', 'magpie.com')
+    if (!existsSync(exe)) return resolve({ ok: false, error: '没找到 magpie（magpie.com）' })
+    let child
+    try {
+      child = spawn(exe, args, { windowsHide: true })
+    } catch (error) {
+      return resolve({ ok: false, error: messageOf(error) })
+    }
+    let stdout = ''
+    let stderr = ''
+    const timer = setTimeout(() => {
+      try {
+        child.kill()
+      } catch {
+        /* already gone */
+      }
+      resolve({ ok: false, error: 'magpie 命令超时' })
+    }, timeoutMs)
+    child.stdout.on('data', (chunk) => {
+      stdout += String(chunk)
+    })
+    child.stderr.on('data', (chunk) => {
+      stderr += String(chunk)
+    })
+    child.on('error', (error) => {
+      clearTimeout(timer)
+      resolve({ ok: false, error: messageOf(error) })
+    })
+    child.on('close', (code) => {
+      clearTimeout(timer)
+      resolve({ ok: code === 0, output: (stdout + stderr).trim(), code })
+    })
+  })
 }
 
 async function readClaudeRoute() {

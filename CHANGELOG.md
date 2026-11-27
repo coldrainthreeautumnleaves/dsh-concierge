@@ -6,6 +6,21 @@
 
 ## [Unreleased]
 
+## [0.24.4] - 2026-11-27
+
+> 模型菜单里显示 magpie 给 Claude Code 选的那个
+
+### Changed
+
+- 模型: `currentModel()` 改成优先读 `applied.json` 的 **`claude`** 那一项（magpie 的 Agent 页「Claude Code」行选的模型），没有才回落到 `dsh` 那一项。0.24.3 是反过来的
+
+### 当前值（实测）
+
+```
+applied.json → claude: codeflow/claude-haiku-5-5[1m]
+菜单里显示   → codeflow/claude-haiku-5-5
+```
+
 ## [0.24.3] - 2026-11-27
 
 > 模型名跟着 magpie 给 DSH 选的那个走

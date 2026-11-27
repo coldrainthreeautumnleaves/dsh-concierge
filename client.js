@@ -709,8 +709,17 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
    不用 [role="dialog"][aria-modal="true"] 这种全局选择器：DSH 自己在监听
    aria-modal 的变化来管理模态行为（asar 里有 MutationObserver 盯着 role 和
    aria-modal），而且设置面板这类本来就居中的对话框再套一层 translate 会偏。
-   这里只认「fixed + 写了内联 left/top」的浮层，并且排除已经用 50% 居中的。 */
-html[data-dsh-glass="1"] [role="dialog"][aria-modal="true"][style*="position: fixed"][style*="left:"][style*="top:"]:not([style*="left: 50%"]) {
+
+   两条分支，命中任意一条就居中：
+   1) 认结构：内联 position:fixed + 内联 left:/top:，排除已经用 50% 的。
+      兼容 position:fixed 不带空格的序列化写法。
+   2) 认 aria-label：MattSkillsDeck 的确认框（关闭 / 重新打开）自己带
+      aria-label="关闭整个 MattSkillsDeck"。这条不依赖内联样式——它的 left/top
+      是 ref 挂载后才补上的，第一帧可能还没有 left:/top:，靠分支 1 会漏。 */
+html[data-dsh-glass="1"] :is(
+  [role="dialog"][aria-modal="true"]:is([style*="position: fixed"], [style*="position:fixed"])[style*="left:"][style*="top:"]:not([style*="left: 50%"]),
+  [role="dialog"][aria-modal="true"][aria-label*="MattSkillsDeck"]
+) {
   left: 50% !important;
   top: 50% !important;
   right: auto !important;
@@ -727,24 +736,23 @@ html[data-dsh-glass="1"] [data-composer-dock] {
 html[data-dsh-glass="1"] [data-composer-dock] > * {
   min-width: 0;
 }
-/* 输入区高度塌陷的修复。
-   实测（点掉底栏工具条之后）：
-     GRgSLq_root          height 124px   ← 父
-     an3WzG_composerStack height 166px   ← 子，比父高 42px
-     an3WzG_composerSeat  position: sticky
-   sticky 元素不参与父级的 auto 高度计算，父级因此少算了自己孩子的高度，
-   卡片被挤到父级外面，看着就是「输入框上移、下面空一片」。
+/* 0.25.0 曾在这里写过一条「输入区塌陷」的兜底：
+     div[class*="_root"]:has([data-composer-dock]) { height: auto !important }
+   0.25.2 删掉。原因有两条，都是实测过的：
 
-   注意：dock 不是 root 的直接子元素，中间还隔着一层 display:contents 的 div，
-   所以这里用后代选择器 :has(...) 而不是子选择器 :has(> ...)——用子选择器
-   一个都匹配不上，这就是上一版没生效的原因。
+   1) 它对症的那个现象（root 124px / stack 166px）根本没被它改变——同一份
+      dockChain 探针在加规则前后完全一致，说明它压根没修到东西；
+   2) div[class*="_root"] 是 CSS Modules 里最常见的类名后缀，一条 :has() 会把
+      **所有** 祖先都算进去。HeroShell 的 .root（height: 100% + 垂直居中）
+      和会话区的 root 都在其中，它们一变成 auto，整页就按内容高度收缩：
+      新会话页的标题和输入框被顶到窗口最上面、下面留一大片空壁纸，
+      聊天页则是会话区只剩两百多像素、底栏被挤成一条。
 
-   只把 root 的高度改成由内容撑开，不动 sticky 定位——那是「滚动时输入框吸底」
-   的效果，改了会破坏正常滚动。 */
-html[data-dsh-glass="1"] div[class*="_root"]:has([data-composer-dock]) {
-  height: auto !important;
-  min-height: fit-content !important;
-}
+   官方布局本身是满高的，玻璃皮肤不该去动任何祖先的高度：
+     AppFrame.module.css   .frame { grid-template-rows: minmax(0,1fr) auto; height: 100% }
+     HeroShell.module.css  .root  { display: flex; align-items: center; justify-content: center; height: 100% }
+   输入框塌陷真要再修，得先拿到「哪个祖先掉了高度」的实测数据，不能再按类名
+   通配压 height。 */
 `
 
     function installLookCss() {

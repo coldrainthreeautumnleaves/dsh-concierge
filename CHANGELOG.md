@@ -6,6 +6,21 @@
 
 ## [Unreleased]
 
+## [0.24.2] - 2026-11-27
+
+> 模型菜单只剩一组：显示名改成 Magpie · Anthropic
+
+### Changed
+
+- 模型: 插件注册的 provider 显示名从「Claude Code」改成「**Magpie · Anthropic**」，和原来 magpie 注入的那组同名——菜单里看起来就是同一组，点它走的是 Claude Code（ACP）
+- 配置: 删掉 `cordis.patch.yml` 里的 `llm-pi-ai` 条目（magpie 写的那组 HTTP 模型）。它和插件这组是两个不同的 provider，留着就是两组；模型名相同但一个是 HTTP 直连、一个是本地 CLI
+
+### 说明
+
+- `agent-default-model` 本来就指向 `claude-code`，删 `llm-pi-ai` 不影响当前会话
+- `codeflow/deepseek-ai/…`、`deepseek/deepseek-flash` 这几个 magpie 模型会从菜单消失；`DeepSeek 账号` 那组不受影响
+- magpie 下次接管 DSH 时可能把 `llm-pi-ai` 写回来，届时又会出现两组
+
 ## [0.24.1] - 2026-11-27
 
 > 改用 ACP 接 Claude Code：流式、复用会话

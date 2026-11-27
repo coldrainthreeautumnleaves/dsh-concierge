@@ -1,62 +1,62 @@
 {
-    "name":  "dsh-concierge",
-    "version":  "0.24.1",
-    "description":  "Maintenance center for DeepSeek Harness: checks the desktop app feed and installed plugin updates, updates and rolls back plugins, watches GitHub sources, and keeps long chats smooth.",
-    "type":  "module",
-    "main":  "index.js",
-    "exports":  {
-                    ".":  "./index.js",
-                    "./client":  "./client.js",
-                    "./locale/*.json":  "./locale/*.json",
-                    "./icon":  "./icon.svg"
-                },
-    "files":  [
-                  "index.js",
-                  "acp.js",
-                  "client.js",
-                  "cordis.patch.yml",
-                  "locale/*.json",
-                  "docs",
-                  "icon.svg",
-                  "README.md",
-                  "CHANGELOG.md",
-                  "LICENSE",
-                  "assets",
-                  "screenshots.json"
-              ],
-    "keywords":  [
-                     "deepseek",
-                     "harness",
-                     "dsh",
-                     "dsh-plugin",
-                     "update",
-                     "updater",
-                     "plugin-manager",
-                     "performance"
-                 ],
-    "license":  "MIT",
-    "publishConfig":  {
-                          "registry":  "https://registry.npmjs.org",
-                          "access":  "public"
-                      },
-    "engines":  {
-                    "node":  "\u003e=22",
-                    "dsh":  "\u003e=0.2.1 \u003c0.3.0"
-                },
-    "repository":  {
-                       "type":  "git",
-                       "url":  "git+https://github.com/coldrainthreeautumnleaves/dsh-concierge.git"
-                   },
-    "dsh":  {
-                "bundle":  {
-                               "patch":  "./cordis.patch.yml"
-                           },
-                "client":  {
-                               "platform":  "web",
-                               "inject":  [
-                                              "@deepseek-ai/dsh-client-locale",
-                                              "@deepseek-ai/dsh-client-ui-settings"
-                                          ]
-                           }
-            }
+  "name": "dsh-concierge",
+  "version": "0.24.2",
+  "description": "Maintenance center for DeepSeek Harness: checks the desktop app feed and installed plugin updates, updates and rolls back plugins, watches GitHub sources, and keeps long chats smooth.",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "index.js",
+    "acp.js",
+    "client.js",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "docs",
+    "icon.svg",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "assets",
+    "screenshots.json"
+  ],
+  "keywords": [
+    "deepseek",
+    "harness",
+    "dsh",
+    "dsh-plugin",
+    "update",
+    "updater",
+    "plugin-manager",
+    "performance"
+  ],
+  "license": "MIT",
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org",
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=22",
+    "dsh": ">=0.2.1 <0.3.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/coldrainthreeautumnleaves/dsh-concierge.git"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-settings"
+      ]
+    }
+  }
 }

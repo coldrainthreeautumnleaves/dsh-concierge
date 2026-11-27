@@ -158,9 +158,22 @@ export function createAcpClient(options = {}) {
 
   return {
     // 跑一轮：text 是这一段要发给 CLI 的文字；onChunk 收增量正文
-    async prompt(text, onChunk, signal) {
+    // model 非空时先尝试 session/set_config_option 把会话切到那个模型，
+    // 切不了（不是 ACP 的选项）就沿用 CLI 当前的，不中断这一轮。
+    async prompt(text, onChunk, signal, model) {
       const sid = await ensureReady()
       const { rpc: client } = ensureChild()
+      if (model) {
+        try {
+          await client.request('session/set_config_option', {
+            sessionId: sid,
+            configId: 'model',
+            value: model,
+          }, 30000)
+        } catch {
+          /* 沿用当前模型 */
+        }
+      }
       let cancelled = false
       const off = client.onMessage((message) => {
         if (message.method !== 'session/update') return

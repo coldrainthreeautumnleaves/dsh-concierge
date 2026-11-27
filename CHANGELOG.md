@@ -6,6 +6,27 @@
 
 ## [Unreleased]
 
+## [0.24.5] - 2026-11-27
+
+> 菜单里只列网关真能用的模型
+
+### Added
+
+- 模型: `probeGatewayModels()` —— 从 `127.0.0.1:3425/v1/models` 取全部模型，**挨个发一次最小请求**（`max_tokens: 1`）探测，只保留返回 200 的；结果缓存 10 分钟
+- 模型: `listModels` 改成报探测结果，一个都不通时才退回 `applied.json` 里 magpie 给 Claude Code 选的那个
+- 模型: 选中哪个模型，`stream` 就把它传给 ACP，用 `session/set_config_option` 切过去；切不了就沿用 CLI 当前的，不中断这一轮
+
+### 实测（探测那一刻）
+
+```
+网关模型:
+  codeflow/deepseek-ai/DeepSeek-V4.1-Flash -> 200 ✅
+  codeflow/claude-haiku-5-5                -> 403 ❌   ← 会被剔除
+  deepseek/deepseek-flash                  -> 200 ✅
+```
+
+选中 `deepseek/deepseek-flash` 跑一轮：`stopReason: end_turn`，输出「可用」。
+
 ## [0.24.4] - 2026-11-27
 
 > 模型菜单里显示 magpie 给 Claude Code 选的那个

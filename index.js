@@ -2402,6 +2402,62 @@ function runMagpieCli(args, timeoutMs = 60000) {
   })
 }
 
+// 探测 magpie 网关上哪些模型真的能用：对每个模型发一次最小请求，
+// 只保留返回 200 的。结果缓存 10 分钟，避免每轮都测。
+const MAGPIE_GATEWAY_BASE = 'http://127.0.0.1:3425'
+let modelProbeCache = { at: 0, models: null }
+
+async function probeGatewayModels() {
+  const now = Date.now()
+  if (modelProbeCache.models && now - modelProbeCache.at < 10 * 60 * 1000) {
+    return modelProbeCache.models
+  }
+  let ids = []
+  try {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 3000)
+    const res = await fetch(MAGPIE_GATEWAY_BASE + '/v1/models', { signal: controller.signal })
+    clearTimeout(timer)
+    if (res.ok) {
+      const body = await res.json()
+      const list = Array.isArray(body && body.data) ? body.data : []
+      ids = list.map((item) => (item && typeof item.id === 'string' ? item.id : '')).filter(Boolean)
+    }
+  } catch {
+    /* 网关不在，返回空 */
+  }
+  if (!ids.length) {
+    // 网关不通时，退回 applied.json 里 magpie 给 Claude Code 选的那个
+    const applied = await readMagpieApplied()
+    const fallback = String(applied.claude || '').replace(/\[[^\]]*\]$/, '')
+    const models = fallback ? [{ id: fallback, name: fallback }] : []
+    modelProbeCache = { at: now, models }
+    return models
+  }
+  const usable = []
+  await Promise.all(
+    ids.map(async (id) => {
+      try {
+        const controller = new AbortController()
+        const timer = setTimeout(() => controller.abort(), 15000)
+        const res = await fetch(MAGPIE_GATEWAY_BASE + '/v1/messages', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'x-api-key': 'magpie', 'anthropic-version': '2023-06-01' },
+          body: JSON.stringify({ model: id, max_tokens: 1, messages: [{ role: 'user', content: 'ping' }] }),
+          signal: controller.signal,
+        })
+        clearTimeout(timer)
+        if (res.ok) usable.push({ id, name: id })
+      } catch {
+        /* 超时或报错就算不可用 */
+      }
+    }),
+  )
+  usable.sort((a, b) => a.id.localeCompare(b.id))
+  modelProbeCache = { at: now, models: usable }
+  return usable
+}
+
 async function readClaudeRoute() {
   const file = path.join(homedir(), '.claude', 'settings.json')
   try {
@@ -2678,8 +2734,10 @@ async function* streamClaudeCode(options) {
   let settled = false
   let failure = null
   const client = getAcpClient()
+  // 用户在菜单里选的是网关模型 id；它不是 ACP 的选项时就沿用 CLI 当前模型
+  const picked = String((options && options.model) || '').replace(/\[[^\]]*\]$/, '')
   const running = client
-    .prompt(prompt, (chunk) => queue.push(chunk), options && options.signal)
+    .prompt(prompt, (chunk) => queue.push(chunk), options && options.signal, picked)
     .then((result) => {
       settled = true
       return result
@@ -2755,7 +2813,20 @@ function createClaudeCodeAdapter(version) {
     providerRetryPolicy: () => undefined,
     imageRequestPricing: () => undefined,
     imageRequestTarget: () => ({ width: 0, height: 0, maxBytes: 0 }),
-    listModels: async () => [await currentModel()],
+    // 把 magpie 网关上真能用的模型都报给 DSH：先探测、只留返回 200 的，
+    // 一个都不通时退回当前默认（applied.json 里 magpie 给 Claude Code 选的那个）。
+    listModels: async () => {
+      const usable = await probeGatewayModels()
+      if (usable.length) {
+        return usable.map((entry) => ({
+          ...base,
+          id: entry.id,
+          name: entry.name || entry.id,
+          description: 'via magpie',
+        }))
+      }
+      return [await currentModel()]
+    },
     resolveModel: async (_provider, id) => ({ ...(await currentModel()), id }),
     prepareCall: async (_provider, id) => ({ model: { ...(await currentModel()), id }, stream: streamClaudeCode }),
     stream: streamClaudeCode,

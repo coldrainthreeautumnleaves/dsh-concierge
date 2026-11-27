@@ -10,7 +10,7 @@
 // session/update 里 sessionUpdate === 'agent_message_chunk' 的 content.text 就是增量正文。
 
 import { spawn } from 'node:child_process'
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { homedir } from 'node:os'
 
@@ -227,7 +227,29 @@ export function createAcpClient(options = {}) {
   }
 }
 
-export const ACP_GATEWAY_ENV = {
-  ANTHROPIC_BASE_URL: MAGPIE_GATEWAY,
-  ANTHROPIC_AUTH_TOKEN: 'magpie',
+// ACP 子进程的网关环境。
+//
+// 必须跟 ~/.claude/settings.json 一致：Claude Code 自己就是读那份配置，
+// 它以 settings.json 的 env 为准（实测：插件传 3425，settings.json 写 19999，
+// 请求实际发到 19999）。插件这边再钉一个别的地址只会两边打架——
+// 模型名来自一个网关、请求发到另一个网关，就是「模型不存在或没有权限」。
+//
+// 所以这里直接跟随 settings.json；没有这个文件时才回落到 magpie 默认端口。
+export function claudeGatewayEnv() {
+  const env = { ANTHROPIC_BASE_URL: MAGPIE_GATEWAY, ANTHROPIC_AUTH_TOKEN: 'magpie' }
+  try {
+    const raw = readFileSync(path.join(homedir(), '.claude', 'settings.json'), 'utf8')
+    const json = JSON.parse(raw)
+    const fileEnv = json && json.env ? json.env : {}
+    const base = fileEnv.ANTHROPIC_BASE_URL
+    const token = fileEnv.ANTHROPIC_AUTH_TOKEN
+    if (typeof base === 'string' && base.trim()) env.ANTHROPIC_BASE_URL = base.trim()
+    if (typeof token === 'string' && token.trim()) env.ANTHROPIC_AUTH_TOKEN = token.trim()
+  } catch {
+    /* 没有 settings.json 就用默认端口 */
+  }
+  return env
 }
+
+// 老名字留着，别的调用点还在用常量形式。
+export const ACP_GATEWAY_ENV = claudeGatewayEnv()

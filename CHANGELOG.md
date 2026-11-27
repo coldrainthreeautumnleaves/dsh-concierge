@@ -6,6 +6,22 @@
 
 ## [Unreleased]
 
+## [0.25.4] - 2026-11-27
+
+> Claude Code 的网关地址跟随 settings.json，不再两边打架
+
+### Fixed
+
+- Claude Code（ACP）: 报「There's an issue with the selected model (codeflow/claude-haiku-5-5)…」，错误码 `claude-code-acp-failed`。根因是**模型名和网关地址不是同一套**：
+  - `~/.claude/settings.json` 里 `ANTHROPIC_BASE_URL` 已指向路由台 `127.0.0.1:19999`
+  - 四个 `ANTHROPIC_DEFAULT_*_MODEL` 还是 magpie 写的 `codeflow/claude-haiku-5-5`（那是 3425 的模型）
+  - 路由台只认自己勾选的 id，回 404，Claude Code 再翻译成「模型不存在或没有权限」
+
+  插件这边 `ACP_GATEWAY_ENV` 又把 `ANTHROPIC_BASE_URL` 钉成 3425，但 CLI 以 settings.json 为准，所以那行等于没生效、只是掩盖了问题。现在改成跟随 settings.json（`claudeGatewayEnv()`），没有这个文件才回落 3425
+- Claude Code（ACP）: 网关地址变了（换路由台 / 换 magpie）就收掉旧进程重建，否则新地址不生效、还会拿旧网关的模型名去问新网关
+- Claude Code（ACP）: DSH 里的模型清单改成从 settings.json 指的那个网关探测（原来固定先探 19999），清单和 CLI 实际请求的网关保持同一个
+- Claude Code（ACP）: 报模型错时补一句能动手的说明（去路由台点「接入」，或把模型名改成网关 `/v1/models` 里有的 id）
+
 ## [0.25.3] - 2026-11-27
 
 > 确认卡改落在消息区中间，不再压在输入卡上

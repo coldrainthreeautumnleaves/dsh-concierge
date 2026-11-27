@@ -15,12 +15,12 @@
  * failure and restart reporting stay owned by the plugin manager.
  */
 import { spawn } from 'node:child_process'
-import { createReadStream, existsSync } from 'node:fs'
+import { createReadStream, existsSync, readFileSync } from 'node:fs'
 import { mkdir, readFile, readdir, rm, stat as statOf, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { createRequire } from 'node:module'
 import path from 'node:path'
-import { createAcpClient, ACP_GATEWAY_ENV } from './acp.js'
+import { createAcpClient, claudeGatewayEnv } from './acp.js'
 import { fileURLToPath } from 'node:url'
 
 export const inject = ['webServer']
@@ -2443,9 +2443,29 @@ const MAGPIE_GATEWAY_BASE = 'http://127.0.0.1:3425'
 
 let lastGatewayBase = ''
 
+// Claude Code 实际会把请求发到哪儿，就以哪儿为准：~/.claude/settings.json 的
+// ANTHROPIC_BASE_URL。插件报给 DSH 的模型清单必须来自同一个网关，否则用户选了
+// 清单里的模型、CLI 拿去问另一个网关，就是「模型不存在或没有权限」。
+function settingsGatewayBase() {
+  try {
+    const file = path.join(homedir(), '.claude', 'settings.json')
+    const json = JSON.parse(readFileSync(file, 'utf8'))
+    const base = json && json.env ? json.env.ANTHROPIC_BASE_URL : ''
+    return typeof base === 'string' ? base.replace(/\/+$/, '') : ''
+  } catch {
+    return ''
+  }
+}
+
 async function pickGatewayBase() {
   if (lastGatewayBase) return lastGatewayBase
+  const candidates = []
+  const fromSettings = settingsGatewayBase()
+  if (fromSettings) candidates.push(fromSettings)
   for (const base of [ROUTE_GATEWAY_BASE, MAGPIE_GATEWAY_BASE]) {
+    if (!candidates.includes(base)) candidates.push(base)
+  }
+  for (const base of candidates) {
     try {
       const controller = new AbortController()
       const timer = setTimeout(() => controller.abort(), 1500)
@@ -2779,12 +2799,18 @@ function lastUserText(messages) {
   return ''
 }
 
-// 常驻一个 ACP 客户端：复用 CLI 进程和它自己的会话，省掉每轮冷启动
+// 常驻一个 ACP 客户端：复用 CLI 进程和它自己的会话，省掉每轮冷启动。
+// 网关地址可能被用户改（换路由台 / 换 magpie），换了就把旧进程收掉重建，
+// 否则新地址不生效，还会拿旧网关的模型名去问新网关。
 let acpClient = null
+let acpClientBase = ''
 
 function getAcpClient() {
-  if (acpClient) return acpClient
-  acpClient = createAcpClient({ env: ACP_GATEWAY_ENV, cwd: process.cwd() })
+  const env = claudeGatewayEnv()
+  if (acpClient && acpClientBase === env.ANTHROPIC_BASE_URL) return acpClient
+  if (acpClient) disposeAcpClient()
+  acpClientBase = env.ANTHROPIC_BASE_URL
+  acpClient = createAcpClient({ env, cwd: process.cwd() })
   return acpClient
 }
 
@@ -2796,6 +2822,17 @@ function disposeAcpClient() {
     /* 已经退出 */
   }
   acpClient = null
+}
+
+// CLI 报「模型不存在或没有权限」时补一句能动手的说明。
+//
+// 这个错误几乎只有一个来源：模型名和 ANTHROPIC_BASE_URL 不是同一套。
+// 比如地址已经指到路由台（19999），模型名还是 magpie 写的
+// codeflow/claude-haiku-5-5——路由台只认自己勾选的 id，回 404，
+// Claude Code 就把它翻译成「模型不存在或没有权限」。
+function withModelHint(message) {
+  if (!/selected model|not exist|may not have access/i.test(message)) return message
+  return message + '（模型名和网关对不上：去路由台点一次「接入」重写 ~/.claude/settings.json，或把 ANTHROPIC_DEFAULT_*_MODEL 改成网关 /v1/models 里有的 id）'
 }
 
 async function* streamClaudeCode(options) {
@@ -2836,10 +2873,14 @@ async function* streamClaudeCode(options) {
   }
   const result = await running
   if (failure) {
+    const message = failure.message || 'Claude Code（ACP）失败'
     yield { type: 'block-end', index: 0, block: { type: 'text', text } }
     yield {
       type: 'finish',
-      reason: { kind: 'error', failure: { message: failure.message || 'Claude Code（ACP）失败', code: 'claude-code-acp-failed' } },
+      reason: {
+        kind: 'error',
+        failure: { message: withModelHint(message), code: 'claude-code-acp-failed' },
+      },
     }
     return
   }

@@ -6,6 +6,24 @@
 
 ## [Unreleased]
 
+## [0.25.6] - 2026-11-27
+
+> Claude Code 的思考能看见了，正文逐字显示
+
+### Fixed
+
+- Claude Code（ACP）: 界面上永远没有思考过程，回复也像是「搞完一次性蹦出来」。两处原因：
+  - `acp.js` 只认 `agent_message_chunk`，`agent_thought_chunk`（ACP 的思考增量）整段被丢掉
+  - 新版模型默认 `thinking.display = "omitted"`，只推签名、正文为空，CLI 那边 `if (chunk.thinking)` 直接跳过，一个思考块都不发
+
+  实测：同一轮问题，加上 `CLAUDE_CODE_THINKING_DISPLAY=summarized` 之后收到 11 块 `agent_thought_chunk`。现在 ACP 子进程默认带 `CLAUDE_CODE_THINKING_DISPLAY=summarized` 和 `MAX_THINKING_TOKENS=8000`，settings.json 里自己配过就以他的值为准
+- Claude Code（ACP）: `streamClaudeCode` 改成按到达顺序开块——思考进 `reasoning` 块（`reasoning-delta`），正文进 `text` 块（`text-delta`）。原来只开一个固定的 `index: 0` 文本块，思考没有位置可放
+- 外观: 逐字显示改成默认开启。关着的时候，模型/网关把一段回答攒成几块一口气推过来（实测一轮 6 块全落在 300ms 内），屏幕上一瞬间就全出来了。嫌闪可以在 维护中心 → 外观 → 打字机 关掉
+
+### Added
+
+- `scripts/smoke-stream.mjs`: 直接调 `streamClaudeCode` 跑一轮，检查块结构（`block-start` / delta / `block-end` 的 index 与类型是否自洽、思考块是否非空）。`streamClaudeCode` 为此加了导出
+
 ## [0.25.5] - 2026-11-27
 
 > 模型菜单显示真名，不再是裸 id

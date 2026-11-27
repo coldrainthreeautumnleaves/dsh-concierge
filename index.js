@@ -2868,13 +2868,16 @@ function withModelHint(message) {
   return message + '（模型名和网关对不上：去路由台点一次「接入」重写 ~/.claude/settings.json，或把 ANTHROPIC_DEFAULT_*_MODEL 改成网关 /v1/models 里有的 id）'
 }
 
-async function* streamClaudeCode(options) {
+// 导出给冒烟测试用（scripts/smoke-stream.mjs）：直接喂一段对话，检查吐出来的
+// StreamChunk 里有没有 reasoning 块、正文块顺序对不对。运行时不消费这个导出。
+export async function* streamClaudeCode(options) {
   const prompt = lastUserText(options && options.messages)
   if (!prompt) {
     yield { type: 'finish', reason: { kind: 'stop' } }
     return
   }
-  // ACP 会边生成边推增量，用队列把它转成 DSH 的 StreamChunk
+  // ACP 会边生成边推增量，用队列把它转成 DSH 的 StreamChunk。
+  // 队列元素带 kind：'thought' 是思考（agent_thought_chunk），'text' 是正文。
   const queue = []
   let settled = false
   let failure = null
@@ -2882,7 +2885,12 @@ async function* streamClaudeCode(options) {
   // 用户在菜单里选的是网关模型 id；它不是 ACP 的选项时就沿用 CLI 当前模型
   const picked = String((options && options.model) || '').replace(/\[[^\]]*\]$/, '')
   const running = client
-    .prompt(prompt, (chunk) => queue.push(chunk), options && options.signal, picked)
+    .prompt(
+      prompt,
+      (chunk, kind) => queue.push({ text: chunk, kind: kind === 'thought' ? 'thought' : 'text' }),
+      options && options.signal,
+      picked,
+    )
     .then((result) => {
       settled = true
       return result
@@ -2893,21 +2901,55 @@ async function* streamClaudeCode(options) {
       return null
     })
 
-  yield { type: 'block-start', index: 0, blockType: 'text' }
-  let text = ''
+  // 块是按到达顺序排的：模型一般先想后写，但也可能写完再补一句思考，
+  // 所以不能预先开两个固定 index 的块，要按 kind 变化随时收口、开新块。
+  // DSH 的块类型只有 'text' 和 'reasoning' 两种对应得上。
+  let index = -1
+  let current = null // { kind, type, index, text }
+  const chunks = []
+  const closeCurrent = () => {
+    if (!current) return
+    if (current.text) {
+      chunks.push({
+        type: 'block-end',
+        index: current.index,
+        block: current.kind === 'thought' ? { type: 'reasoning', text: current.text } : { type: 'text', text: current.text },
+      })
+    }
+    current = null
+  }
+  const openBlock = (kind) => {
+    closeCurrent()
+    index += 1
+    current = { kind, index, text: '' }
+    chunks.push({ type: 'block-start', index, blockType: kind === 'thought' ? 'reasoning' : 'text' })
+  }
+
   while (!settled || queue.length > 0) {
     if (queue.length > 0) {
-      const chunk = queue.shift()
-      text += chunk
-      yield { type: 'text-delta', index: 0, text: chunk }
+      const item = queue.shift()
+      if (!current || current.kind !== item.kind) openBlock(item.kind)
+      current.text += item.text
+      chunks.push({
+        type: current.kind === 'thought' ? 'reasoning-delta' : 'text-delta',
+        index: current.index,
+        text: item.text,
+      })
+      // 攒着一起 yield，减少生成器调度次数
+      if (chunks.length >= 24) {
+        for (const chunk of chunks.splice(0)) yield chunk
+      }
       continue
     }
+    if (chunks.length) for (const chunk of chunks.splice(0)) yield chunk
     await new Promise((resolve) => setTimeout(resolve, 15))
   }
+  closeCurrent()
+  for (const chunk of chunks.splice(0)) yield chunk
+
   const result = await running
   if (failure) {
     const message = failure.message || 'Claude Code（ACP）失败'
-    yield { type: 'block-end', index: 0, block: { type: 'text', text } }
     yield {
       type: 'finish',
       reason: {
@@ -2917,7 +2959,6 @@ async function* streamClaudeCode(options) {
     }
     return
   }
-  yield { type: 'block-end', index: 0, block: { type: 'text', text } }
   if (result && result.usage) {
     yield {
       type: 'usage',

@@ -157,7 +157,10 @@ export function createAcpClient(options = {}) {
   }
 
   return {
-    // 跑一轮：text 是这一段要发给 CLI 的文字；onChunk 收增量正文
+    // 跑一轮：text 是这一段要发给 CLI 的文字；onChunk 收增量正文。
+    // onChunk(chunk, kind) 的 kind 是 'text' 或 'thought'——ACP 把「正文」和
+    // 「思考」分成两种 session/update（agent_message_chunk / agent_thought_chunk），
+    // 只认前者的话思考就整段丢掉，界面上看不到任何推理过程。
     // model 非空时先尝试 session/set_config_option 把会话切到那个模型，
     // 切不了（不是 ACP 的选项）就沿用 CLI 当前的，不中断这一轮。
     async prompt(text, onChunk, signal, model) {
@@ -180,11 +183,17 @@ export function createAcpClient(options = {}) {
         const params = message.params || {}
         if (params.sessionId !== sid) return
         const update = params.update || {}
-        if (update.sessionUpdate !== 'agent_message_chunk') return
+        const kind =
+          update.sessionUpdate === 'agent_message_chunk'
+            ? 'text'
+            : update.sessionUpdate === 'agent_thought_chunk'
+              ? 'thought'
+              : null
+        if (kind === null) return
         const content = update.content
         if (content && content.type === 'text' && typeof content.text === 'string' && content.text) {
           try {
-            onChunk(content.text)
+            onChunk(content.text, kind)
           } catch {
             /* 消费失败不影响这一轮 */
           }
@@ -235,8 +244,19 @@ export function createAcpClient(options = {}) {
 // 模型名来自一个网关、请求发到另一个网关，就是「模型不存在或没有权限」。
 //
 // 所以这里直接跟随 settings.json；没有这个文件时才回落到 magpie 默认端口。
+//
+// 顺带打开思考显示：新版模型默认 thinking.display = "omitted"，只推签名、
+// 正文为空，CLI 那边 `if (chunk.thinking)` 判断直接跳过，于是 ACP 一个
+// agent_thought_chunk 都不发——界面上自然没有思考可看。实测加上
+// CLAUDE_CODE_THINKING_DISPLAY=summarized 之后，同一轮能收到 11 块思考。
+// 已经自己配过这两项的用户，以他的值为准。
 export function claudeGatewayEnv() {
-  const env = { ANTHROPIC_BASE_URL: MAGPIE_GATEWAY, ANTHROPIC_AUTH_TOKEN: 'magpie' }
+  const env = {
+    ANTHROPIC_BASE_URL: MAGPIE_GATEWAY,
+    ANTHROPIC_AUTH_TOKEN: 'magpie',
+    CLAUDE_CODE_THINKING_DISPLAY: 'summarized',
+    MAX_THINKING_TOKENS: '8000',
+  }
   try {
     const raw = readFileSync(path.join(homedir(), '.claude', 'settings.json'), 'utf8')
     const json = JSON.parse(raw)
@@ -245,6 +265,10 @@ export function claudeGatewayEnv() {
     const token = fileEnv.ANTHROPIC_AUTH_TOKEN
     if (typeof base === 'string' && base.trim()) env.ANTHROPIC_BASE_URL = base.trim()
     if (typeof token === 'string' && token.trim()) env.ANTHROPIC_AUTH_TOKEN = token.trim()
+    const display = fileEnv.CLAUDE_CODE_THINKING_DISPLAY
+    if (typeof display === 'string' && display.trim()) env.CLAUDE_CODE_THINKING_DISPLAY = display.trim()
+    const tokens = fileEnv.MAX_THINKING_TOKENS
+    if (typeof tokens === 'string' && tokens.trim()) env.MAX_THINKING_TOKENS = tokens.trim()
   } catch {
     /* 没有 settings.json 就用默认端口 */
   }

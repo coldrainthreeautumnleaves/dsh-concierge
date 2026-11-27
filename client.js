@@ -1720,13 +1720,17 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
 
     /* ------------------------------------------------------------ typewriter -- */
 
-    // Off by default: revealing Markdown character by character re-renders the
-    // message about 20 times a second, which reads as flicker on some layouts.
-    // The throttle stays on: it batches the app's per-token renders into one
-    // commit every 80ms, which is what actually stops the streaming flicker.
-    // 33ms still batches the app's per-token renders without the text arriving
-    // in visible chunks the way 80ms did.
-    const typer = { enabled: false, speed: 60, throttle: true, throttleMs: 33 }
+    // 逐字显示默认开着。
+    //
+    // 之前是关的（理由是「逐字重排 Markdown 一秒约 20 次，某些版式下像闪」）。
+    // 但关掉之后实际观感是「搞完统一蹦出来」：模型和网关经常把一段回答攒成
+    // 几块一口气推过来（实测一轮 6 块全落在 300ms 内），原生流式在屏幕上就是
+    // 一瞬间。逐字显示是唯一能让它看起来是「写出来的」的手段。
+    // 嫌闪的人可以在 维护中心 → 外观 → 打字机 里关掉，选择会存 localStorage。
+    //
+    // throttle 一直在开：它把应用「每个 token 重渲染一次」批成 80ms 一次提交，
+    // 那才是真正压住流式闪烁的东西；33ms 仍然能批，但不会像 80ms 那样一段一段跳。
+    const typer = { enabled: true, speed: 60, throttle: true, throttleMs: 33 }
     const typerListeners = new Set()
     const TYPER_STORAGE_KEY = 'dsh-concierge:typer'
     const typerUpdate = () => {

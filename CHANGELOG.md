@@ -6,6 +6,15 @@
 
 ## [Unreleased]
 
+## [0.23.4] - 2026-11-27
+
+> Claude Code 在模型菜单里只出现一条
+
+### Fixed
+
+- 模型: 同一个模型 id 原来在 `listModels` 和 `resolveModel` 里返回**两个不同的名字**（`Claude Code · 永不卡住 · routing group` 和 `Claude Code · 2.1.332`），DSH 因此把它当成两条。现在名字只在一处计算（`currentModel()`），`listModels` / `resolveModel` / `prepareCall` 共用同一个对象
+- 模型: 名称取不到时回落到版本号或「本机 CLI」，不会出现空名字
+
 ## [0.23.3] - 2026-11-27
 
 > Claude Code 页里能把 magpie 的多条协议路由合成一条

@@ -2428,28 +2428,34 @@ async function readClaudeRoute() {
 }
 
 function createClaudeCodeAdapter(version) {
-  const model = {
+  const base = {
     provider: CLAUDE_PROVIDER,
     id: 'claude-code',
-    name: version ? 'Claude Code · ' + version : 'Claude Code · 本机 CLI',
     description: '本机 Claude Code，模型路由由 ~/.claude/settings.json（magpie）决定',
     // DSH 切模型前要压缩上下文，必须知道窗口大小，否则报 MODEL_SWITCH_COMPACTION_FAILED
     context: { contextWindow: 1048576 },
     defaultMaxTokens: 32000,
+  }
+  // 名字只在一个地方算：listModels / resolveModel / prepareCall 拿到的是同一个对象，
+  // 否则同一个 id 会以两个名字出现，菜单里就成了两条一样的模型。
+  const currentModel = async () => {
+    let label = ''
+    try {
+      label = resolveRouteModelName(await readClaudeRoute())
+    } catch {
+      label = ''
+    }
+    if (!label) label = version ? String(version) : '本机 CLI'
+    return { ...base, name: 'Claude Code · ' + label }
   }
   return {
     providerInfo: () => ({ id: CLAUDE_PROVIDER, name: 'Claude Code' }),
     providerRetryPolicy: () => undefined,
     imageRequestPricing: () => undefined,
     imageRequestTarget: () => ({ width: 0, height: 0, maxBytes: 0 }),
-    // 路由上同一时间只勾一个模型，菜单里也只报这一个
-    listModels: async () => {
-      const route = await readClaudeRoute()
-      const label = resolveRouteModelName(route)
-      return [{ ...model, id: 'claude-code', name: label ? 'Claude Code · ' + label : 'Claude Code' }]
-    },
-    resolveModel: async (_provider, id) => ({ ...model, id }),
-    prepareCall: async (_provider, id) => ({ model: { ...model, id }, stream: streamClaudeCode }),
+    listModels: async () => [await currentModel()],
+    resolveModel: async (_provider, id) => ({ ...(await currentModel()), id }),
+    prepareCall: async (_provider, id) => ({ model: { ...(await currentModel()), id }, stream: streamClaudeCode }),
     stream: streamClaudeCode,
   }
 }

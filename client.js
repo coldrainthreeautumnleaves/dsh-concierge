@@ -913,6 +913,23 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
       document.addEventListener('visibilitychange', syncWallVideo)
     }
 
+    /* 全屏 / 最大化切换都会走 resize。跳变后的 260ms 内打一个 settle 标记，
+       让合成器拿到一帧不透明画面，避免露出窗口表面色 —— 那就是全屏时闪一下。 */
+    let settleTimer = 0
+    const markSettling = () => {
+      if (typeof document === 'undefined') return
+      const root = document.documentElement
+      root.dataset.dshSettle = '1'
+      if (settleTimer) clearTimeout(settleTimer)
+      settleTimer = setTimeout(() => {
+        settleTimer = 0
+        delete root.dataset.dshSettle
+      }, 260)
+    }
+    if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+      window.addEventListener('resize', markSettling, { passive: true })
+    }
+
     function applyWallpaper() {
       if (typeof document === 'undefined') return
       const root = document.getElementById('dsh-concierge-glass')

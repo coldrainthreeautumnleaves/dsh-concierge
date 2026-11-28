@@ -3284,7 +3284,7 @@ function messageText(message) {
 const PROMPT_HISTORY_MAX = 40
 const PROMPT_HISTORY_MAX_CHARS = 120000
 
-function turnPromptMessages(messages) {
+function turnPromptMessages(messages, max = PROMPT_HISTORY_MAX) {
   const list = Array.isArray(messages) ? messages : []
   const out = []
   for (const message of list) {
@@ -3301,14 +3301,15 @@ function turnPromptMessages(messages) {
       out.push({ role, text })
     }
   }
+  return max > 0 ? truncateHistory(out, max) : out
+}
 
-  // 截断：留最早一条 + 最近 N 条，中间省略
-  if (out.length > PROMPT_HISTORY_MAX) {
-    const head = out.slice(0, 1)
-    const tail = out.slice(out.length - (PROMPT_HISTORY_MAX - 1))
-    return [...head, { role: 'user', text: '（中间省略了一段较早的对话）' }, ...tail]
-  }
-  return out
+// 截断：留最早一条 + 最近 N 条，中间省略
+function truncateHistory(out, max = PROMPT_HISTORY_MAX) {
+  if (out.length <= max) return out
+  const head = out.slice(0, 1)
+  const tail = out.slice(out.length - (max - 1))
+  return [...head, { role: 'user', text: '（中间省略了一段较早的对话）' }, ...tail]
 }
 
 // 只要最后一条用户消息（旧行为，留着给需要「纯提问」的地方用）。
@@ -3350,6 +3351,14 @@ function turnPromptText(messages) {
 // 否则新地址不生效，还会拿旧网关的模型名去问新网关。
 let acpClient = null
 let acpClientBase = ''
+// 每轮只发「新增的用户消息」：ACP 会话自己记得上下文（实测第二轮只发
+// 「我叫什么？」就能答出上一轮的名字，输入 193 token）。
+//
+// 之前每轮把整段历史重放一遍，等于让模型把聊过的内容再读一次：prompt 每次
+// 都是新的、吃不到缓存，首字延迟随对话长度线性上涨——用户感觉「从插件聊天
+// 好慢」。现在只在会话变了（进程重启、网关切换、DSH 改写历史）时重放一次。
+let acpSentTexts = null // 上一轮已经发出去的消息文本
+let acpSentSession = null // 发出去时所在的 ACP 会话 id
 
 function getAcpClient() {
   const env = claudeGatewayEnv()
@@ -3361,6 +3370,8 @@ function getAcpClient() {
 }
 
 function disposeAcpClient() {
+  acpSentTexts = null
+  acpSentSession = null
   if (!acpClient) return
   try {
     acpClient.dispose()
@@ -3387,11 +3398,34 @@ export { turnPromptText, turnPromptMessages, probeGatewayModels }
 
 // 导出给冒烟测试用（scripts/smoke-stream.mjs）：直接喂一段对话，检查吐出来的
 // StreamChunk 里有没有 reasoning 块、正文块顺序对不对。运行时不消费这个导出。
+// 决定这一轮往 ACP 会话里发什么。
+//   - 会话没换、历史前缀对得上 → 只发新增的用户消息（助手回复 CLI 自己就有）
+//   - 会话换了 / 进程重启 → 整段重放
+//   - 会话没换但历史被 DSH 改写（截断、编辑）→ 重建会话再整段重放，避免上下文重复
+function planClaudePrompt(all, sessionId) {
+  if (!all.length) return { send: [], reset: false }
+  const sent = acpSentTexts
+  const sameSession = !!sent && !!sessionId && sessionId === acpSentSession
+  const prefixOk = sameSession && sent.length <= all.length && sent.every((text, i) => all[i].text === text)
+  if (!prefixOk) {
+    // 同一个会话却对不上前缀：旧上下文已经和 DSH 的历史不一致了，重建更干净
+    return { send: truncateHistory(all), reset: sameSession }
+  }
+  const fresh = all.slice(sent.length).filter((m) => m.role === 'user')
+  if (!fresh.length) return { send: truncateHistory(all), reset: false }
+  return { send: fresh, reset: false }
+}
+
 export async function* streamClaudeCode(options) {
-  // 把完整对话交给 CLI，不只是本轮提问——只递最后一句的话模型看不到
-  // 前面聊过什么，用户会觉得它失忆。
-  const history = turnPromptMessages(options && options.messages)
-  if (!history.length) {
+  // 把完整对话整理出来，用来比对「哪些还没发过」；真正发多少由 planClaudePrompt 决定
+  const all = turnPromptMessages(options && options.messages, 0)
+  if (!all.length) {
+    yield { type: 'finish', reason: { kind: 'stop' } }
+    return
+  }
+  const plan = planClaudePrompt(all, acpClient ? acpClient.sessionId : null)
+  if (plan.reset) disposeAcpClient()
+  if (!plan.send.length) {
     yield { type: 'finish', reason: { kind: 'stop' } }
     return
   }
@@ -3405,13 +3439,18 @@ export async function* streamClaudeCode(options) {
   const picked = String((options && options.model) || '').replace(/\[[^\]]*\]$/, '')
   const running = client
     .prompt(
-      history,
+      plan.send,
       (chunk, kind) => queue.push({ text: chunk, kind: kind === 'thought' ? 'thought' : 'text' }),
       options && options.signal,
       picked,
     )
     .then((result) => {
       settled = true
+      // 这一轮真正送达了：记下来，下一轮只发增量
+      if (result && result.sessionId) {
+        acpSentTexts = all.map((m) => m.text)
+        acpSentSession = result.sessionId
+      }
       return result
     })
     .catch((error) => {

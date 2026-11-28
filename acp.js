@@ -231,6 +231,11 @@ export function createAcpClient(options = {}) {
   }
 
   return {
+    // 当前会话 id：调用方靠它判断「这一轮还是不是同一个会话」。
+    // 进程重启 / 会话重建时它会变（或变回 null），调用方就该重放整段历史。
+    get sessionId() {
+      return sessionId
+    },
     // 跑一轮：text 是这一段要发给 CLI 的文字；onChunk 收增量正文。
     // text 可以是字符串（只有这一轮），也可以是 {role, text} 数组（带历史）。
     //
@@ -306,7 +311,7 @@ export function createAcpClient(options = {}) {
           sessionId: sid,
           prompt: promptBlocks,
         }, options.promptTimeoutMs || 1800000)
-        return { stopReason: result && result.stopReason, usage: result && result.usage, cancelled }
+        return { stopReason: result && result.stopReason, usage: result && result.usage, cancelled, sessionId: sid }
       } finally {
         off()
         if (signal) signal.removeEventListener('abort', onAbort)

@@ -3511,7 +3511,8 @@ html[data-dsh-glass-scheme="dark"] .uc-card::after {
 .uc-rows { display: flex; flex-direction: column; }
 .uc-group { display: flex; flex-direction: column; }
 .uc-group + .uc-group { margin-top: 8px; }
-.uc-group-head { display: flex; align-items: center; gap: 8px; padding: 8px 16px; background: var(--uc-surface-2); }
+/* 分组标题带一条极浅的底：二级面现在是真实亮度台阶，满色会变成一道灰带 */
+.uc-group-head { display: flex; align-items: center; gap: 8px; padding: 8px 16px; background: color-mix(in srgb, var(--uc-surface-2) 45%, transparent); }
 .uc-group-label { font-size: var(--uc-fs-small); line-height: var(--uc-lh-small); font-weight: 500; color: var(--dsw-alias-label-tertiary); }
 .uc-group-count { font-size: var(--uc-fs-small); padding: 0 8px; border-radius: 999px; background: var(--uc-surface-1); color: var(--dsw-alias-label-secondary); }
 .uc-group-count-hot { color: var(--dsw-alias-state-warn-primary); }

@@ -338,36 +338,54 @@ html[data-dsh-wall-video="1"] [class*="_bottomRow"] {
    颗粒是铺在玻璃根层上的一个全屏 SVG 噪声伪元素。静态壁纸下它是缓存好的
    静态层；视频下它每帧都要和变化的画面重新混合一次，等于给整屏加了一次
    per-frame 全屏 blend。
-   官方从来不这么干——它全站 24 处无限动画全是图标级小元素，
-   没有任何一处给大面积元素叠纹理层。 */
+   官方从来不这么干——它全站 24 处无限动画全是图标级小元素。 */
 html[data-dsh-glass="1"][data-dsh-wall-video="1"] #dsh-concierge-glass::after {
   display: none !important;
 }
 
-/* 视频壁纸下正文转白 —— 不加任何底板。
+/* 视频壁纸下整个主界面统一转白 —— 不加任何底板。
    用户要的是「壁纸完整可见 + 字看得清」，所以不铺暗化层：
-   白字 + 一层投影直接压在画面上，投影负责把字从任意一帧里托出来。
-   底板试过两版都被否了（一版太淡没效果，一版整列发灰挡画面）。
+   白字 + 投影直接压在画面上，投影负责把字从任意一帧里托出来。
 
-   两个细节：
-   ① 选择器必须带 html[data-dsh-glass="1"] 前置。data-dsh-wall-video 是
-      applyWallpaper 写的，外观关掉时虽然会删，但只要有一刻残留，不带前置的
-      规则就会把白字和底板铺到原生皮肤上（截图里那层灰膜就是这么来的）。
-   ② 只挑文字元素，不动 code / pre / a：代码块有自己的底色，链接要保持强调色。 */
-html[data-dsh-glass="1"][data-dsh-wall-video="1"] [data-conversation-region] :is(p, li, h1, h2, h3, h4, h5, h6, blockquote, td, th, dd, dt, strong, em) {
+   为什么在 body 上设而不是逐个面板设：主界面上除了对话，还有侧栏、
+   顶栏、以及别的插件自己渲染的界面，逐个列选择器永远会漏。设在 body
+   上让所有文字继承，一处生效全局。
+   选择器必须带 html[data-dsh-glass="1"] 前置：data-dsh-wall-video 是
+   applyWallpaper 写的，外观关掉时虽然会删，但只要有一刻残留，不带前置的
+   规则就会把白字铺到原生皮肤上。 */
+html[data-dsh-glass="1"][data-dsh-wall-video="1"] body {
+  color: rgba(255, 255, 255, .97);
+}
+html[data-dsh-glass="1"][data-dsh-wall-video="1"] body :is(p, li, span, div, h1, h2, h3, h4, h5, h6, blockquote, td, th, dd, dt, strong, em, label, button, a) {
   color: rgba(255, 255, 255, .97) !important;
   text-shadow: 0 1px 3px rgba(0, 0, 0, .62), 0 0 12px rgba(0, 0, 0, .30);
 }
+/* 品牌字标 / logo 恢复原色。它是一块图形标识，刷白之后在亮画面上糊成一片，
+   而且它不是「正文」，不该跟正文一起变。 */
+html[data-dsh-glass="1"][data-dsh-wall-video="1"] :is(
+  [class*="_brand"],
+  [class*="_Brand"],
+  [class*="_logo"],
+  [class*="_Logo"],
+  [class*="_wordmark"],
+  [class*="_appTitle"]
+),
+html[data-dsh-glass="1"][data-dsh-wall-video="1"] :is(
+  [class*="_brand"],
+  [class*="_Brand"],
+  [class*="_logo"],
+  [class*="_Logo"],
+  [class*="_wordmark"],
+  [class*="_appTitle"]
+) * {
+  color: var(--dsw-alias-label-primary) !important;
+  text-shadow: none !important;
+}
 /* 行内代码：白字在浅色代码底上会糊，改成半透明深底 */
-html[data-dsh-glass="1"][data-dsh-wall-video="1"] [data-conversation-region] :not(pre) > code {
+html[data-dsh-glass="1"][data-dsh-wall-video="1"] :not(pre) > code {
   background-color: rgba(0, 0, 0, .45) !important;
   color: rgba(255, 255, 255, .92) !important;
   border-color: rgba(255, 255, 255, .18) !important;
-}
-/* 侧栏会话列表同样转白，不加底板 */
-html[data-dsh-glass="1"][data-dsh-wall-video="1"] [class*="_sidebarCol"] :is(span, div, p, a) {
-  color: rgba(255, 255, 255, .93) !important;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, .55);
 }
 
 html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-glass > div:first-child::after {

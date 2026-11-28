@@ -7,6 +7,17 @@
 ## [Unreleased]
 
 
+## [0.30.9] - 2026-11-28
+
+> 把 deck 的确认卡摆回中间，但不用 JS
+
+### Fixed
+
+- 兼容: MattSkillsDeck 的「关闭整个 MattSkillsDeck」确认卡回到会话区中间。
+  - 0.30.8 删掉了那段 JS 守卫（它盯着卡的 `style` 反复写 `!important`，和 deck 的渲染来回拉，导致弹窗一直闪），但删完之后 deck 自己的定位又把卡甩到窗口右下角、贴到边缘外面。
+  - 这次只用**一条静态 CSS 规则**：`left/top: 50% !important` + 独立的 `translate: -50% -50% !important`。写一次就生效，没有 MutationObserver、没有 JS 反复写，所以不会再闪。
+  - 用独立的 `translate` 而不是 `transform`，是为了不覆盖 deck 自己的入场动效。
+  - 已确认 deck 的 8 处 `setProperty` 没有一处带 `important`，所以静态规则压得住内联样式（实测：内联 `left: 900px` 被压成 `577.5px`）。
 ## [0.30.8] - 2026-11-28
 
 > 安全模式终于会自己生效了；不再和别的插件抢弹窗

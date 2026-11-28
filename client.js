@@ -367,6 +367,9 @@ html[data-dsh-glass="1"][data-dsh-wall-video="1"] [class*="_sidebarCol"] :is(spa
 }
 /* 品牌字标退出差值混合。它是一块图形标识，混进侧栏的差值层之后
    会被反成实心黑块（截图里 HARNESS 那个黑方框就是这么来的）。 */
+/* 品牌区只退出差值混合，不动颜色。
+   之前这里连 color 一起强制成正文色，结果把 HARNESS 徽标自己的配色盖掉了
+   （徽标底和字同源，一改就成了一个白块）。退出混合就够了。 */
 html[data-dsh-glass="1"][data-dsh-wall-video="1"] :is(
   [class*="_logo"], [class*="_Logo"], [class*="_wordmark"], [class*="_appTitle"], [class*="_brand"]
 ),
@@ -374,7 +377,6 @@ html[data-dsh-glass="1"][data-dsh-wall-video="1"] :is(
   [class*="_logo"], [class*="_Logo"], [class*="_wordmark"], [class*="_appTitle"], [class*="_brand"]
 ) * {
   mix-blend-mode: normal !important;
-  color: var(--dsw-alias-label-primary) !important;
 }
 
 /* 浮层和输入框不参与差值混合：它们有自己的浅色底，正常字色本来就够清楚，

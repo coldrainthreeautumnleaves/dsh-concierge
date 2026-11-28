@@ -378,9 +378,22 @@ export function createAcpClient(options = {}) {
     // 提前建好进程和默认会话。失败不要紧：真正请求时会再建一次，
     // 这里只是把冷启动（进程 + initialize + session/new，实测 3-4 秒）
     // 挪到插件加载阶段，用户发第一句话时就不用等。
-    async warmup(sessionKey = 'default') {
+    //
+    // model 给了就顺手切过去：set_config_option 在 claude-agent-acp 里要重新
+    // 解析模型、查上下文窗口，一次可以卡好几秒。放在预热里做，用户就感觉不到。
+    async warmup(sessionKey = 'default', model = '') {
       try {
-        await ensureSession(sessionKey)
+        const sid = await ensureSession(sessionKey)
+        const want = String(model || '')
+        if (!want) return
+        if (sessionModels.get(sid) === want) return
+        const { rpc: client } = ensureChild()
+        await client.request('session/set_config_option', {
+          sessionId: sid,
+          configId: 'model',
+          value: want,
+        }, 30000)
+        sessionModels.set(sid, want)
       } catch {
         /* 等真正请求时再报错 */
       }

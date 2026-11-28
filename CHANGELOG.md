@@ -7,6 +7,24 @@
 ## [Unreleased]
 
 
+## [0.27.6] - 2026-11-28
+
+> 冷启动那 7 秒挪到插件加载阶段，首字从 7.1 秒降到 1.3 秒
+
+### Fixed
+
+- Claude Code（ACP）: `warmup()` 只建会话，没切模型。第一次 prompt 还要额外付一次 `session/set_config_option`（claude-agent-acp 里要重新解析模型、查上下文窗口，几秒级）。现在 `warmup(sessionKey, model)` 支持顺带切模型
+- 路由: `listModels` 读到 CLI 报的模型清单后，顺手把模型切到 DSH 当前选中的那个。等用户真发消息时就不用再等这一刀
+
+  实测：
+
+      预热前  首轮首字 7121ms
+      预热后  首轮首字 1348ms
+              （那 5878ms 的 warmup 挪到了插件加载阶段）
+
+### 说明
+
+`warmupAcp()` 在模块初始化时就跑，那时候 `currentModel` 还没定义（const 暂时性死区），所以预热阶段只建会话不切模型；切模型放在 `listModels` 里做——那时 DSH 已经问过模型清单，`currentModel` 也就能用了。
 ## [0.27.5] - 2026-11-28
 
 > 接管只摘 magpie 自己写的 provider，用户手写的不动

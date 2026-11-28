@@ -3451,12 +3451,18 @@ function disposeAcpClient() {
   acpClient = null
 }
 
-// 把 ACP 进程和默认会话提前建好，省掉用户发第一句话时的 3-4 秒冷启动。
+// 把 ACP 进程和默认会话提前准备好，省掉用户发第一句话时的冷启动
+//（进程 + initialize + session/new，实测 3-4 秒）。
+//
+// 模型不在这里切：warmupAcp 在模块初始化时就被调用，那时候 currentModel
+// 还没定义（const 有暂时性死区，调用会抛 ReferenceError）。等 DSH 第一次
+// 问 listModels 时，模型清单和 CLI 当前模型都已经读到了，那时候再切。
 // 失败不要紧：真正请求时 getAcpClient 会重建，错误也会在那时报出来。
 function warmupAcp() {
   try {
     const client = getAcpClient()
-    if (client && typeof client.warmup === 'function') void client.warmup()
+    if (!client || typeof client.warmup !== 'function') return
+    void client.warmup('default')
   } catch {
     /* CLI 没装 / 网关没配，等真正请求时再报 */
   }
@@ -3684,6 +3690,17 @@ function createClaudeCodeAdapter(version) {
         // 读到了就顺手存盘，下次冷启动时菜单不会空
         const fp = await acpFingerprint()
         if (fp) void modelsStore.set('claude-code', fp, fromCli).catch(() => {})
+        // 顺手把模型切到 DSH 当前选中的那个：set_config_option 一次要几秒，
+        // 放在这里做，等用户真发消息时就不用再等。
+        void (async () => {
+          try {
+            const want = await currentModel()
+            const id = String((want && want.id) || '')
+            if (id) await getAcpClient().warmup('default', id)
+          } catch {
+            /* 预热失败不影响选择器 */
+          }
+        })()
         return fromCli.map((entry) => ({
           ...base,
           id: entry.id,

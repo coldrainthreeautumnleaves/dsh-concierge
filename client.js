@@ -334,41 +334,43 @@ html[data-dsh-wall-video="1"] [class*="_bottomRow"] {
   -webkit-backdrop-filter: none !important;
 }
 
-/* 视频壁纸下的正文可读性。
-   用户要的是「壁纸看得见 + 字看得清」，所以不去压暗整块壁纸，而是分两层：
-   ① 会话区背后一层很轻的暗化，顶部 8% 到底部 20%，越往下越重
-      （消息多在下半屏，上半屏留给壁纸）；
-   ② 正文加一层极细的投影，把字从画面纹理里托出来。
-   两层都很淡，单看几乎看不出，叠起来才把对比度拉够。
-   浅色方案下用中性黑，深色方案下用中性白，避免把画面染色。 */
+/* 视频壁纸下的正文可读性 —— 在字的背后垫一块板，而不是压暗整张壁纸。
+   用户要的是「壁纸看得见 + 字看得清」，所以板子只铺在会话列里，
+   上半屏留白给壁纸，往下逐渐加厚（消息多在下半屏）。
+
+   这里必须用 !important：下面 L680 那条
+     html[data-dsh-glass="1"] [data-conversation-region="chat"] { background: transparent; }
+   优先级相同但位置在后，而 background 是简写、会把 background-image 重置成 none，
+   不加 !important 的话这条板子完全不生效（第一版就是这么失效的）。 */
 html[data-dsh-wall-video="1"] [data-conversation-region] {
   background-image: linear-gradient(
     180deg,
-    rgba(10, 14, 22, .08) 0%,
-    rgba(10, 14, 22, .14) 50%,
-    rgba(10, 14, 22, .20) 100%
-  );
+    rgba(8, 12, 20, .12) 0%,
+    rgba(8, 12, 20, .22) 45%,
+    rgba(8, 12, 20, .30) 100%
+  ) !important;
 }
 html[data-dsh-glass-scheme="dark"][data-dsh-wall-video="1"] [data-conversation-region] {
   background-image: linear-gradient(
     180deg,
-    rgba(0, 0, 0, .16) 0%,
-    rgba(0, 0, 0, .24) 50%,
-    rgba(0, 0, 0, .32) 100%
-  );
+    rgba(0, 0, 0, .22) 0%,
+    rgba(0, 0, 0, .32) 45%,
+    rgba(0, 0, 0, .42) 100%
+  ) !important;
 }
+/* 正文再加一层极细投影，把字从画面纹理里托出来 */
 html[data-dsh-wall-video="1"] [data-conversation-region] :is(p, li, h1, h2, h3, h4, h5, h6, blockquote, td, th, dd, dt) {
-  text-shadow: 0 1px 2px rgba(0, 0, 0, .30);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .38);
 }
 html[data-dsh-glass-scheme="dark"][data-dsh-wall-video="1"] [data-conversation-region] :is(p, li, h1, h2, h3, h4, h5, h6, blockquote, td, th, dd, dt) {
-  text-shadow: 0 1px 2px rgba(0, 0, 0, .55);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .62);
 }
-/* 侧栏的会话列表同样弱，给它一层更轻的暗化（列表行短，不需要那么重） */
+/* 侧栏会话列表同样垫一层，比正文轻（行短，不需要那么厚） */
 html[data-dsh-wall-video="1"] [class*="_sidebarCol"] {
-  background-image: linear-gradient(180deg, rgba(10, 14, 22, .06) 0%, rgba(10, 14, 22, .12) 100%);
+  background-image: linear-gradient(180deg, rgba(8, 12, 20, .10) 0%, rgba(8, 12, 20, .18) 100%) !important;
 }
 html[data-dsh-glass-scheme="dark"][data-dsh-wall-video="1"] [class*="_sidebarCol"] {
-  background-image: linear-gradient(180deg, rgba(0, 0, 0, .14) 0%, rgba(0, 0, 0, .22) 100%);
+  background-image: linear-gradient(180deg, rgba(0, 0, 0, .20) 0%, rgba(0, 0, 0, .30) 100%) !important;
 }
 
 html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-glass > div:first-child::after {

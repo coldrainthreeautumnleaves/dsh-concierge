@@ -1754,20 +1754,37 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
       }, 2000)
     }
 
+    // 设置行：标题和说明各带一个 id，开关通过 aria-labelledby / aria-describedby 指过来。
+    // 之前开关只有焦点环、没有可访问名称，读屏只会念「复选框」。
+    let settingRowUid = 0
     function settingRow(title, hint, control) {
+      const uid = 'uc-set-' + (++settingRowUid)
+      const hintId = hint ? uid + '-hint' : null
+      const control_ = typeof control === 'function'
+        ? control({ labelId: uid, hintId })
+        : control
       return h('div', { className: 'uc-row-setting' },
         h('div', { className: 'uc-row-text' },
-          h('div', { className: 'uc-row-title' }, title),
-          hint ? h('div', { className: 'uc-row-hint' }, hint) : null,
+          h('div', { className: 'uc-row-title', id: uid }, title),
+          hint ? h('div', { className: 'uc-row-hint', id: hintId }, hint) : null,
         ),
-        h('div', { className: 'uc-row-control' }, control),
+        h('div', { className: 'uc-row-control' }, control_),
       )
     }
 
+    // 开关用 role="switch"（语义是「开/关」而不是「勾选」），名称来自所在行的标题。
+    // 返回函数是为了拿到 settingRow 分配的 id；单独使用时可以直接传无参调用。
     function switchControl(checked, onChange) {
-      return h('label', { className: 'uc-switch' },
-        h('input', { type: 'checkbox', checked, onChange }),
-        h('span', { className: 'uc-switch-track' }),
+      return (ids) => h('label', { className: 'uc-switch' },
+        h('input', {
+          type: 'checkbox',
+          role: 'switch',
+          checked,
+          onChange,
+          'aria-labelledby': ids && ids.labelId ? ids.labelId : undefined,
+          'aria-describedby': ids && ids.hintId ? ids.hintId : undefined,
+        }),
+        h('span', { className: 'uc-switch-track', 'aria-hidden': 'true' }),
       )
     }
 
@@ -2799,6 +2816,7 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
       perfOffscreen: '屏幕外行跳过',
       perfHint: '帧率 5 秒平均，长任务看最近 10 秒。',
       perfPeak: '近 80 秒峰值 {ms}ms',
+      perfSparkLabel: '过去 80 秒的帧耗时条形图，峰值 {ms} 毫秒',
       perfRefresh: '刷新率',
       perfRefreshHint: '默认跟随屏幕刷新率',
       perfRefreshAuto: '自动识别',
@@ -3071,6 +3089,7 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
       perfOffscreen: 'Skip offscreen rows',
       perfHint: 'FPS is a 5s average; long tasks cover 10s.',
       perfPeak: '80s peak {ms}ms',
+      perfSparkLabel: 'Frame-time bars for the last 80 seconds; peak {ms} milliseconds.',
       perfRefresh: 'Refresh rate',
       perfRefreshHint: 'Follows the display refresh by default',
       perfRefreshAuto: 'Auto detect',
@@ -3263,6 +3282,12 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
   --uc-fs-body: 13px;  --uc-lh-body: 20px;
   --uc-fs-small: 12px; --uc-lh-small: 18px;
   --uc-fs-meta: 11px;  --uc-lh-meta: 14px;
+  /* 散文（更新日志 / 关于 / 引导步骤）跟随用户在 DSH 里设的字号；
+     其余 UI 骨架保持固定 px —— 官方设置页也是这么分的，
+     正文用 markdown 阶梯（跟着 --dsh-content-font-delta 平移），chrome 用固定阶梯。 */
+  --uc-prose-size: calc(13px + var(--dsh-content-font-delta, 0px));
+  --uc-prose-small: calc(12px + var(--dsh-content-font-delta, 0px));
+  --uc-prose-lh: 1.7;
 
   /* 圆角走官方 token，不再自己定 12/8 */
   --uc-r-card: var(--dsw-radius-lg);
@@ -3377,6 +3402,7 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
 .uc-stat-value { font-size: var(--uc-fs-title); font-weight: 600; font-variant-numeric: tabular-nums; }
 .uc-stat-value-hot { color: var(--dsw-alias-state-warn-primary); }
 .uc-stat-label { margin-top: 4px; font-size: var(--uc-fs-small); color: var(--dsw-alias-label-secondary); }
+.uc-stat-value-text { font-size: var(--uc-fs-body); line-height: var(--uc-lh-body); font-weight: 500; padding-top: 4px; }
 /* 三个数字合成一张卡：格子里不再各自画底和投影，只留中间的竖分隔线。 */
 .uc-stats-card { gap: 0; }
 .uc-stats-card .uc-stat { background: transparent; border: 0; box-shadow: none; border-radius: 0; }
@@ -3548,7 +3574,7 @@ html[data-dsh-glass-scheme="dark"] .uc-card::after {
 
 .uc-guide { margin: 0 16px 16px; padding: 16px; border-radius: var(--uc-r-card); background: var(--uc-surface-2); }
 .uc-guide-title { font-size: var(--uc-fs-body); font-weight: 600; margin-bottom: 8px; }
-.uc-guide-steps { margin: 0; padding-left: 16px; font-size: var(--uc-fs-small); line-height: 1.6; color: var(--dsw-alias-label-secondary); }
+.uc-guide-steps { margin: 0; padding-left: 16px; font-size: var(--uc-prose-small); line-height: var(--uc-prose-lh); color: var(--dsw-alias-label-secondary); }
 .uc-guide-actions { display: flex; gap: 8px; margin-top: 12px; }
 
 .uc-collapse { display: grid; grid-template-rows: 0fr; opacity: 0; transition: grid-template-rows .2s cubic-bezier(.4, 0, .2, 1), opacity .2s ease; }
@@ -3556,7 +3582,7 @@ html[data-dsh-glass-scheme="dark"] .uc-card::after {
 .uc-collapse > * { min-height: 0; overflow: hidden; }
 @keyframes uc-fade { from { opacity: 0; } to { opacity: 1; } }
 .uc-about { display: flex; flex-direction: column; gap: 8px; padding: 8px 16px 16px; }
-.uc-about p { margin: 0; font-size: var(--uc-fs-body); line-height: 1.6; }
+.uc-about p { margin: 0; font-size: var(--uc-prose-size); line-height: var(--uc-prose-lh); }
 .uc-about-desc { color: var(--dsw-alias-label-secondary); font-size: var(--uc-fs-small); }
 .uc-about-links { display: flex; align-items: center; gap: 16px; font-size: var(--uc-fs-small); }
 .uc-about-license { color: var(--dsw-alias-label-secondary); font-size: var(--uc-fs-small); }
@@ -3571,12 +3597,12 @@ html[data-dsh-glass-scheme="dark"] .uc-card::after {
 .uc-log-version { font-size: var(--uc-fs-body); font-weight: 600; font-variant-numeric: tabular-nums; }
 .uc-log-count { margin-left: auto; font-size: var(--uc-fs-small); color: var(--dsw-alias-label-secondary); }
 .uc-log-group { margin: 12px 0 4px; font-size: var(--uc-fs-small); font-weight: 600; color: var(--dsw-alias-label-tertiary); }
-.uc-log-items { margin: 0; padding-left: 16px; display: flex; flex-direction: column; gap: 4px; font-size: var(--uc-fs-body); line-height: 1.6; color: var(--dsw-alias-label-secondary); }
+.uc-log-items { margin: 0; padding-left: 16px; display: flex; flex-direction: column; gap: 4px; font-size: var(--uc-prose-size); line-height: var(--uc-prose-lh); color: var(--dsw-alias-label-secondary); }
 .uc-log-more { margin: 8px 0 0; padding: 4px 0; border: 0; background: none; color: var(--dsw-alias-brand-primary); font: inherit; font-size: var(--uc-fs-body); cursor: pointer; }
 .uc-log-date { margin-left: 8px; font-size: var(--uc-fs-small); color: var(--dsw-alias-label-tertiary); font-variant-numeric: tabular-nums; }
 .uc-log-summary { padding: 12px 0; }
 .uc-log-summary-head { display: flex; align-items: baseline; gap: 8px; }
-.uc-log-headline { margin-top: 4px; font-size: var(--uc-fs-body); line-height: 1.6; color: var(--dsw-alias-label-secondary); }
+.uc-log-headline { margin-top: 4px; font-size: var(--uc-prose-size); line-height: var(--uc-prose-lh); color: var(--dsw-alias-label-secondary); }
 .uc-log-sections { padding: 4px 0 0 16px; }
 .uc-log-section + .uc-log-section { margin-top: 8px; }
 .uc-design { padding: 8px 16px 16px; }
@@ -3584,7 +3610,7 @@ html[data-dsh-glass-scheme="dark"] .uc-card::after {
 
 .uc-hintbox { margin: 0; padding: 12px 16px; border-radius: var(--uc-r-card); background: var(--uc-surface-2); }
 .uc-hintbox-title { font-size: var(--uc-fs-body); font-weight: 600; color: var(--dsw-alias-label-primary); margin-bottom: 4px; }
-.uc-hintbox-list { margin: 0; padding-left: 16px; display: flex; flex-direction: column; gap: 4px; font-size: var(--uc-fs-small); line-height: 1.6; color: var(--dsw-alias-label-secondary); }
+.uc-hintbox-list { margin: 0; padding-left: 16px; display: flex; flex-direction: column; gap: 4px; font-size: var(--uc-prose-small); line-height: var(--uc-prose-lh); color: var(--dsw-alias-label-secondary); }
 
 .uc-look-text { width: 100%; box-sizing: border-box; min-height: 192px; resize: vertical; border: var(--uc-hairline) solid var(--dsw-alias-border-l4); border-radius: var(--uc-r-control); background: var(--uc-surface-1); color: var(--dsw-alias-label-primary); font-family: var(--ds-font-family-code); font-size: var(--uc-fs-small); line-height: 1.6; padding: 12px; outline: none; }
 .uc-look-text:focus { border-color: var(--uc-accent); }
@@ -4592,13 +4618,32 @@ html[data-dsh-glass-scheme="dark"] .uc-card::after {
         }))
         .filter((group) => group.rows.length > 0)
 
+      // 标签页：roving tabindex + 方向键 / Home / End。
+      // 之前只有 role="tab" 和 aria-selected，键盘进不去也切不动。
+      const TAB_ORDER = ['update', 'plugins', 'look', 'perf', 'about']
       const tabButton = (key, label) => h('button', {
         type: 'button',
         className: 'uc-tab',
+        id: 'uc-tab-' + key,
         role: 'tab',
         'data-active': tab === key ? 'true' : 'false',
         'aria-selected': tab === key ? 'true' : 'false',
+        tabIndex: tab === key ? 0 : -1,
         onClick: () => setTab(key),
+        onKeyDown: (event) => {
+          const i = TAB_ORDER.indexOf(tab)
+          let next = -1
+          if (event.key === 'ArrowRight') next = (i + 1) % TAB_ORDER.length
+          else if (event.key === 'ArrowLeft') next = (i - 1 + TAB_ORDER.length) % TAB_ORDER.length
+          else if (event.key === 'Home') next = 0
+          else if (event.key === 'End') next = TAB_ORDER.length - 1
+          if (next < 0) return
+          event.preventDefault()
+          const host = event.currentTarget ? event.currentTarget.parentElement : null
+          setTab(TAB_ORDER[next])
+          const el = host ? host.querySelector('#uc-tab-' + TAB_ORDER[next]) : null
+          if (el) el.focus()
+        },
       }, label)
 
       return h('div', { className: 'uc-root', ref: rootRef, 'data-enter': entering ? '' : undefined },
@@ -4612,7 +4657,7 @@ html[data-dsh-glass-scheme="dark"] .uc-card::after {
           ),
         ),
 
-        h('div', { className: 'uc-tabs', role: 'tablist' },
+        h('div', { className: 'uc-tabs', role: 'tablist', 'aria-label': t('title') },
           tabButton('update', t('tabUpdate')),
           tabButton('plugins', t('tabPlugins')),
           tabButton('look', t('tabLook')),
@@ -4764,7 +4809,7 @@ html[data-dsh-glass-scheme="dark"] .uc-card::after {
                   h('div', { className: 'uc-stat-label' }, t('statUpdates')),
                 ),
                 h('div', { className: 'uc-stat' },
-                  h('div', { className: 'uc-stat-value', style: { fontSize: '15px', paddingTop: '4px' } }, relativeTime(data.checkedAt, t)),
+                  h('div', { className: 'uc-stat-value uc-stat-value-text' }, relativeTime(data.checkedAt, t)),
                   h('div', { className: 'uc-stat-label' }, t('statChecked')),
                 ),
               ),
@@ -5380,8 +5425,13 @@ html[data-dsh-glass-scheme="dark"] .uc-card::after {
                 h('div', { className: 'uc-perf-label' }, t('perfBlocking')),
               ),
             ),
-            h('div', { className: 'uc-spark-wrap' },
-              h('div', { className: 'uc-spark' },
+            // 图表对读屏是一个整体：给整块 role="img" + 一句话摘要，柱子本身不逐根播报
+            h('div', {
+              className: 'uc-spark-wrap',
+              role: 'img',
+              'aria-label': t('perfSparkLabel', { ms: perfSnapshot.peak }),
+            },
+              h('div', { className: 'uc-spark', 'aria-hidden': 'true' },
                 (Array.isArray(perfSnapshot.history) ? perfSnapshot.history : []).map((item, index) => h('span', {
                   key: index,
                   className: 'uc-spark-bar',
@@ -5880,10 +5930,13 @@ html[data-dsh-glass-scheme="dark"] .uc-card::after {
           ? 'uc-banner uc-banner-error'
           : 'uc-banner uc-banner-update'
 
+      // 失败用 alert（立即打断播报）；成功和「有新版本」用 status（等当前播完再说）。
+      // 之前两者都是 polite，加载失败要等用户手头的句子读完才会被念出来。
+      const isError = state.kind === 'error'
       return h('div', {
         className,
-        role: 'status',
-        'aria-live': 'polite',
+        role: isError ? 'alert' : 'status',
+        'aria-live': isError ? 'assertive' : 'polite',
       },
         h('style', null, BANNER_CSS),
         h('div', { className: 'uc-banner-top' },
@@ -5942,9 +5995,11 @@ html[data-dsh-glass-scheme="dark"] .uc-card::after {
 
     const SIDE_CSS = `
 .uc-help { position: relative; display: flex; }
-.uc-help-btn { appearance: none; border: none; background: transparent; color: var(--dsw-alias-label-secondary); height: 28px; padding: 0 8px; border-radius: 8px; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; font-size: 12px; white-space: nowrap; }
-.uc-help-btn:hover { background: var(--uc-surface-2, var(--dsw-alias-bg-layer-2)); color: var(--dsw-alias-label-primary); }
-.uc-help-menu { position: fixed; padding: 6px; border: var(--uc-hairline) solid var(--dsw-alias-border-l2); border-radius: var(--dsw-radius-lg); background: var(--dsw-menu-surface-fill, var(--dsw-alias-bg-layer-1)); box-shadow: 0 16px 40px rgba(0,0,0,.28), 0 2px 6px rgba(0,0,0,.1); display: flex; flex-direction: column; gap: 2px; z-index: 1000; animation: uc-pop .16s ease-out; }
+/* 侧栏 footer 的按钮几何照抄官方 Settings 触发器：42px 高、radius-md、14/22。
+   之前是 28px + 12px 字，比旁边那行矮一截、也小一截。 */
+.uc-help-btn { appearance: none; border: none; background: transparent; color: var(--dsw-alias-label-secondary); height: 42px; padding: 0 calc(var(--dsh-sidebar-row-padding, 12px) - var(--dsh-sidebar-paint-inset, 3px)); border-radius: var(--dsw-radius-md); display: inline-flex; align-items: center; gap: var(--dsh-sidebar-label-gap, 6px); cursor: pointer; font-size: 14px; line-height: 22px; white-space: nowrap; transition: background-color 120ms cubic-bezier(0.2, 0, 0, 1), color 120ms cubic-bezier(0.2, 0, 0, 1); }
+.uc-help-btn:hover { background: var(--dsw-alias-interactive-bg-hover, var(--dsw-alias-bg-layer-2)); color: var(--dsw-alias-label-primary); }
+.uc-help-menu { position: fixed; padding: 6px; border: var(--uc-hairline) solid var(--dsw-alias-border-l2); border-radius: var(--dsw-radius-lg); background: var(--dsw-menu-surface-fill, var(--dsw-alias-bg-layer-1)); box-shadow: var(--dsw-elevation-prominent, 0 16px 40px rgba(16,24,40,.18)); display: flex; flex-direction: column; gap: 2px; z-index: 1000; animation: uc-pop 160ms cubic-bezier(0, 0, 0, 1); }
 @keyframes uc-pop { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 .uc-help-item { appearance: none; border: none; background: transparent; color: var(--dsw-alias-label-primary); text-align: left; padding: 8px 10px; border-radius: 8px; font-size: 12px; cursor: pointer; display: flex; align-items: flex-start; gap: 10px; }
 .uc-help-item:hover:not(:disabled) { background: var(--uc-hover, var(--dsw-alias-bg-layer-2)); }

@@ -816,6 +816,51 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
       return `/dsh-concierge/wallpaper?path=${encodeURIComponent(value)}`
     }
 
+    /* 壁纸视频的暂停/恢复。
+       「全屏时暂停」「电池时暂停」这两个开关以前只存不生效：视频一旦挂上就
+       一直按源帧率解码，窗口最小化、拔掉电源都不停。这里把它们接上。
+
+       暂停的依据（按可靠性排序）：
+       - document.hidden：Chromium 的遮挡追踪，窗口被完全遮住 / 别的应用全屏
+         时页面会被标记 hidden。这条不可靠（Chromium 有长期 issue），所以不单靠它。
+       - 电池：navigator.getBattery()，Chromium 支持。
+       两个开关任一命中就 pause，全不命中才 resume。 */
+    let wallVideoBattery = null
+
+    function wallVideoShouldPause() {
+      if (perf.wallPauseFullscreen && typeof document !== 'undefined' && document.visibilityState === 'hidden') return true
+      if (perf.wallPauseBattery && wallVideoBattery && !wallVideoBattery.charging) return true
+      return false
+    }
+
+    function syncWallVideo() {
+      const node = typeof document !== 'undefined' && document.querySelector('#dsh-concierge-glass video')
+      if (!node) return
+      if (wallVideoShouldPause()) {
+        if (!node.paused) node.pause()
+      } else if (node.paused) {
+        const played = node.play()
+        if (played && typeof played.catch === 'function') played.catch(() => {})
+      }
+    }
+
+    function bindWallVideo() {
+      // 电池状态只取一次，变化时再同步
+      if (!wallVideoBattery && typeof navigator !== 'undefined' && typeof navigator.getBattery === 'function') {
+        navigator.getBattery().then((battery) => {
+          wallVideoBattery = battery
+          battery.addEventListener('chargingchange', syncWallVideo)
+          battery.addEventListener('levelchange', syncWallVideo)
+          syncWallVideo()
+        }).catch(() => {})
+      }
+      syncWallVideo()
+    }
+
+    if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+      document.addEventListener('visibilitychange', syncWallVideo)
+    }
+
     function applyWallpaper() {
       if (typeof document === 'undefined') return
       const root = document.getElementById('dsh-concierge-glass')
@@ -866,6 +911,7 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
         node.setAttribute('playsinline', '')
         node.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover'
         media.appendChild(node)
+        bindWallVideo(node)
         markCustom(true)
       }
     }
@@ -1579,6 +1625,9 @@ window.addEventListener('resize', () => {
       let lastModeAt = 0
       let streamingSince = 0
       let prevFrameAt = 0
+      let sampling = false
+      let rafId = 0
+
       const tick = (now) => {
         frames += 1
         if (prevFrameAt) probeLongFrame(now - prevFrameAt)
@@ -1625,9 +1674,46 @@ window.addEventListener('resize', () => {
           perfUpdate({ fps: average, samples, low })
           applyPerfMode()
         }
-        requestAnimationFrame(tick)
+        // 只有「真的需要帧率数字」时才继续申请下一帧。
+        // 之前是无条件 requestAnimationFrame，等于 120Hz 常驻申请帧；
+        // 而玻璃皮肤下每一帧都要重新合成十几层半透明面 —— 这就是空闲时
+        // GPU 3D 还能占 60% 的来源。
+        if (wantSampling()) rafId = requestAnimationFrame(tick)
+        else stopSampling()
       }
-      requestAnimationFrame(tick)
+
+      // 什么时候需要帧率：窗口可见，并且（性能面板开着 或 正在流式输出）。
+      // 面板关着、也没在生成回复时，没有任何东西在动，采样纯属空转。
+      const wantSampling = () => {
+        if (typeof document === 'undefined') return true
+        if (document.visibilityState === 'hidden') return false
+        return perfListeners.size > 0 || Boolean(perf.streaming)
+      }
+
+      const stopSampling = () => {
+        sampling = false
+        rafId = 0
+        frames = 0
+        last = 0
+        prevFrameAt = 0
+      }
+
+      const ensureSampling = () => {
+        if (sampling || !wantSampling()) return
+        sampling = true
+        frames = 0
+        last = 0
+        prevFrameAt = 0
+        rafId = requestAnimationFrame(tick)
+      }
+
+      // 一秒一次的门闩检查，成本可以忽略；它负责在「开始流式 / 面板打开 /
+      // 窗口重新可见」时把采样重新拉起来。
+      setInterval(ensureSampling, 1000)
+      if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+        document.addEventListener('visibilitychange', ensureSampling)
+      }
+      ensureSampling()
       // 浮层是按需插入的，挂个观察者把它们记下来。
       startFloatingWatch()
       // 加载 4 秒后补一份诊断：即使没有长帧、没有流式，也能拿到「谁还在模糊」的清单。

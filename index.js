@@ -586,6 +586,21 @@ export function apply(ctx) {
     'dsh-concierge: wallpaper route',
   )
 
+  // CSP 探针：只用来回答一个问题 —— 应用页允不允许同源 iframe。
+  // 通过就说明 webwallgl 可以按调研给的 iframe 方案接；不通过就得改成主页面挂 canvas。
+  ctx.effect(
+    () => ctx.webServer.register({
+      kind: 'exact',
+      path: `${ROUTE}/csp-probe`,
+      handler: withGuard(ctx, (request, response) => {
+        response.statusCode = 200
+        response.setHeader('content-type', 'text/html; charset=utf-8')
+        response.end('<!doctype html><meta charset="utf-8"><title>probe</title><body style="margin:0;background:#4176E6;color:#fff;font:14px sans-serif">iframe OK</body>')
+      }),
+    }),
+    'dsh-concierge: csp probe route',
+  )
+
   ctx.effect(
     () => ctx.webServer.register({
       kind: 'exact',

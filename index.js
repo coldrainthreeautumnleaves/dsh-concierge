@@ -2332,16 +2332,45 @@ async function readRoutingTools() {
   }
 }
 
+// CC Switch 是「配置切换器」，不是网关——它把 ~/.claude/settings.json
+// 指向不同的 provider（官方、中转、本机网关都可能是）。
+//
+// v3.8+ 把 provider 搬进 SQLite（~/.cc-switch/cc-switch.db）了。
+// 读它要 sqlite 驱动，插件跑在 DSH 的 Node 里不能随便装依赖，
+// 所以用 Node 22 内置的 node:sqlite；拿不到就退回旧的两个 JSON。
 async function readCcSwitch() {
   const dir = path.join(homedir(), '.cc-switch')
   if (!existsSync(dir)) return { found: false, dir }
   const result = { found: true, dir, storage: '', current: '', providers: [] }
 
+  const db = path.join(dir, 'cc-switch.db')
+  if (existsSync(db)) {
+    try {
+      const { DatabaseSync } = await import('node:sqlite')
+      const conn = new DatabaseSync(db, { readOnly: true })
+      try {
+        const rows = conn
+          .prepare(
+            "SELECT id, name, is_current FROM providers WHERE app_type = 'claude' ORDER BY sort_index",
+          )
+          .all()
+        result.providers = rows.map((r) => String(r.name || r.id))
+        const current = rows.find((r) => r.is_current)
+        if (current) result.current = String(current.name || current.id)
+        result.storage = 'sqlite'
+      } finally {
+        conn.close()
+      }
+    } catch {
+      /* 驱动不可用，或库被 CC Switch 锁着，退回 JSON */
+    }
+  }
+
   const live = path.join(dir, 'live-state.json')
-  if (existsSync(live)) {
+  if (!result.current && existsSync(live)) {
     try {
       const json = JSON.parse(await readFile(live, 'utf8'))
-      result.storage = 'live-state.json'
+      if (!result.storage) result.storage = 'live-state.json'
       const pick = (node) => {
         if (!node || typeof node !== 'object') return ''
         const value = node.current || node.currentProvider || node.provider || node.active
@@ -2354,7 +2383,7 @@ async function readCcSwitch() {
   }
 
   const cfg = path.join(dir, 'config.json')
-  if (existsSync(cfg)) {
+  if (!result.providers.length && existsSync(cfg)) {
     try {
       const json = JSON.parse(await readFile(cfg, 'utf8'))
       if (!result.storage) result.storage = 'config.json'
@@ -2373,9 +2402,6 @@ async function readCcSwitch() {
     }
   }
 
-  if (existsSync(path.join(dir, 'cc-switch.db'))) {
-    result.storage = result.storage ? `${result.storage} + sqlite` : 'sqlite'
-  }
   return result
 }
 

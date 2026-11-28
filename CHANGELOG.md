@@ -7,6 +7,15 @@
 ## [Unreleased]
 
 
+## [0.26.5] - 2026-11-28
+
+> 认得出 CC Switch 装了什么，不再一律显示「未安装」
+
+### Fixed
+
+- 路由: CC Switch v3.8+ 把 provider 搬进了 SQLite（`~/.cc-switch/cc-switch.db`），插件只查 `live-state.json` 和 `config.json`，所以装好了也一直显示「未安装」。现在用 Node 22 内置的 `node:sqlite` 读 `providers` 表，读出当前用的是哪个 provider、一共装了几个；拿不到驱动就退回原来的两个 JSON
+
+  CC Switch 本身不是网关，是「配置切换器」——它把 `~/.claude/settings.json` 指向不同 provider（官方、中转、本机网关都可能）。所以它不进 `LOCAL_GATEWAYS`，读出来的 provider 只用来显示
 ## [0.26.4] - 2026-11-28
 
 > 三个本机网关能在界面上直接切，不用再手改 settings.json

@@ -343,36 +343,65 @@ html[data-dsh-glass="1"][data-dsh-wall-video="1"] #dsh-concierge-glass::after {
   display: none !important;
 }
 
-/* 视频壁纸下整个主界面统一转白 —— 不加任何底板。
-   用户要的是「壁纸完整可见 + 字看得清」，所以不铺暗化层：
-   白字 + 投影直接压在画面上，投影负责把字从任意一帧里托出来。
+/* 视频壁纸下的白字 —— 只给「底就是视频」的那几块，不是整个 body。
 
-   为什么在 body 上设而不是逐个面板设：主界面上除了对话，还有侧栏、
-   顶栏、以及别的插件自己渲染的界面，逐个列选择器永远会漏。设在 body
-   上让所有文字继承，一处生效全局。
-   选择器必须带 html[data-dsh-glass="1"] 前置：data-dsh-wall-video 是
-   applyWallpaper 写的，外观关掉时虽然会删，但只要有一刻残留，不带前置的
-   规则就会把白字铺到原生皮肤上。 */
-html[data-dsh-glass="1"][data-dsh-wall-video="1"] body {
-  color: rgba(255, 255, 255, .97);
-}
-html[data-dsh-glass="1"][data-dsh-wall-video="1"] body :is(p, li, span, div, h1, h2, h3, h4, h5, h6, blockquote, td, th, dd, dt, strong, em, label, button, a) {
+   之前把白字设在 body 上、再用 :is(...) 盖住所有元素，结果连斜杠命令菜单、
+   刷新弹窗、输入框这些自带浅色底的浮层也被刷成白字 —— 白字压浅底，
+   整块看不见（实测截图确认）。
+
+   所以收窄到两处：
+   ① 会话列 —— 壁纸直接透出来，没有自己的底
+   ② 侧栏 —— 同上
+   其余浮层/面板都有自己的底色，保持常规字色。
+   品牌字标另外排除：它是图形标识，刷白会糊进画面。 */
+html[data-dsh-glass="1"][data-dsh-wall-video="1"] [data-conversation-region] :is(p, li, span, h1, h2, h3, h4, h5, h6, blockquote, td, th, dd, dt, strong, em) {
   color: rgba(255, 255, 255, .97) !important;
   text-shadow: 0 1px 3px rgba(0, 0, 0, .62), 0 0 12px rgba(0, 0, 0, .30);
 }
-/* 品牌字标 / logo 恢复原色。它是一块图形标识，刷白之后在亮画面上糊成一片，
-   而且它不是「正文」，不该跟正文一起变。 */
+html[data-dsh-glass="1"][data-dsh-wall-video="1"] [class*="_sidebarCol"] :is(span, div, p, a, small, time) {
+  color: rgba(255, 255, 255, .93) !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .55);
+}
+/* 浮层和输入框还原常规字色 —— 它们自带浅色底，白字压上去整块看不见。
+   斜杠命令菜单、MattSkillsDeck 的确认弹窗、输入框、我们自己的设置面板
+   都长在会话区里面，会被上面那条白字规则扫到。
+   这里的选择器故意写得比白字那条更具体（多一层 :is(...)），
+   否则同优先级下 !important 会按出现顺序决胜负，压不住。 */
+html[data-dsh-glass="1"][data-dsh-wall-video="1"] [data-conversation-region] :is(
+  [role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"], [role="tooltip"],
+  [class*="_composerSeat"], [class*="_composerStack"], [class*="_composer"],
+  [class*="_popover"], [class*="_hovercard"], [class*="_portal"], [class*="_menu"]
+),
+html[data-dsh-glass="1"][data-dsh-wall-video="1"] [data-conversation-region] :is(
+  [role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"], [role="tooltip"],
+  [class*="_composerSeat"], [class*="_composerStack"], [class*="_composer"],
+  [class*="_popover"], [class*="_hovercard"], [class*="_portal"], [class*="_menu"]
+) :is(p, li, span, div, h1, h2, h3, h4, h5, h6, label, button, a, td, th, dd, dt, strong, em, small, time) {
+  color: var(--dsw-alias-label-primary) !important;
+  text-shadow: none !important;
+}
+/* 次要文字用次级色，别一起刷成纯黑 */
+html[data-dsh-glass="1"][data-dsh-wall-video="1"] [data-conversation-region] :is(
+  [role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"], [role="tooltip"],
+  [class*="_composerSeat"], [class*="_composerStack"], [class*="_composer"]
+) :is(small, time, [class*="hint"], [class*="Hint"], [class*="desc"], [class*="Desc"]) {
+  color: var(--dsw-alias-label-secondary) !important;
+}
+/* 我们自己的面板（维护中心、横幅）同样还原 */
+html[data-dsh-glass="1"][data-dsh-wall-video="1"] :is(.uc-root, .uc-card, .uc-banner, #dsh-concierge-top),
+html[data-dsh-glass="1"][data-dsh-wall-video="1"] :is(.uc-root, .uc-card, .uc-banner, #dsh-concierge-top) * {
+  color: var(--dsw-alias-label-primary) !important;
+  text-shadow: none !important;
+}
+
+/* 品牌字标 / logo 恢复原色（它在侧栏里，会被上面那条扫到） */
 html[data-dsh-glass="1"][data-dsh-wall-video="1"] :is(
-  [class*="_brand"],
-  [class*="_Brand"],
   [class*="_logo"],
   [class*="_Logo"],
   [class*="_wordmark"],
   [class*="_appTitle"]
 ),
 html[data-dsh-glass="1"][data-dsh-wall-video="1"] :is(
-  [class*="_brand"],
-  [class*="_Brand"],
   [class*="_logo"],
   [class*="_Logo"],
   [class*="_wordmark"],
@@ -381,31 +410,8 @@ html[data-dsh-glass="1"][data-dsh-wall-video="1"] :is(
   color: var(--dsw-alias-label-primary) !important;
   text-shadow: none !important;
 }
-/* 设置页 / 插件市场这类「工作界面」在视频壁纸下必须有一块托底。
-   它们是拿来操作的，不是拿来看壁纸的：白字直接压在电车、鹿、植物上，
-   一行标题都读不出来（实测截图确认）。
-   不透明度取 0.94 —— 低于 0.86 时次要文字对比度会掉到 3.35:1 以下，
-   这是之前测出来的硬线。对话区不在此列，那边保留「壁纸完整可见」。 */
-html[data-dsh-glass="1"][data-dsh-wall-video="1"] [role="dialog"],
-html[data-dsh-glass="1"][data-dsh-wall-video="1"] [role="alertdialog"],
-html[data-dsh-glass="1"][data-dsh-wall-video="1"] [data-settings-surface],
-html[data-dsh-glass="1"][data-dsh-wall-video="1"] [data-slot="settings.section"] {
-  background-color: color-mix(in srgb, var(--dsw-alias-bg-base) 94%, transparent) !important;
-}
-/* 设置页里的文字回到常规色：有实底就不该再用白字 */
-html[data-dsh-glass="1"][data-dsh-wall-video="1"] [role="dialog"] :is(p, li, span, div, h1, h2, h3, h4, h5, h6, label, button, a, td, th),
-html[data-dsh-glass="1"][data-dsh-wall-video="1"] [data-settings-surface] :is(p, li, span, div, h1, h2, h3, h4, h5, h6, label, button, a, td, th) {
-  color: var(--dsw-alias-label-primary) !important;
-  text-shadow: none !important;
-}
-/* 弹层里的次要文字用次级色，别一起刷成纯黑 */
-html[data-dsh-glass="1"][data-dsh-wall-video="1"] [role="dialog"] :is(small, time, [class*="hint"], [class*="Hint"]),
-html[data-dsh-glass="1"][data-dsh-wall-video="1"] [data-settings-surface] :is(small, time, [class*="hint"], [class*="Hint"]) {
-  color: var(--dsw-alias-label-secondary) !important;
-}
-
-/* 行内代码：白字在浅色代码底上会糊，改成半透明深底 */
-html[data-dsh-glass="1"][data-dsh-wall-video="1"] :not(pre) > code {
+/* 会话列里的行内代码：白字在浅色代码底上会糊，改成半透明深底 */
+html[data-dsh-glass="1"][data-dsh-wall-video="1"] [data-conversation-region] :not(pre) > code {
   background-color: rgba(0, 0, 0, .45) !important;
   color: rgba(255, 255, 255, .92) !important;
   border-color: rgba(255, 255, 255, .18) !important;

@@ -893,7 +893,16 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
       // 会话区那层预模糊要跟着窗口尺寸和布局走（侧栏折叠、窗口缩放都会变 rect）。
       if (!frostWired && typeof window !== 'undefined') {
         frostWired = true
-        window.addEventListener('resize', () => applyFrostLayer(), { passive: true })
+        // 拖窗口时 resize 是连续触发的，applyFrostLayer 每次都要 getBoundingClientRect
+// （强制布局）+ 写样式。加防抖，只在停手后算一次。
+let frostResizeTimer = 0
+window.addEventListener('resize', () => {
+  if (frostResizeTimer) clearTimeout(frostResizeTimer)
+  frostResizeTimer = setTimeout(() => {
+    frostResizeTimer = 0
+    applyFrostLayer()
+  }, 200)
+}, { passive: true })
       }
     }
 
@@ -1380,20 +1389,29 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
       if (resizeSamples.length > 40) resizeSamples.shift()
     }
 
+    let resizeProbeTimer = 0
+
     function installResizeProbe() {
       if (resizeProbeOn || typeof window === 'undefined') return
       resizeProbeOn = true
       window.addEventListener(
         'resize',
         () => {
-          const started = Date.now()
-          sampleResizeFrame('sync')
-          const tick = () => {
-            sampleResizeFrame('raf')
-            if (Date.now() - started < 900) requestAnimationFrame(tick)
-            else scheduleProbeSend(1200)
-          }
-          requestAnimationFrame(tick)
+          // 原来每来一个 resize 事件就起一段 900ms 的 rAF 爆发。拖窗口时
+          // resize 连续触发，等于同时跑好几段爆发，自己把自己拖慢。
+          // 改成停手 250ms 之后再采样一次，采到的仍是「拖动结束后」的真实帧。
+          if (resizeProbeTimer) clearTimeout(resizeProbeTimer)
+          resizeProbeTimer = setTimeout(() => {
+            resizeProbeTimer = 0
+            const started = Date.now()
+            sampleResizeFrame('sync')
+            const tick = () => {
+              sampleResizeFrame('raf')
+              if (Date.now() - started < 900) requestAnimationFrame(tick)
+              else scheduleProbeSend(1200)
+            }
+            requestAnimationFrame(tick)
+          }, 250)
         },
         { passive: true },
       )
@@ -2434,7 +2452,9 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
               }
             }
           }
-          raf = requestAnimationFrame(tick)
+          // 文字已经全部显示出来了就别再排下一帧。
+          // 之前是无条件重排，等于每个流式回合都在 120Hz 空转，什么也不产出。
+          if (current.shown < text.length) raf = requestAnimationFrame(tick)
         }
         raf = requestAnimationFrame(tick)
         return () => cancelAnimationFrame(raf)

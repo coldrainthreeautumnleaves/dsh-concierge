@@ -715,34 +715,16 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] .uc-banner {
     inset 0 1px 0 rgba(255, 255, 255, 0.12),
     0 10px 30px rgba(0, 0, 0, 0.35);
 }
-/* 模态确认框（如「关闭整个 MattSkillsDeck」）用的是**写死的像素坐标**
-   （实测 left:1057px; top:506px），窗口尺寸一变它就跑到右下角去。
+/* 这里曾经有一条规则，专门把 MattSkillsDeck 的「关闭整个 MattSkillsDeck」
+   确认卡按视口 50%/50% 拉回正中（配一个 MutationObserver 再按会话区精修）。
 
-   这一条只是兜底：先按视口 50%/50% 拉回正中，避免第一帧还挂在角落。
-   真正的落点由 installDeckDialogPlacement() 按**会话区**算——矮窗口里视口正中
-   正好压在输入卡上，看起来就像弹窗掉进了输入框，那样不行。
+   删掉了。那是**别的插件的界面**，它的卡片位置由 deck 自己按锚点算
+   （computeTipPlace + deckDoorCorrectRef），维护中心去写 left/top !important
+   等于两个插件抢同一个元素：deck 每次重渲染写回自己的值，我们又盖回去，
+   最后落点谁也算不准——实测就是「位置不对」和「干脆看不见」。
 
-   不用 [role="dialog"][aria-modal="true"] 这种全局选择器：DSH 自己在监听
-   aria-modal 的变化来管理模态行为（asar 里有 MutationObserver 盯着 role 和
-   aria-modal），而且设置面板这类本来就居中的对话框再套一层 translate 会偏。
-
-   两条分支，命中任意一条就居中：
-   1) 认结构：内联 position:fixed + 内联 left:/top:，排除已经用 50% 的。
-      兼容 position:fixed 不带空格的序列化写法。
-   2) 认 aria-label：MattSkillsDeck 的确认框（关闭 / 重新打开）自己带
-      aria-label="关闭整个 MattSkillsDeck"。这条不依赖内联样式——它的 left/top
-      是 ref 挂载后才补上的，第一帧可能还没有 left:/top:，靠分支 1 会漏。 */
-html[data-dsh-glass="1"] :is(
-  [role="dialog"][aria-modal="true"]:is([style*="position: fixed"], [style*="position:fixed"])[style*="left:"][style*="top:"]:not([style*="left: 50%"]),
-  [role="dialog"][aria-modal="true"][aria-label*="MattSkillsDeck"]
-) {
-  left: 50% !important;
-  top: 50% !important;
-  right: auto !important;
-  bottom: auto !important;
-  transform: translate(-50%, -50%) !important;
-  margin: 0 !important;
-}
+   现在维护中心不碰任何别的插件的对话框。下面 [data-composer-dock] 那两条
+   只约束我们自己的兜底尺寸，不针对任何插件。 */
 /* 输入框底座的兜底：底栏上的工具条收起后，dock 偶尔会塌成很小的一块
    （实测 280×26），整块输入区被顶到上面，下面留一大片空白。
    这里只约束「最小可用尺寸」，不参与正常布局——尺寸正常时这条不生效。 */
@@ -778,96 +760,6 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
       style.id = 'dsh-concierge-look-css'
       style.textContent = LOOK_CSS
       document.head.appendChild(style)
-    }
-
-    // 「关闭整个 MattSkillsDeck」那张确认卡的定位。
-    //
-    // deck 插件自己算位置：渲染时抓一个锚点矩形，再按锚点算卡片的 left/top。
-    // 但锚点是渲染那一刻记下的，窗口尺寸一变就过期——实测会落到
-    // left:1057px; top:506px 这种地方（窗口变小后就在右下角），或者干脆压到
-    // 输入卡上。
-    //
-    // 外观样式里已经把它按视口 50%/50% 拉回正中，那是兜底；可视口正中在矮窗口
-    // 里正好是输入卡的位置，看着像「弹窗掉进输入框」。所以这里再按**会话区**
-    // 居中：它是确认卡，落在消息区中间才对，不该盖住输入区。
-    //
-    // 用内联 !important 写 left/top：样式表里的 !important 输给内联 !important，
-    // 而 deck 的 ref 每次重渲染只会写不带优先级的 inline 值，压不动它。
-    function installDeckDialogPlacement() {
-      if (typeof document === 'undefined' || typeof window === 'undefined') return
-      if (typeof MutationObserver !== 'function') return
-      const DIALOG = '[role="dialog"][aria-modal="true"][aria-label*="MattSkillsDeck"]'
-      let frame = 0
-      const timers = []
-
-      const findDialog = () => document.querySelector(DIALOG)
-
-      function place() {
-        frame = 0
-        try {
-          if (document.documentElement.getAttribute('data-dsh-glass') !== '1') return
-          const card = findDialog()
-          if (!card) return
-          // 目标区域 = 会话区里**输入区以上**那块。
-          // data-conversation-region="chat" 挂在整个 .body 上，它把 composerSeat
-          // 也包在里面（实测 asar 里 chat 区和 composer 区是同一棵树的父子），
-          // 所以不能直接拿它的中心——那还是落在输入卡上。改成：
-          //   上边界 = 会话区顶
-          //   下边界 = 输入区座位的顶（拿不到就用会话区底）
-          const host = document.querySelector('[data-conversation-region="chat"]') || document.querySelector('[class*="_centerCol"]')
-          const seat = document.querySelector('[data-composer-seat]') || document.querySelector('[data-composer-dock]')
-          let x = window.innerWidth / 2
-          let y = window.innerHeight / 2
-          if (host) {
-            const r = host.getBoundingClientRect()
-            let top = r.top
-            let bottom = r.bottom
-            if (seat) {
-              const s = seat.getBoundingClientRect()
-              if (s.height > 0 && s.top > top) bottom = Math.min(bottom, s.top)
-            }
-            if (r.width > 240 && bottom - top > 120) {
-              x = r.left + r.width / 2
-              y = top + (bottom - top) / 2
-            }
-          }
-          card.style.setProperty('left', Math.round(x) + 'px', 'important')
-          card.style.setProperty('top', Math.round(y) + 'px', 'important')
-          card.style.setProperty('right', 'auto', 'important')
-          card.style.setProperty('bottom', 'auto', 'important')
-          card.style.setProperty('transform', 'translate(-50%, -50%)', 'important')
-          card.style.setProperty('margin', '0', 'important')
-        } catch {
-          /* 定位失败就留着样式表里的视口居中 */
-        }
-      }
-
-      function schedule() {
-        // deck 的卡片是 React 渲染的：挂载后还会因为状态更新重渲染一次，而重渲染
-        // 会用 JSX 的 style 对象重写 left/top（不带优先级，等于把我们写的值抹掉）。
-        // 所以除了下一帧，再补两次延迟落位，把重渲染之后的窗口也盖住。
-        for (const id of timers.splice(0)) clearTimeout(id)
-        if (!frame) frame = requestAnimationFrame(place)
-        for (const delay of [120, 400]) timers.push(setTimeout(place, delay))
-      }
-
-      const observer = new MutationObserver((records) => {
-        for (const record of records) {
-          for (const node of record.addedNodes) {
-            if (node.nodeType !== 1) continue
-            if (node.matches(DIALOG) || node.querySelector(DIALOG)) {
-              schedule()
-              return
-            }
-          }
-        }
-      })
-      observer.observe(document.body, { childList: true, subtree: true })
-      // 窗口缩放时会话区矩形会变，卡片还开着就重新居中一次。
-      window.addEventListener('resize', () => {
-        if (findDialog()) schedule()
-      })
-      schedule()
     }
 
     // 宿主在启动过程中还会往 head 里追加样式表，追加在后面的同权重规则会赢。
@@ -5865,7 +5757,6 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
         readLookPrefs()
         installPerfCss()
         installLookCss()
-        installDeckDialogPlacement()
         ensureGlassNodes()
         lookCtx = ctx
         applyLook()

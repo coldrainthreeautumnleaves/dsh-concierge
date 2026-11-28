@@ -7,6 +7,26 @@
 ## [Unreleased]
 
 
+## [0.30.3] - 2026-11-28
+
+> 不再去改别的插件的弹窗
+
+### Removed
+
+- 外观: 删掉专门给 MattSkillsDeck「关闭整个 MattSkillsDeck」确认卡做定位的整套代码——一段 `html[data-dsh-glass="1"] :is(... [aria-label*="MattSkillsDeck"])` 的强制居中规则，和配套的 `installDeckDialogPlacement()`（MutationObserver 监听挂载 + 用内联 `!important` 写 `left/top`，再按会话区重算）。
+
+### 为什么
+
+MattSkillsDeck 是**另一个插件**，那张卡的位置由它自己算：渲染时抓锚点矩形，`computeTipPlace()` 算 `left/top`，挂载后 `deckDoorCorrectRef()` 再纠正一次。
+
+维护中心去写 `!important` 等于两个插件抢同一个元素：deck 每次重渲染把自己的值写回去，我们下一帧又盖回来，谁也落不准。表现就是**弹窗位置不对**，以及窗口尺寸变化后**干脆看不见**。
+
+现在维护中心不碰任何别的插件的对话框。玻璃皮肤对 `[role="dialog"]` 的样式只剩背景色、边框、阴影，不含 `display` / `visibility` / `opacity` / `position`，不会影响别的插件显示。
+
+### 兼容约定
+
+以后维护中心只操作自己的 DOM（`#dsh-concierge-*`、`.uc-*`）和官方主题 token，不再按 `aria-label` 或类名去接管其他插件的浮层定位。
+
 ## [0.30.2] - 2026-11-28
 
 > 修好外观里三个不生效的开关

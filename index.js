@@ -1360,7 +1360,8 @@ async function listWeWallpapers() {
     const type = String(project.type || '').toLowerCase()
     const file = String(project.file || '')
     const media = WE_MEDIA.test(file) ? path.join(dir, file) : ''
-    const mediaOk = media ? Boolean(await statOf(media).catch(() => null)) : false
+    const mediaInfo = media ? await statOf(media).catch(() => null) : null
+    const mediaOk = Boolean(mediaInfo && mediaInfo.isFile())
     const previewName = String(project.preview || '')
     const preview = previewName ? path.join(dir, previewName) : ''
     const previewOk = preview ? Boolean(await statOf(preview).catch(() => null)) : false
@@ -1370,6 +1371,8 @@ async function listWeWallpapers() {
       type,
       playable: type === 'video' && mediaOk,
       media: mediaOk ? media : '',
+      // 视频壁纸动辄两三百 MB，客户端要能把「为什么点了要等」说清楚
+      bytes: mediaInfo && mediaInfo.isFile() ? mediaInfo.size : 0,
       preview: previewOk ? preview : '',
     })
   }
@@ -1394,6 +1397,7 @@ async function handleWeList(request, response) {
         // scene 型没有视频，客户端拿预览图的绝对路径当静态背景
         preview: item.preview,
         media: item.media,
+        bytes: item.bytes,
       })),
     }, 200)
   } catch (error) {

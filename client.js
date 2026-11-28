@@ -2920,6 +2920,8 @@ window.addEventListener('resize', () => {
       weNoLibrary: '没找到 Wallpaper Engine 的创意工坊目录。',
       wePlayable: '可播放',
       weStatic: '静态预览',
+      weStaticOnly: '仅静态图',
+      weActive: '使用中',
       lookWallPlaceholder: '图片或视频的完整路径 / URL（支持 Wallpaper Engine 导出的 mp4、webm）',
       lookWallApply: '应用背景',
       lookBrand: '品牌色',
@@ -3236,6 +3238,8 @@ window.addEventListener('resize', () => {
       weNoLibrary: 'Wallpaper Engine workshop folder not found.',
       wePlayable: 'Playable',
       weStatic: 'Static preview',
+      weStaticOnly: 'Static image only',
+      weActive: 'In use',
       lookWallPlaceholder: 'Full path or URL of an image/video (mp4, webm exported from Wallpaper Engine work)',
       lookWallApply: 'Apply background',
       lookBrand: 'Brand color',
@@ -3860,6 +3864,8 @@ html[data-dsh-glass-scheme="dark"] .uc-card::after {
 .uc-we-thumb-empty { display: block; width: 100%; aspect-ratio: 16 / 10; background: var(--uc-surface-2); }
 .uc-we-title { padding: 8px 8px 0; font-size: var(--uc-fs-small); line-height: var(--uc-lh-small); color: var(--dsw-alias-label-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .uc-we-badge { padding: 2px 8px 8px; font-size: var(--uc-fs-meta); line-height: var(--uc-lh-meta); color: var(--dsw-alias-label-tertiary); }
+.uc-we-card[data-active="1"] { border-color: var(--uc-accent); box-shadow: 0 0 0 1px var(--uc-accent); }
+.uc-we-card[data-active="1"] .uc-we-badge { color: var(--uc-accent); }
 .uc-we-card[data-playable="1"] .uc-we-badge { color: color-mix(in srgb, var(--dsw-alias-state-success-primary) 76%, var(--dsw-alias-label-primary)); }
 .uc-danger-zone { margin-top: 36px; display: flex; flex-direction: column; gap: 8px; padding: 16px; border: 1px solid color-mix(in srgb, var(--dsw-alias-state-error-primary) 45%, transparent); border-radius: var(--uc-r-card); }
 .uc-danger-title { font-size: var(--uc-fs-lead); line-height: var(--uc-lh-lead); font-weight: 500; color: var(--dsw-alias-state-error-primary); }
@@ -4869,6 +4875,13 @@ html[data-dsh-glass-scheme="dark"] .uc-card::after {
       const appNew = Boolean(app && bridgeUpdate)
       const appNext = appNew && desktopState && desktopState.version ? desktopState.version : (app ? app.latest : null)
 
+
+      // 视频壁纸两三百 MB，标出来才知道「点了为什么要等」
+      const fmtBytes = (n) => {
+        if (!n || n < 1024 * 1024) return ''
+        const mb = n / (1024 * 1024)
+        return (mb >= 1024 ? (mb / 1024).toFixed(1) + ' GB' : Math.round(mb) + ' MB')
+      }
       const kindOf = (row) => (row.kind === 'git' ? 'git' : row.kind === 'registry' ? 'registry' : 'local')
       const groups = ['registry', 'git', 'local']
         .map((key) => ({
@@ -5387,21 +5400,34 @@ html[data-dsh-glass-scheme="dark"] .uc-card::after {
                             ? h('div', { className: 'uc-muted', style: { padding: '12px 0' } }, t('weScanning'))
                             : (weList.items && weList.items.length
                                 ? h('div', { className: 'uc-we-grid' },
-                                    weList.items.map((item) => h('button', {
-                                      key: item.id,
-                                      type: 'button',
-                                      className: 'uc-we-card',
-                                      'data-playable': item.playable ? '1' : '0',
-                                      title: item.playable ? item.title : `${item.title}（静态预览）`,
-                                      onClick: () => applyWe(item),
-                                    },
-                                      item.thumb
-                                        ? h('img', { className: 'uc-we-thumb', src: item.thumb, alt: '', loading: 'lazy' })
-                                        : h('div', { className: 'uc-we-thumb uc-we-thumb-empty' }),
-                                      h('span', { className: 'uc-we-title' }, item.title),
-                                      h('span', { className: 'uc-we-badge' },
-                                        item.playable ? t('wePlayable') : t('weStatic')),
-                                    )),
+                                    weList.items.map((item) => {
+                                      // 正在用的那张：视频型比 media，静态型比 preview
+                                      const active = Boolean(look.wall && look.wall.src) &&
+                                        (item.playable ? look.wall.src === item.media : look.wall.src === item.preview)
+                                      return h('button', {
+                                        key: item.id,
+                                        type: 'button',
+                                        className: 'uc-we-card',
+                                        'data-playable': item.playable ? '1' : '0',
+                                        'data-active': active ? '1' : '0',
+                                        'aria-pressed': active ? 'true' : 'false',
+                                        title: item.playable
+                                          ? item.title
+                                          : `${item.title}——Scene 型壁纸是 3D 场景，这里只能显示它的预览图`,
+                                        onClick: () => applyWe(item),
+                                      },
+                                        item.thumb
+                                          ? h('img', { className: 'uc-we-thumb', src: item.thumb, alt: '', loading: 'lazy' })
+                                          : h('div', { className: 'uc-we-thumb uc-we-thumb-empty' }),
+                                        h('span', { className: 'uc-we-title' }, item.title),
+                                        h('span', { className: 'uc-we-badge' },
+                                          active
+                                            ? t('weActive') + (item.bytes ? ' · ' + fmtBytes(item.bytes) : '')
+                                            : item.playable
+                                              ? t('wePlayable') + (item.bytes ? ' · ' + fmtBytes(item.bytes) : '')
+                                              : t('weStaticOnly')),
+                                      )
+                                    }),
                                   )
                                 : h('div', { className: 'uc-muted', style: { padding: '12px 0' } },
                                     weList.library ? t('weEmpty') : t('weNoLibrary'))))

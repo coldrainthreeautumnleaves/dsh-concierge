@@ -165,6 +165,11 @@ export function createAcpClient(options = {}) {
   let handshaked = false
   const sessions = new Map() // key -> sessionId
   const sessionModels = new Map() // sessionId -> 已经切过去的模型，避免每轮重复切
+  // CLI 自己报的模型清单（session/new 的 configOptions）。
+  // 网关 /v1/models 给的是裸 id，CLI 认的是带 [1m] 的，两边对不上就会 404。
+  let availableModels = []
+  // 思考档位（session/new 的 configOptions 里 thought_level/effort）
+  let availableEfforts = []
   const pending = new Map() // key -> Promise<sessionId>
 
   function ensureChild() {
@@ -232,11 +237,36 @@ export function createAcpClient(options = {}) {
         )
         handshaked = true
       }
-      const result = await client.request('session/new', { cwd: options.cwd || process.cwd(), mcpServers: [] }, 120000)
-      const sid = result && result.sessionId
-      if (!sid) throw new Error('ACP 会话创建失败')
-      sessions.set(key, sid)
-      return sid
+        const result = await client.request('session/new', { cwd: options.cwd || process.cwd(), mcpServers: [] }, 120000)
+        const sid = result && result.sessionId
+        if (!sid) throw new Error('ACP 会话创建失败')
+        sessions.set(key, sid)
+        // CLI 在 session/new 里就把模型清单给了。ACP 的字段是 category / id，
+        // 不是 configId——按 category === 'model' 找，退回 id === 'model'。
+        // 这是 CLI 自己认的 id，比从网关 /v1/models 猜准：网关给裸 id，
+        // CLI 要的却是带 [1m] 后缀的那一份，两边对不上就 404。
+        const cfgOpts = Array.isArray(result && result.configOptions) ? result.configOptions : []
+        const pickOpt = (want) =>
+          cfgOpts.find((o) => o && o.category === want) || cfgOpts.find((o) => o && o.id === want)
+        const modelOpt = pickOpt('model')
+        if (modelOpt && Array.isArray(modelOpt.options)) {
+          const list = modelOpt.options
+            .filter((o) => o && typeof o.value === 'string' && o.value && o.value !== 'default')
+            .map((o) => ({ id: o.value, name: o.name || o.value }))
+          if (list.length) availableModels = list
+        }
+        // 记住 CLI 当前用的模型，免得第一次 prompt 白切一刀
+        if (modelOpt && typeof modelOpt.currentValue === 'string' && modelOpt.currentValue) {
+          sessionModels.set(sid, modelOpt.currentValue)
+        }
+        // 思考档位也一起读走，界面上能显示
+        const effortOpt = cfgOpts.find((o) => o && (o.category === 'thought_level' || o.id === 'effort' || o.id === 'thought_level'))
+        if (effortOpt && Array.isArray(effortOpt.options)) {
+          availableEfforts = effortOpt.options
+            .filter((o) => o && typeof o.value === 'string' && o.value)
+            .map((o) => ({ id: o.value, name: o.name || o.value }))
+        }
+        return sid
     })()
     pending.set(key, job)
     try {
@@ -250,7 +280,13 @@ export function createAcpClient(options = {}) {
     // 当前会话 id：调用方靠它判断「这一轮还是不是同一个会话」。
     // 进程重启 / 会话重建时它会变（或变回 null），调用方就该重放整段历史。
     get sessionId() {
+      // CLI 报上来的模型清单，没有就是空数组（还没建会话）
       return sessions.get('default') || null
+    },
+    // CLI 报上来的模型清单（session/new 的 configOptions 里读的），
+    // 没建会话时是空数组。
+    get models() {
+      return availableModels
     },
     // 跑一轮：text 是这一段要发给 CLI 的文字；onChunk 收增量正文。
     // text 可以是字符串（只有这一轮），也可以是 {role, text} 数组（带历史）。

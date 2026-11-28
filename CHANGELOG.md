@@ -7,6 +7,23 @@
 ## [Unreleased]
 
 
+## [0.27.3] - 2026-11-28
+
+> 模型列表改成问 CLI 要，路由里从 1 个变回 15 个
+
+### Fixed
+
+- 路由: 「路由」下面只显示一个模型。原因是模型清单从网关 `/v1/models` 探的，那是**裸 id**；Claude Code CLI 认的是带 `[1m]` 后缀的那一份，两边对不上，`session/new` 的 `configOptions` 里 16 个选项只能显示 1 个能用的。现在优先读 CLI 自己在 `session/new` 报上来的 `configOptions`（`category === 'model'`），拿不到才退回网关探测
+
+  实测 CLI 报上来 15 个，全是它认的 id：
+
+      opus / fable / sonnet / haiku
+      codeflow/deepseek-ai/DeepSeek-V4.1-Flash[1m]
+      codeflow/claude-haiku-5-5[1m]
+      … 共 15 个
+
+- Claude Code（ACP）: 读 `configOptions` 时字段名用错了（写的 `configId`，ACP 实际是 `category` / `id`），所以之前一个模型都没读出来。照 `dsh-llm-acp` 的写法改成 `category === 'model' || id === 'model'`
+- Claude Code（ACP）: 顺手把思考档位（`thought_level` / `effort`）也读出来，界面上能显示
 ## [0.27.2] - 2026-11-28
 
 > 每轮不再重复切模型，首字从 7 秒降到 1.5 秒

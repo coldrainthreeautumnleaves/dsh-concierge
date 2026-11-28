@@ -3609,9 +3609,20 @@ function createClaudeCodeAdapter(version) {
     // 把 magpie 网关上真能用的模型都报给 DSH：先探测、只留返回 200 的，
     // 一个都不通时退回当前默认（applied.json 里 magpie 给 Claude Code 选的那个）。
     listModels: async () => {
+      // 优先用 CLI 自己报的清单：session/new 的 configOptions 里就有，
+      // 而且是它认的 id（带 [1m] 后缀）。网关 /v1/models 给的是裸 id，
+      // 拿去问 CLI 会 404——这就是「路由里只显示一个模型」的原因。
+      const fromCli = getAcpClient().models
+      if (fromCli.length) {
+        return fromCli.map((entry) => ({
+          ...base,
+          id: entry.id,
+          name: entry.name || entry.id,
+        }))
+      }
+      // CLI 还没建会话（冷启动阶段）：退回网关探测，至少菜单不空
       const usable = await probeGatewayModels()
       if (usable.length) {
-        // 来源写清楚：探的是哪个网关就写哪个，排查时不会被带偏。
         const gw = LOCAL_GATEWAYS.find((g) => lastGatewayBase.startsWith(g.base))
         const via = gw ? 'via ' + gw.name : ''
         return usable.map((entry) => ({

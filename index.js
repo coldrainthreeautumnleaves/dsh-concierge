@@ -16,7 +16,7 @@
  */
 import { spawn } from 'node:child_process'
 import { createReadStream, existsSync, readFileSync } from 'node:fs'
-import { mkdir, readFile, readdir, rm, stat as statOf, writeFile } from 'node:fs/promises'
+import { appendFile, mkdir, readFile, readdir, rm, stat as statOf, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { createRequire } from 'node:module'
 import path from 'node:path'
@@ -257,6 +257,113 @@ async function writeSafeModeScripts() {
 }
 
 export function apply(ctx) {
+
+  /* ---------------------------------------------------------------- 启动守护 --
+   *
+   * 为什么放在进程内：外部的 safe-launch.ps1 只在「你主动双击它」时才生效，
+   * 日常从快捷方式启动根本不经过它——所以它从来没起过作用
+   * （safe-launch.log / safe-state.json / safe-backup 一个都不存在）。
+   *
+   * 这里改成不需要额外进程的做法：每次启动先写一个「正在启动」时间戳，
+   * 稳定若干秒后再写「这次成功」。下次启动时如果发现上次只有「正在启动」
+   * 没有「成功」，说明上次没走完，就自动降级到安全模式（只留官方插件）。
+   *
+   * 不占进程：只是两个时间戳 + 一个 setTimeout，触发后立刻结束，没有常驻进程。
+   */
+  const BOOT_GUARD_FILE = path.join(SAFE_DIR, 'boot-guard.json')
+  const BOOT_STABLE_MS = 8000
+  const BOOT_LOG = path.join(SAFE_DIR, 'safe-launch.log')
+
+  const readGuard = async () => {
+    try {
+      return JSON.parse(await readFile(BOOT_GUARD_FILE, 'utf8')) || {}
+    } catch {
+      return {}
+    }
+  }
+  const writeGuard = async (value) => {
+    try {
+      await mkdir(SAFE_DIR, { recursive: true })
+      await writeFile(BOOT_GUARD_FILE, JSON.stringify(value, null, 2), 'utf8')
+    } catch {
+      /* 写不进去就放弃守护，不影响正常使用 */
+    }
+  }
+  const bootLog = async (line) => {
+    try {
+      await mkdir(SAFE_DIR, { recursive: true })
+      await appendFile(BOOT_LOG, `${new Date().toISOString()} ${line}\n`, 'utf8')
+    } catch {
+      /* 日志写不进去不影响主流程 */
+    }
+  }
+
+  // 把 profile 的第三方插件摘掉，只保留官方 @deepseek-ai/*，并留一份备份
+  const enterSafeMode = async (reason) => {
+    const profileDir = path.join(homedir(), '.dsh', 'profiles', 'desktop')
+    const pkgFile = path.join(profileDir, 'package.json')
+    const patchFile = path.join(profileDir, 'cordis.patch.yml')
+    const backupDir = path.join(SAFE_DIR, 'safe-backup')
+    try {
+      const raw = await readFile(pkgFile, 'utf8')
+      const pkg = JSON.parse(raw)
+      const bundles = Array.isArray(pkg?.dsh?.profile?.bundles) ? pkg.dsh.profile.bundles : []
+      const thirdParty = bundles.filter((name) => !String(name).startsWith('@deepseek-ai/'))
+      if (thirdParty.length === 0) {
+        await bootLog(`safe mode skipped: no third-party bundles (${reason})`)
+        return { entered: false, thirdParty }
+      }
+      await mkdir(backupDir, { recursive: true })
+      await writeFile(path.join(backupDir, 'package.json'), raw, 'utf8')
+      try {
+        await writeFile(path.join(backupDir, 'cordis.patch.yml'), await readFile(patchFile, 'utf8'), 'utf8')
+      } catch {
+        /* 没有 patch 文件就不用备份 */
+      }
+      pkg.dsh.profile.bundles = bundles.filter((name) => String(name).startsWith('@deepseek-ai/'))
+      await writeFile(pkgFile, JSON.stringify(pkg, null, 2) + '\n', 'utf8')
+      await bootLog(`safe mode ON (${reason}); disabled: ${thirdParty.join(', ')}`)
+      return { entered: true, thirdParty }
+    } catch (error) {
+      await bootLog(`safe mode failed: ${error && error.message ? error.message : String(error)}`)
+      return { entered: false, thirdParty: [] }
+    }
+  }
+
+  const bootGuard = { status: 'unknown', disabled: [], checked: false }
+
+  void (async () => {
+    const prev = await readGuard()
+    const now = Date.now()
+    const unfinished = Boolean(prev.pendingAt) && (!prev.cleanAt || prev.cleanAt < prev.pendingAt)
+    const streak = unfinished ? (Number(prev.crashStreak) || 0) + 1 : 0
+
+    if (unfinished && streak >= 1) {
+      bootGuard.status = 'recovering'
+      const result = await enterSafeMode(`unfinished start #${streak}`)
+      bootGuard.disabled = result.thirdParty
+      bootGuard.status = result.entered ? 'safe' : 'clean'
+      await bootLog(result.entered
+        ? 'restart the app to run without third-party plugins'
+        : 'previous start did not finish but there was nothing to disable')
+      // 已经写过 pendingAt，这里不再覆盖；把计数归零，避免下次又触发
+      await writeGuard({ pendingAt: now, cleanAt: 0, crashStreak: 0 })
+    } else {
+      bootGuard.status = 'clean'
+      await writeGuard({ pendingAt: now, cleanAt: 0, crashStreak: streak })
+    }
+    bootGuard.checked = true
+
+    // 稳定运行一段之后才认为这次启动是成功的
+    const timer = setTimeout(() => {
+      void (async () => {
+        const cur = await readGuard()
+        await writeGuard({ pendingAt: cur.pendingAt || now, cleanAt: Date.now(), crashStreak: 0 })
+        if (bootGuard.status === 'clean') await bootLog('start ok')
+      })()
+    }, BOOT_STABLE_MS)
+    if (typeof timer.unref === 'function') timer.unref()
+  })()
 
   const state = {
     cache: null,

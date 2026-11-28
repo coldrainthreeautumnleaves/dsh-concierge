@@ -7,6 +7,20 @@
 ## [Unreleased]
 
 
+## [0.30.1] - 2026-11-28
+
+> 修好维护中心白屏
+
+### Fixed
+
+- 页面: 设置 → 维护中心 整页白屏。0.30.0 删路由时连带删掉了一段仍在使用的状态声明（`query`、`gitUrl`、`addingSource`、`sourceBusy`、`guideRepo`、`guideData`、`guideLoading`、`tokenInput`、`tokenState`、`npmSpec`、`installingNpm`、`confirmUninstall`、`openLog`、`ignoreTick`），组件渲染时抛 `gitUrl is not defined`，整个 `settings.section` 渲染失败。这 14 个声明已按原样补回。
+- 清理: 删掉路由移除后无人引用的 `LOCAL_GATEWAYS` 常量。
+- 文档: README 去掉已经不存在的「Claude Code（走 magpie）」一节，标签页改成实际发布的五个（更新 / 插件 / 外观 / 性能 / 关于），逐字显示的默认值更正为「开」。
+
+### 说明
+
+侧边栏底部入口（`sidebar.footer.action`）和顶部更新提示（`shell.overlay`）一直正常；白屏只发生在设置页那一块。三个槽位的组件现在都能渲染通过。
+
 ## [0.30.0] - 2026-11-28
 
 > 删掉路由的全部功能

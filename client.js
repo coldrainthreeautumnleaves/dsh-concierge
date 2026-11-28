@@ -3554,6 +3554,20 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
       const [filter, setFilter] = React.useState('all')
       const [tab, setTab] = React.useState('update')
 
+      const [query, setQuery] = React.useState('')
+      const [gitUrl, setGitUrl] = React.useState('')
+      const [addingSource, setAddingSource] = React.useState(false)
+      const [sourceBusy, setSourceBusy] = React.useState(null)
+      const [guideRepo, setGuideRepo] = React.useState(null)
+      const [guideData, setGuideData] = React.useState(null)
+      const [guideLoading, setGuideLoading] = React.useState(false)
+      const [tokenInput, setTokenInput] = React.useState('')
+      const [tokenState, setTokenState] = React.useState(null)
+      const [npmSpec, setNpmSpec] = React.useState('')
+      const [installingNpm, setInstallingNpm] = React.useState(false)
+      const [confirmUninstall, setConfirmUninstall] = React.useState(null)
+      const [openLog, setOpenLog] = React.useState(null)
+      const [ignoreTick, setIgnoreTick] = React.useState(0)
 
       React.useEffect(() => {
         const listener = () => setIgnoreTick((value) => value + 1)

@@ -657,7 +657,7 @@ html[data-dsh-glass="1"] :is(
   .uc-banner,
   .uc-help-menu
 ) {
-  background-color: rgba(var(--dsh-tint-rgb), 0.96) !important;
+  background-color: rgba(var(--dsh-tint-rgb), var(--dsh-solid-alpha, 0.96)) !important;
   /* 底已经不透明，模糊没有东西可糊 */
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
@@ -677,7 +677,7 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] :is(
   .uc-banner,
   .uc-help-menu
 ) {
-  background-color: rgba(26, 28, 32, 0.96) !important;
+  background-color: rgba(26, 28, 32, var(--dsh-solid-alpha, 0.96)) !important;
 }
 /* 控制台外壳：降到半透明，让后面透一点出来；内容由内窗口承载。 */
 html[data-dsh-glass="1"] [data-shell-overlay="true"] [data-slot] > * {
@@ -1929,9 +1929,14 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
     // 卡片、菜单、悬浮卡、提示、输入框、侧边栏、工具条、边框。
     function glassTokens(transparency = look.transparency) {
       const pair = (light, dark) => ({ light, dark })
-      // transparency 0 → ×1.25（更实），100 → ×0.55（更透）。默认 43 落在 ×0.95，
-      // 也就是下面那组基准 alpha 的 95%，和 Windows Acrylic 的 0.8 量级对齐。
-      const factor = 1.25 - (Math.max(0, Math.min(100, transparency)) / 100) * 0.7
+      // transparency 0 → ×1.52（基本不透明），100 → ×0.20（很透）。默认 43 仍落在
+      // ×0.95，和以前一样——只把两端拉开。
+      //
+      // 为什么要拉开：面板底色是近白的 rgba(248,250,252,α)，壁纸也是浅色渐变。
+      // 旧的 0→100 只把 α 从 0.75 挪到 0.33，叠在浅粉壁纸上合成出来的 G 通道
+      // 只差 4/255（约 1.6%），肉眼根本看不出滑块动过——反馈里就是「透明度没效果」。
+      // 现在 100 时 α 掉到 0.12 左右，面板会明显透出壁纸。
+      const factor = 1.52 - (Math.max(0, Math.min(100, transparency)) / 100) * 1.32
       const scale = (alpha) => Math.max(0.04, Math.min(1, alpha * factor)).toFixed(3)
       // tint 用中性近白 / 近黑，不再偏蓝：壁纸本身已经是冷调，再叠冷色会发青发闷。
       // 层级只靠亮度台阶区分，彩色只留给品牌色。
@@ -2072,7 +2077,7 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
         if (LOOK_FONT_STEPS.includes(parsed.fontStep)) look.fontStep = parsed.fontStep
         if (typeof parsed.codeFont === 'string' && parsed.codeFont in LOOK_CODE_FONTS) look.codeFont = parsed.codeFont
         if (typeof parsed.grain === 'number' && Number.isFinite(parsed.grain)) {
-          look.grain = Math.max(0, Math.min(0.2, parsed.grain))
+          look.grain = Math.max(0, Math.min(0.6, parsed.grain))
         }
         if (typeof parsed.transparency === 'number' && Number.isFinite(parsed.transparency)) {
           look.transparency = Math.max(0, Math.min(100, Math.round(parsed.transparency)))
@@ -2133,9 +2138,12 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
     // 颗粒强度写进 SVG 自己的 opacity：元素上不挂 opacity，合成器就不会把它单独
     // 提成一层、每帧再和壁纸混一次。
     function grainImage(value) {
-      const alpha = Math.max(0, Math.min(0.2, value))
+      // 上限从 0.2 提到 0.6：0.2 叠在浅色壁纸上几乎看不出来，反馈就是「颗粒没效果」。
+      // 同时加 feColorMatrix saturate=0 去色——feTurbulence 原样是彩色噪点，
+      // 强度一高就变成「彩噪」，去色之后才是胶片的颗粒感。
+      const alpha = Math.max(0, Math.min(0.6, value))
       if (alpha <= 0) return ''
-      return `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='${alpha}'/%3E%3C/svg%3E")`
+      return `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='${alpha}'/%3E%3C/svg%3E")`
     }
 
     // 局部预模糊层：把壁纸的模糊副本裁到会话区的矩形上。模糊只栅格化一次，
@@ -2185,7 +2193,7 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
     }
 
     function applyGrain(value) {
-      const next = Math.max(0, Math.min(0.2, value))
+      const next = Math.max(0, Math.min(0.6, value))
       look.grain = next
       applyGrainImage()
     }
@@ -2380,6 +2388,7 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
         delete root.dataset.dshEdge
         delete root.dataset.dshEdgeSettle
         delete root.dataset.dshSkin
+        root.style.removeProperty('--dsh-solid-alpha')
         applyGrainImage()
       }
       if (!look.enabled || !lookCtx) {
@@ -2413,6 +2422,14 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
       // 只有玻璃皮肤挂壁纸 + 预模糊层；原生走官方默认样式，不挂任何层。
       if (isGlassSkin() && root) {
         root.dataset.dshGlass = '1'
+        // 实底表面的不透明度跟着「透明度」滑块走。
+        //
+        // 设置卡片、菜单、输入框底座这些面以前在样式表里写死 0.96，滑块对它们
+        // 完全无效——而用户看得最多的就是这些面，于是反馈就是「透明度没效果」。
+        // 这里算出一个系数交给 CSS：默认 43 仍是 0.96（观感不变），
+        // 0 收到 1（全不透明），100 放到 0.45。
+        const solidAlpha = Math.max(0.4, Math.min(1, 1.345 - (Math.max(0, Math.min(100, look.transparency)) / 100) * 0.895))
+        root.style.setProperty('--dsh-solid-alpha', solidAlpha.toFixed(3))
         if (look.edgeGlass) {
           root.dataset.dshEdge = '1'
           installEdgeResizeGuard()
@@ -4676,7 +4693,7 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
                         h('input', {
                           type: 'range',
                           min: 0,
-                          max: 20,
+                          max: 60,
                           step: 1,
                           value: Math.round((lookSnapshot.grain || 0) * 100),
                           disabled: !lookSnapshot.enabled,

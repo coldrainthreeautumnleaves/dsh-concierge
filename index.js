@@ -589,6 +589,24 @@ export function apply(ctx) {
   ctx.effect(
     () => ctx.webServer.register({
       kind: 'exact',
+      path: `${ROUTE}/wallpaper-engine/list`,
+      handler: withGuard(ctx, (request, response) => handleWeList(request, response)),
+    }),
+    'dsh-concierge: wallpaper engine list route',
+  )
+
+  ctx.effect(
+    () => ctx.webServer.register({
+      kind: 'exact',
+      path: `${ROUTE}/wallpaper-engine/thumb`,
+      handler: withGuard(ctx, (request, response) => handleWeThumb(request, response)),
+    }),
+    'dsh-concierge: wallpaper engine thumb route',
+  )
+
+  ctx.effect(
+    () => ctx.webServer.register({
+      kind: 'exact',
       path: `${ROUTE}/startup-boost`,
       handler: withGuard(ctx, (request, response) => handleStartupBoost(request, response)),
     }),
@@ -1237,9 +1255,31 @@ async function handleWallpaper(request, response) {
       return
     }
     response.setHeader('content-type', type)
-    response.setHeader('content-length', String(info.size))
     response.setHeader('cache-control', 'no-cache')
-    const stream = createReadStream(absolute)
+    // Range 支持：Chromium 播 <video> 一定会先发 `Range: bytes=0-`，
+    // 之前这里永远回 200 全量，视频要么拖不动进度、要么直接不播。
+    // 图片不需要，但同一条路由，顺手一起处理。
+    response.setHeader('accept-ranges', 'bytes')
+    const rangeHeader = String(request.headers && request.headers.range || '')
+    const match = /^bytes=(\d*)-(\d*)$/.exec(rangeHeader.trim())
+    let start = 0
+    let end = info.size - 1
+    if (match) {
+      if (match[1] !== '') start = Number(match[1])
+      if (match[2] !== '') end = Number(match[2])
+      if (!Number.isFinite(start) || start < 0) start = 0
+      if (!Number.isFinite(end) || end >= info.size) end = info.size - 1
+      if (start > end) {
+        response.statusCode = 416
+        response.setHeader('content-range', `bytes */${info.size}`)
+        response.end()
+        return
+      }
+      response.statusCode = 206
+      response.setHeader('content-range', `bytes ${start}-${end}/${info.size}`)
+    }
+    response.setHeader('content-length', String(end - start + 1))
+    const stream = createReadStream(absolute, { start, end })
     stream.on('error', () => {
       try {
         response.destroy()
@@ -1248,6 +1288,138 @@ async function handleWallpaper(request, response) {
       }
     })
     stream.pipe(response)
+  } catch (error) {
+    response.statusCode = 500
+    response.end(messageOf(error))
+  }
+}
+
+/* ---------------------------------------------------- Wallpaper Engine 库 --
+ *
+ * 只做 Video 型的真播放：WE 的 video 型壁纸**不打包**，project.json 里的 `file`
+ * 就是目录下的一个普通 mp4/webm，Chromium 原生就能播（实测是 H.264，不需要
+ * 解包也不需要内置解码器）。
+ *
+ * Scene 型是 3D 场景（scene.pkg + 纹理 + shader），要动起来得有一个 WebGL
+ * 场景渲染器，那是另一个量级的工程；这里只把它的 preview 图当静态背景用。
+ */
+const WE_APP_ID = '431960'
+const WE_MEDIA = /\.(mp4|webm|mov)$/i
+
+function weLibraryCandidates() {
+  const roots = []
+  for (const drive of ['C', 'D', 'E', 'F', 'G']) {
+    roots.push(`${drive}:\\SteamLibrary\\steamapps\\workshop\\content\\${WE_APP_ID}`)
+    roots.push(`${drive}:\\Program Files (x86)\\Steam\\steamapps\\workshop\\content\\${WE_APP_ID}`)
+    roots.push(`${drive}:\\Steam\\steamapps\\workshop\\content\\${WE_APP_ID}`)
+  }
+  return roots
+}
+
+async function findWeLibrary() {
+  for (const candidate of weLibraryCandidates()) {
+    const info = await statOf(candidate).catch(() => null)
+    if (info && info.isDirectory()) return candidate
+  }
+  return null
+}
+
+async function readWeProject(dir) {
+  try {
+    return JSON.parse(await readFile(path.join(dir, 'project.json'), 'utf8'))
+  } catch {
+    return null
+  }
+}
+
+async function listWeWallpapers() {
+  const library = await findWeLibrary()
+  if (!library) return { library: null, items: [] }
+  const entries = await readdir(library, { withFileTypes: true }).catch(() => [])
+  const items = []
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue
+    const dir = path.join(library, entry.name)
+    const project = await readWeProject(dir)
+    if (!project) continue
+    const type = String(project.type || '').toLowerCase()
+    const file = String(project.file || '')
+    const media = WE_MEDIA.test(file) ? path.join(dir, file) : ''
+    const mediaOk = media ? Boolean(await statOf(media).catch(() => null)) : false
+    const previewName = String(project.preview || '')
+    const preview = previewName ? path.join(dir, previewName) : ''
+    const previewOk = preview ? Boolean(await statOf(preview).catch(() => null)) : false
+    items.push({
+      id: entry.name,
+      title: String(project.title || entry.name),
+      type,
+      playable: type === 'video' && mediaOk,
+      media: mediaOk ? media : '',
+      preview: previewOk ? preview : '',
+    })
+  }
+  // 能动的排前面，其余按标题
+  items.sort((a, b) => (a.playable === b.playable ? a.title.localeCompare(b.title) : a.playable ? -1 : 1))
+  return { library, items }
+}
+
+async function handleWeList(request, response) {
+  try {
+    const result = await listWeWallpapers()
+    sendNodeJson(response, {
+      ok: true,
+      library: result.library,
+      items: result.items.map((item) => ({
+        id: item.id,
+        title: item.title,
+        type: item.type,
+        playable: item.playable,
+        // 缩略图走插件路由；视频文件本身走已有的 /wallpaper?path=
+        thumb: item.preview ? `${ROUTE}/wallpaper-engine/thumb?id=${encodeURIComponent(item.id)}` : '',
+        // scene 型没有视频，客户端拿预览图的绝对路径当静态背景
+        preview: item.preview,
+        media: item.media,
+      })),
+    }, 200)
+  } catch (error) {
+    sendNodeJson(response, { ok: false, error: messageOf(error) }, 500)
+  }
+}
+
+async function handleWeThumb(request, response) {
+  try {
+    const url = new URL(request.url || '/', 'http://localhost')
+    const id = url.searchParams.get('id') || ''
+    if (!/^\d+$/.test(id)) {
+      response.statusCode = 400
+      response.end('bad id')
+      return
+    }
+    const library = await findWeLibrary()
+    if (!library) {
+      response.statusCode = 404
+      response.end('no library')
+      return
+    }
+    const dir = path.join(library, id)
+    const project = await readWeProject(dir)
+    if (!project) {
+      response.statusCode = 404
+      response.end('not found')
+      return
+    }
+    const preview = path.join(dir, String(project.preview || 'preview.jpg'))
+    const type = WALLPAPER_TYPES[path.extname(preview).toLowerCase()]
+    const info = await statOf(preview).catch(() => null)
+    if (!type || !info || !info.isFile()) {
+      response.statusCode = 404
+      response.end('not found')
+      return
+    }
+    response.setHeader('content-type', type)
+    response.setHeader('content-length', String(info.size))
+    response.setHeader('cache-control', 'max-age=3600')
+    createReadStream(preview).pipe(response)
   } catch (error) {
     response.statusCode = 500
     response.end(messageOf(error))

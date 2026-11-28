@@ -66,6 +66,14 @@ window.__ModuleLoader__.load({
       blocking: 0,
       mode: 'normal',
       auto: true,
+      // 壁纸渲染：和全局性能共用一套设置。
+      // 画质只调分辨率倍率和特效，帧率由 refreshOverride 约束，
+      // 所以「低」档也是流畅的，只是画面糊一点。
+      wallQuality: 'medium',
+      // 0 = 跟随上面的刷新率上限
+      wallFps: 0,
+      wallPauseFullscreen: true,
+      wallPauseBattery: true,
       // Off by default: freezing every animation in the chat flow also freezes
       // the thinking/streaming indicators, which reads as "the app is stuck".
       longPref: false,
@@ -305,6 +313,14 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-glass > di
 }
 html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-glass > div:first-child::before {
   background: radial-gradient(1150px 860px at 14% -8%, rgba(72, 44, 78, 0.75) 0%, rgba(72, 44, 78, 0) 58%);
+}
+/* 自定义壁纸（图片/视频）时把两层彩色光斑藏掉。
+   它们是给预设渐变加氛围的，但伪元素画在壁纸层的**上面**：
+   图片模式下两个都在图片上，视频模式下 ::after 压在视频右上角，
+   表现就是「壁纸被一层粉/蓝光晕洗掉了」。 */
+html[data-dsh-wall="custom"] #dsh-concierge-glass > div:first-child::before,
+html[data-dsh-wall="custom"] #dsh-concierge-glass > div:first-child::after {
+  display: none;
 }
 html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-glass > div:first-child::after {
   background: radial-gradient(1000px 780px at 90% 2%, rgba(36, 56, 92, 0.8) 0%, rgba(36, 56, 92, 0) 60%);
@@ -813,10 +829,15 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
       media.style.removeProperty('background-image')
       media.style.removeProperty('background-size')
       media.style.removeProperty('background-position')
-      if (!look.enabled || look.skin !== 'glass') return
+      // 只有真正画上自定义壁纸时才摘掉彩色光斑；退不回去就会留下「壁纸没了、光斑也没了」的空层
+      const markCustom = (on) => {
+        if (on) document.documentElement.dataset.dshWall = 'custom'
+        else delete document.documentElement.dataset.dshWall
+      }
+      if (!look.enabled || look.skin !== 'glass') { markCustom(false); return }
       const mode = look.wall && look.wall.mode
       const url = wallpaperUrl(look.wall && look.wall.src)
-      if (!url) return
+      if (!url) { markCustom(false); return }
       if (mode === 'image') {
         // 先探一次：加载失败就保持样式表里的渐变，不留一层空白。
         const probe = new Image()
@@ -824,11 +845,13 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
           media.style.backgroundImage = `url("${url.replace(/"/g, '%22')}")`
           media.style.backgroundSize = 'cover'
           media.style.backgroundPosition = 'center'
+          markCustom(true)
         }
         probe.onerror = () => {
           media.style.removeProperty('background-image')
           media.style.removeProperty('background-size')
           media.style.removeProperty('background-position')
+          markCustom(false)
         }
         probe.src = url
         return
@@ -843,6 +866,7 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
         node.setAttribute('playsinline', '')
         node.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover'
         media.appendChild(node)
+        markCustom(true)
       }
     }
 
@@ -901,6 +925,10 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
         if (!raw) return
         const parsed = JSON.parse(raw)
         if (typeof parsed.auto === 'boolean') perf.auto = parsed.auto
+      if (parsed.wallQuality === 'low' || parsed.wallQuality === 'medium' || parsed.wallQuality === 'high' || parsed.wallQuality === 'ultra') perf.wallQuality = parsed.wallQuality
+      if (typeof parsed.wallFps === 'number') perf.wallFps = parsed.wallFps
+      if (typeof parsed.wallPauseFullscreen === 'boolean') perf.wallPauseFullscreen = parsed.wallPauseFullscreen
+      if (typeof parsed.wallPauseBattery === 'boolean') perf.wallPauseBattery = parsed.wallPauseBattery
         if (typeof parsed.long === 'boolean') perf.longPref = parsed.long
         if (typeof parsed.forced === 'boolean') perf.forced = parsed.forced
         if (typeof parsed.offscreen === 'boolean') perf.offscreen = parsed.offscreen
@@ -919,9 +947,13 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
           long: perf.longPref,
           forced: perf.forced,
           offscreen: perf.offscreen,
-        resizeShield: perf.resizeShield,
-        noAnim: perf.noAnim,
+          resizeShield: perf.resizeShield,
+          noAnim: perf.noAnim,
           refresh: perf.refreshOverride,
+          wallQuality: perf.wallQuality,
+          wallFps: perf.wallFps,
+          wallPauseFullscreen: perf.wallPauseFullscreen,
+          wallPauseBattery: perf.wallPauseBattery,
         }))
       } catch {
         /* storage unavailable */
@@ -2009,17 +2041,23 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
       }, 220)
     }
 
-    // 透明度和颗粒不同：它改的是 token，必须重新 overrideTokens，所以拖的时候
-    // 用短防抖，松手就停。
-    let lookApplyTimer = null
+    // 外观类改动（透明度、颗粒、调色盘三色）改的是 token，必须重新 overrideTokens。
+    //
+    // 这里原来用 140ms 防抖，结果是拖动时每个 input 都把计时器重置：
+    // 拖的过程中界面一直不更新（手感发卡），松手之后计时器才到点、界面才开始变
+    // （看起来像「松手了还在动」）。
+    // 改成按帧合并：一帧最多应用一次，拖动即时跟手，松手立刻停。
+    let lookApplyRaf = 0
 
     function scheduleLookApply() {
-      if (lookApplyTimer !== null) clearTimeout(lookApplyTimer)
-      lookApplyTimer = setTimeout(() => {
-        lookApplyTimer = null
+      if (lookApplyRaf) return
+      const run = () => {
+        lookApplyRaf = 0
         applyLook()
         lookUpdate()
-      }, 140)
+      }
+      if (typeof requestAnimationFrame === 'function') lookApplyRaf = requestAnimationFrame(run)
+      else run()
     }
 
     // 颗粒强度写进 SVG 自己的 opacity：元素上不挂 opacity，合成器就不会把它单独
@@ -2696,6 +2734,19 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
       perfTip3: '接管侧边栏渲染的插件会加重掉帧',
       perfResize: '侧边栏收起优化',
       perfResizeHint: '收起侧边栏时只重排可见行',
+      wallQuality: '壁纸画质',
+      wallQualityHint: '只调分辨率倍率和特效，帧率不变，四档都流畅',
+      wallQualityLow: '低',
+      wallQualityMedium: '中',
+      wallQualityHigh: '高',
+      wallQualityUltra: '极高',
+      wallFps: '壁纸帧率',
+      wallFpsHint: '受上面的刷新率上限约束',
+      wallFpsFollow: '跟随上限',
+      wallPauseFullscreen: '全屏时暂停',
+      wallPauseFullscreenHint: '其他应用全屏（游戏 / 视频）时停止渲染壁纸',
+      wallPauseBattery: '电池时暂停',
+      wallPauseBatteryHint: '用电池供电时停止渲染壁纸',
       perfNoAnim: '收起不做动画',
       perfNoAnimHint: '去掉滑动动画，瞬间完成',
       perfOffscreen: '屏幕外行跳过',
@@ -2737,6 +2788,13 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
       lookWallImage: '图片',
       lookWallVideo: '视频',
       lookWallVideoHint: '视频模式下自动关掉会话区模糊',
+      wePick: '从 Wallpaper Engine 选择',
+      weHide: '收起 Wallpaper Engine',
+      weScanning: '正在扫描壁纸库…',
+      weEmpty: '库里没有找到壁纸。',
+      weNoLibrary: '没找到 Wallpaper Engine 的创意工坊目录。',
+      wePlayable: '可播放',
+      weStatic: '静态预览',
       lookWallPlaceholder: '图片或视频的完整路径 / URL（支持 Wallpaper Engine 导出的 mp4、webm）',
       lookWallApply: '应用背景',
       lookBrand: '品牌色',
@@ -2992,6 +3050,19 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
       perfTip3: 'Sidebar-takeover plugins make it worse',
       perfResize: 'Sidebar resize shield',
       perfResizeHint: 'Visible rows only during the animation',
+      wallQuality: 'Wallpaper quality',
+      wallQualityHint: 'Scales resolution and effects only; the frame rate stays the same at every tier',
+      wallQualityLow: 'Low',
+      wallQualityMedium: 'Medium',
+      wallQualityHigh: 'High',
+      wallQualityUltra: 'Ultra',
+      wallFps: 'Wallpaper frame rate',
+      wallFpsHint: 'Capped by the refresh limit above',
+      wallFpsFollow: 'Follow cap',
+      wallPauseFullscreen: 'Pause when fullscreen',
+      wallPauseFullscreenHint: 'Stop rendering while another app is fullscreen (games, video)',
+      wallPauseBattery: 'Pause on battery',
+      wallPauseBatteryHint: 'Stop rendering while running on battery',
       perfNoAnim: 'No collapse animation',
       perfNoAnimHint: 'Drop the slide, collapse instantly',
       perfOffscreen: 'Skip offscreen rows',
@@ -3033,6 +3104,13 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
       lookWallImage: 'Image',
       lookWallVideo: 'Video',
       lookWallVideoHint: 'Chat blur stays off in video mode',
+      wePick: 'Pick from Wallpaper Engine',
+      weHide: 'Hide Wallpaper Engine',
+      weScanning: 'Scanning the wallpaper library...',
+      weEmpty: 'No wallpapers found in the library.',
+      weNoLibrary: 'Wallpaper Engine workshop folder not found.',
+      wePlayable: 'Playable',
+      weStatic: 'Static preview',
       lookWallPlaceholder: 'Full path or URL of an image/video (mp4, webm exported from Wallpaper Engine work)',
       lookWallApply: 'Apply background',
       lookBrand: 'Brand color',
@@ -3357,12 +3435,33 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
   content: ''; position: absolute; inset: 0; pointer-events: none;
   border-radius: inherit; opacity: 0;
   transition: opacity 160ms var(--uc-ease-std);
-  background: radial-gradient(220px circle at var(--uc-mx) var(--uc-my),
-    rgba(255, 255, 255, .10), rgba(255, 255, 255, 0) 70%);
+  background: radial-gradient(260px circle at var(--uc-mx) var(--uc-my),
+    rgba(255, 255, 255, .20), rgba(255, 255, 255, 0) 70%);
 }
 html[data-dsh-glass-scheme="dark"] .uc-card::after {
-  background: radial-gradient(220px circle at var(--uc-mx) var(--uc-my),
-    rgba(255, 255, 255, .14), rgba(255, 255, 255, 0) 70%);
+  background: radial-gradient(260px circle at var(--uc-mx) var(--uc-my),
+    rgba(255, 255, 255, .26), rgba(255, 255, 255, 0) 70%);
+}
+/* 跟随描边：1px 的光圈跟着光标在卡片边缘走。
+   光被 overflow:hidden 裁在轮廓内，所以是「反光」不是「发光」。
+   这是三层里最显眼的一层——只有面光的话在大卡片上几乎看不出来。 */
+.uc-card::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  border-radius: inherit; padding: 1px; opacity: 0;
+  transition: opacity 160ms var(--uc-ease-std);
+  background: radial-gradient(200px circle at var(--uc-mx) var(--uc-my),
+    rgba(255, 255, 255, .85), rgba(255, 255, 255, .18) 42%, rgba(255, 255, 255, 0) 72%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          mask-composite: exclude;
+}
+@media (hover: hover) and (pointer: fine) {
+  .uc-card:hover::before { opacity: 1; }
+}
+.uc-card:focus-within::before { opacity: .6; }
+@media (prefers-reduced-motion: reduce) {
+  .uc-card::before { display: none; }
 }
 @media (hover: hover) and (pointer: fine) {
   .uc-card:hover::after { opacity: 1; }
@@ -3387,7 +3486,10 @@ html[data-dsh-glass-scheme="dark"] .uc-card::after {
    必须混成不透明色：之前是 color-mix(... 45%, transparent)（alpha 0.42），
    半透明叠在卡片上，边缘被卡片那 1px 边框压住时色差会显出一条缝。
    这里直接和卡片底混，出来的是实色，边缘干净。 */
-.uc-group-head { display: flex; align-items: center; gap: 8px; padding: 8px 16px; background: color-mix(in srgb, var(--dsw-alias-settings-card-fill) 88%, var(--dsw-alias-label-primary)); }
+/* 分组标题：不加底色，只用一条发丝线分隔。
+   页面里灰色元素已经够多（状态 pill、图标按钮、开关轨道），
+   再铺一条整宽的灰带会变成第二层「块」，看着脏。 */
+.uc-group-head { display: flex; align-items: center; gap: 8px; padding: 8px 16px; border-bottom: var(--uc-hairline) solid var(--uc-sep); }
 .uc-group-label { font-size: var(--uc-fs-small); line-height: var(--uc-lh-small); font-weight: 500; color: var(--dsw-alias-label-tertiary); }
 .uc-group-count { font-size: var(--uc-fs-small); padding: 0 8px; border-radius: 999px; background: var(--uc-surface-1); color: var(--dsw-alias-label-secondary); }
 .uc-group-count-hot { color: var(--dsw-alias-state-warn-primary); }
@@ -3408,7 +3510,15 @@ html[data-dsh-glass-scheme="dark"] .uc-card::after {
 .uc-row { display: flex; align-items: center; gap: 12px; padding: 16px; }
 .uc-row + .uc-row { border-top: var(--uc-hairline) solid var(--uc-sep); }
 .uc-row { transition: background-color var(--uc-dur-fast) var(--uc-ease-std); }
-.uc-row:hover { background: var(--uc-hover); }
+/* 行不能位移（行间距只有一条发丝线，位移会误触相邻行），
+   所以用「底色加深 + 左侧 2px 强调条」表达悬停，比单纯提亮明显得多。 */
+.uc-row::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px;
+  background: var(--uc-accent); opacity: 0;
+  transition: opacity var(--uc-dur-fast) var(--uc-ease-std);
+}
+.uc-row:hover { background: color-mix(in srgb, var(--uc-surface-1) 86%, var(--uc-accent)); }
+.uc-row:hover::before, .uc-row:focus-within::before { opacity: 1; }
 .uc-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--dsw-alias-state-idle-primary); }
 .uc-dot-warn { background: var(--dsw-alias-state-warn-primary); }
 .uc-dot-err { background: var(--dsw-alias-state-error-primary); }
@@ -3439,7 +3549,7 @@ html[data-dsh-glass-scheme="dark"] .uc-card::after {
 .uc-row-err { margin-top: 4px; font-size: var(--uc-fs-small); color: var(--dsw-alias-state-error-primary); }
 .uc-row-link { color: var(--dsw-alias-brand-primary); text-decoration: none; font-size: var(--uc-fs-small); margin-left: 4px; }
 .uc-row-link:hover { text-decoration: underline; }
-.uc-vers { display: flex; align-items: baseline; justify-content: flex-end; gap: 8px; min-width: 128px; font-family: var(--ds-font-family-code); font-size: var(--uc-fs-small); color: var(--dsw-alias-label-secondary); white-space: nowrap; }
+.uc-vers { display: flex; align-items: baseline; justify-content: flex-end; gap: 8px; min-width: 128px; font-variant-numeric: tabular-nums; font-family: var(--ds-font-family-code); font-size: var(--uc-fs-small); color: var(--dsw-alias-label-secondary); white-space: nowrap; }
 .uc-vers-next { color: var(--dsw-alias-state-success-primary); font-weight: 600; }
 /* 行内操作常显：原来 opacity:0、只有 hover 才出现，键盘用户根本找不到目标。
    高频扫视的列表行不做位移（行间距只有一条发丝线，位移必然误触相邻行）。 */
@@ -3616,6 +3726,16 @@ html[data-dsh-glass-scheme="dark"] .uc-card::after {
 .uc-disclose-meta { margin-left: auto; margin-right: 8px; font-size: var(--uc-fs-small); line-height: var(--uc-lh-small); color: var(--dsw-alias-label-tertiary); font-variant-numeric: tabular-nums; }
 .uc-disclose-flat > .uc-disclose-summary::after { margin-left: 0; }
 /* 危险区：全页唯一一处红框，用间距（48px）而不是更大的字号表达「这里不一样」 */
+.uc-we { margin-top: 8px; }
+.uc-we-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-top: 12px; }
+.uc-we-card { appearance: none; position: relative; display: flex; flex-direction: column; gap: 0; padding: 0; overflow: hidden; border: var(--uc-hairline) solid var(--dsw-alias-settings-card-stroke); border-radius: var(--uc-r-card); background: var(--dsw-alias-settings-card-fill); cursor: pointer; text-align: left; transition: border-color var(--uc-dur-fast) var(--uc-ease-std), box-shadow var(--uc-dur-fast) var(--uc-ease-std); }
+.uc-we-card:hover { border-color: color-mix(in srgb, var(--dsw-alias-settings-card-stroke) 62%, var(--dsw-alias-label-primary)); box-shadow: var(--uc-shadow-2); }
+.uc-we-card:focus-visible { outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary)); outline-offset: 2px; }
+.uc-we-thumb { display: block; width: 100%; aspect-ratio: 16 / 10; object-fit: cover; background: var(--uc-surface-2); }
+.uc-we-thumb-empty { display: block; width: 100%; aspect-ratio: 16 / 10; background: var(--uc-surface-2); }
+.uc-we-title { padding: 8px 8px 0; font-size: var(--uc-fs-small); line-height: var(--uc-lh-small); color: var(--dsw-alias-label-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.uc-we-badge { padding: 2px 8px 8px; font-size: var(--uc-fs-meta); line-height: var(--uc-lh-meta); color: var(--dsw-alias-label-tertiary); }
+.uc-we-card[data-playable="1"] .uc-we-badge { color: color-mix(in srgb, var(--dsw-alias-state-success-primary) 76%, var(--dsw-alias-label-primary)); }
 .uc-danger-zone { margin-top: 36px; display: flex; flex-direction: column; gap: 8px; padding: 16px; border: 1px solid color-mix(in srgb, var(--dsw-alias-state-error-primary) 45%, transparent); border-radius: var(--uc-r-card); }
 .uc-danger-title { font-size: var(--uc-fs-lead); line-height: var(--uc-lh-lead); font-weight: 500; color: var(--dsw-alias-state-error-primary); }
 .uc-danger-hint { font-size: var(--uc-fs-small); line-height: var(--uc-lh-small); color: var(--dsw-alias-label-tertiary); }
@@ -3907,6 +4027,33 @@ html[data-dsh-glass-scheme="dark"] .uc-card::after {
       const [typerSnapshot, setTyperSnapshot] = React.useState({ ...typer })
       const [lookSnapshot, setLookSnapshot] = React.useState({ ...look })
       const [wallDraft, setWallDraft] = React.useState(() => (look.wall && look.wall.src) || '')
+      // Wallpaper Engine 库：点开时才扫，扫库要读十几个 project.json，不该每次渲染都跑
+      const [weOpen, setWeOpen] = React.useState(false)
+      const [weList, setWeList] = React.useState(null)
+      const [weBusy, setWeBusy] = React.useState(false)
+      const loadWe = async () => {
+        setWeBusy(true)
+        try {
+          const response = await fetch(`${API}/wallpaper-engine/list`)
+          const payload = await response.json()
+          setWeList(payload && payload.ok ? payload : { ok: false, items: [] })
+        } catch (error) {
+          setWeList({ ok: false, items: [], error: error && error.message ? error.message : String(error) })
+        } finally {
+          setWeBusy(false)
+        }
+      }
+      // 选一张 WE 壁纸：video 型直接播那个 mp4，其余把预览图当静态背景
+      const applyWe = (item) => {
+        const target = item.playable ? item.media : item.preview
+        if (!target) return
+        look.wall = { mode: item.playable ? 'video' : 'image', src: target }
+        setWallDraft(target)
+        saveLookPrefs()
+        applyLook()
+        applyWallpaper()
+        lookUpdate()
+      }
 
       const applyWallDraft = () => {
         const src = wallDraft.trim()
@@ -5097,6 +5244,44 @@ html[data-dsh-glass-scheme="dark"] .uc-card::after {
                       }, t('lookWallApply')),
                     )
                   : null,
+                // Wallpaper Engine：只在玻璃皮肤下有意义，和上面同一条条件
+                lookSnapshot.skin === 'glass'
+                  ? h('div', { className: 'uc-we' },
+                      h('button', {
+                        type: 'button',
+                        className: 'uc-btn',
+                        onClick: () => {
+                          const next = !weOpen
+                          setWeOpen(next)
+                          if (next && !weList) void loadWe()
+                        },
+                      }, weOpen ? t('weHide') : t('wePick')),
+                      weOpen
+                        ? (weBusy || !weList
+                            ? h('div', { className: 'uc-muted', style: { padding: '12px 0' } }, t('weScanning'))
+                            : (weList.items && weList.items.length
+                                ? h('div', { className: 'uc-we-grid' },
+                                    weList.items.map((item) => h('button', {
+                                      key: item.id,
+                                      type: 'button',
+                                      className: 'uc-we-card',
+                                      'data-playable': item.playable ? '1' : '0',
+                                      title: item.playable ? item.title : `${item.title}（静态预览）`,
+                                      onClick: () => applyWe(item),
+                                    },
+                                      item.thumb
+                                        ? h('img', { className: 'uc-we-thumb', src: item.thumb, alt: '', loading: 'lazy' })
+                                        : h('div', { className: 'uc-we-thumb uc-we-thumb-empty' }),
+                                      h('span', { className: 'uc-we-title' }, item.title),
+                                      h('span', { className: 'uc-we-badge' },
+                                        item.playable ? t('wePlayable') : t('weStatic')),
+                                    )),
+                                  )
+                                : h('div', { className: 'uc-muted', style: { padding: '12px 0' } },
+                                    weList.library ? t('weEmpty') : t('weNoLibrary'))))
+                        : null,
+                    )
+                  : null,
                 h('p', { className: 'uc-perf-hint' }, t('lookHint')),
               ),
             )
@@ -5469,6 +5654,47 @@ html[data-dsh-glass-scheme="dark"] .uc-card::after {
               savePerfPrefs()
               perfUpdate({})
             })),
+            // 壁纸渲染：外观页只负责「选哪张」，怎么渲染归这里
+            settingRow(t('wallQuality'), t('wallQualityHint'),
+              h('select', {
+                className: 'uc-select',
+                value: perfSnapshot.forced ? 'low' : perfSnapshot.wallQuality,
+                disabled: perfSnapshot.forced,
+                onChange: (event) => {
+                  perf.wallQuality = event.target.value
+                  savePerfPrefs()
+                  perfUpdate({})
+                },
+              },
+                h('option', { value: 'low' }, t('wallQualityLow')),
+                h('option', { value: 'medium' }, t('wallQualityMedium')),
+                h('option', { value: 'high' }, t('wallQualityHigh')),
+                h('option', { value: 'ultra' }, t('wallQualityUltra')),
+              )),
+            settingRow(t('wallFps'), t('wallFpsHint'),
+              h('select', {
+                className: 'uc-select',
+                value: String(perfSnapshot.wallFps),
+                onChange: (event) => {
+                  perf.wallFps = Number(event.target.value)
+                  savePerfPrefs()
+                  perfUpdate({})
+                },
+              },
+                h('option', { value: '0' }, t('wallFpsFollow')),
+                h('option', { value: '30' }, '30'),
+                h('option', { value: '60' }, '60'),
+              )),
+            settingRow(t('wallPauseFullscreen'), t('wallPauseFullscreenHint'), switchControl(perfSnapshot.wallPauseFullscreen, () => {
+              perf.wallPauseFullscreen = !perf.wallPauseFullscreen
+              savePerfPrefs()
+              perfUpdate({})
+            })),
+            settingRow(t('wallPauseBattery'), t('wallPauseBatteryHint'), switchControl(perfSnapshot.wallPauseBattery, () => {
+              perf.wallPauseBattery = !perf.wallPauseBattery
+              savePerfPrefs()
+              perfUpdate({})
+            })),
             settingRow(t('perfNoAnim'), t('perfNoAnimHint'), switchControl(perfSnapshot.noAnim, () => {
               perf.noAnim = !perf.noAnim
               savePerfPrefs()
@@ -5800,10 +6026,10 @@ html[data-dsh-glass-scheme="dark"] .uc-card::after {
       } = ctx
       const updating = busy === row.name
 
-      // 状态只用一个 pill 表达。原来「圆点 + 文字 + tag」三重编码，
-      // 三种符号说同一件事，读起来比信息本身还吵。
-      // 类型（npm / GitHub / 本地）不再逐行标注：分组标题已经写了，
-      // 再挂一个灰 pill 只是重复，一行两个灰块最难看。
+      // 状态只在「需要你看一眼」的时候出现：
+      //   可更新 / 加载失败 / 已禁用 / 已忽略 → 显示
+      //   已是最新 / 本地                     → 不显示
+      // 一屏十行全是「已是最新」的灰块，等于没有信息，还把整页压灰。
       const status = row.error
         ? { text: t('statusError'), cls: 'uc-tag uc-tag-bad' }
         : row.enabled === false
@@ -5812,9 +6038,7 @@ html[data-dsh-glass-scheme="dark"] .uc-card::after {
             ? ignored
               ? { text: t('statusIgnored'), cls: 'uc-tag' }
               : { text: t('statusUpdate'), cls: 'uc-tag uc-tag-hot' }
-            : row.kind === 'local'
-              ? { text: t('statusLocal'), cls: 'uc-tag' }
-              : { text: t('statusLatest'), cls: 'uc-tag' }
+            : null
 
       const selfRow = row.name === 'dsh-concierge'
       const canToggle = !selfRow
@@ -5833,7 +6057,7 @@ html[data-dsh-glass-scheme="dark"] .uc-card::after {
         h('div', { className: 'uc-row-main' },
           h('div', { className: 'uc-row-name' },
             h('span', null, localizedText(row.title, active) || row.name),
-            h('span', { className: status.cls }, status.text),
+            status ? h('span', { className: status.cls }, status.text) : null,
           ),
           h('div', { className: 'uc-row-pkg' }, row.name),
           row.error ? h('div', { className: 'uc-row-err', role: 'alert' }, row.error) : null,

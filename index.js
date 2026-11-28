@@ -21,6 +21,7 @@ import { homedir } from 'node:os'
 import { createRequire } from 'node:module'
 import path from 'node:path'
 import { createAcpClient, claudeGatewayEnv } from './acp.js'
+import { createModelsStore } from './modelsstore.js'
 import { fileURLToPath } from 'node:url'
 
 export const inject = ['webServer']
@@ -3363,6 +3364,38 @@ let acpClientBase = ''
 let acpSentTexts = null // 上一轮已经发出去的消息文本
 let acpSentSession = null // 发出去时所在的 ACP 会话 id
 
+// 模型目录的磁盘缓存。CLI 报上来的清单要建一次会话才拿得到（冷启动 3-7 秒），
+// 而 DSH 每条消息前都会问一遍，所以存盘。
+const modelsStore = createModelsStore({
+  file: path.join(homedir(), '.dsh', 'update-center', 'dsh-concierge-models.json'),
+  warn: (event, fields) => console.warn('[dsh-concierge] ' + event, fields),
+})
+
+// 指纹：CLI 可执行文件变了（升级、换路径）就不认旧缓存。
+// 用路径 + 大小 + mtime，够用且不用读文件内容。
+async function acpFingerprint() {
+  try {
+    const bin = process.env.CLAUDE_CODE_ACP_BIN || 'claude-agent-acp'
+    const { execFileSync } = await import('node:child_process')
+    let resolved = bin
+    try {
+      resolved = execFileSync(process.platform === 'win32' ? 'where' : 'which', [bin], {
+        encoding: 'utf8',
+      })
+        .split(/\r?\n/)
+        .map((s) => s.trim())
+        .find(Boolean) || bin
+    } catch {
+      /* 找不到就用名字本身当指纹 */
+    }
+    const info = await statOf(resolved)
+    return `${resolved}|${info.size}|${info.mtimeMs}`
+  } catch {
+    // 拿不到就当没有指纹——调用方会跳过缓存，走实时发现
+    return ''
+  }
+}
+
 function getAcpClient() {
   const env = claudeGatewayEnv()
   if (acpClient && acpClientBase === env.ANTHROPIC_BASE_URL) return acpClient
@@ -3614,13 +3647,29 @@ function createClaudeCodeAdapter(version) {
       // 拿去问 CLI 会 404——这就是「路由里只显示一个模型」的原因。
       const fromCli = getAcpClient().models
       if (fromCli.length) {
+        // 读到了就顺手存盘，下次冷启动时菜单不会空
+        const fp = await acpFingerprint()
+        if (fp) void modelsStore.set('claude-code', fp, fromCli).catch(() => {})
         return fromCli.map((entry) => ({
           ...base,
           id: entry.id,
           name: entry.name || entry.id,
         }))
       }
-      // CLI 还没建会话（冷启动阶段）：退回网关探测，至少菜单不空
+      // CLI 还没建会话（冷启动阶段）：先看磁盘上上次的清单。
+      // 指纹对不上（CLI 升级了）就不认。
+      const fp = await acpFingerprint()
+      if (fp) {
+        const cached = await modelsStore.get('claude-code', fp).catch(() => undefined)
+        if (cached && cached.list.length) {
+          return cached.list.map((entry) => ({
+            ...base,
+            id: entry.id,
+            name: entry.name || entry.id,
+          }))
+        }
+      }
+      // 也没有：退回网关探测，至少菜单不空
       const usable = await probeGatewayModels()
       if (usable.length) {
         const gw = LOCAL_GATEWAYS.find((g) => lastGatewayBase.startsWith(g.base))

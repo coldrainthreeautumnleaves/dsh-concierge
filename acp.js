@@ -425,6 +425,11 @@ export function claudeGatewayEnv() {
     // 「this session isn't eligible」的警告。
     // 关掉后分类器请求由 Claude Code 自己发、照常计费，但没有那条警告。
     CLAUDE_CODE_AUTO_MODE_SERVER: '0',
+    // prompt cache 默认 5 分钟过期。DSH 这边一轮常常超过 5 分钟（等用户看
+    // 结果、切窗口），回来再问一句缓存就全废了，整段历史重新 prefill——
+    // 既慢又烧 token。提到 1 小时（Claude Code ≥ 2.1.108 支持）。
+    // 写入费率比 5 分钟高，但对「聊一会儿停一会儿」的用法整体是省的。
+    ENABLE_PROMPT_CACHING_1H: '1',
   }
   try {
     const raw = readFileSync(path.join(homedir(), '.claude', 'settings.json'), 'utf8')

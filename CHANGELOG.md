@@ -7,6 +7,22 @@
 ## [Unreleased]
 
 
+## [0.27.4] - 2026-11-28
+
+> 模型目录存盘，冷启动不再等 3 秒；prompt 缓存延到 1 小时
+
+### Added
+
+- 路由: 模型目录存盘（`~/.dsh/update-center/dsh-concierge-models.json`）。DSH 每条消息前都会问一次模型清单，而清单要从 CLI 的 `session/new` 读，建会话得冷启动 3-7 秒。现在把上次读到的存盘，冷启动阶段直接给，读完再更新。做法参照 `dsh-llm-acp` 的 `models-store.js`
+- 路由: 缓存带指纹（CLI 可执行文件的路径 + 大小 + mtime）。CLI 升级或换路径后指纹对不上，旧缓存自动失效，不会拿过期的模型名去请求
+- Claude Code（ACP）: 加 `ENABLE_PROMPT_CACHING_1H=1`，把 prompt cache TTL 从默认 5 分钟提到 1 小时。DSH 这边一轮常常超过 5 分钟（看结果、切窗口），回来再问一句缓存就全废了，整段历史重新 prefill——既慢又烧 token。写入费率比 5 分钟高，但对「聊一会儿停一会儿」的用法整体是省的
+
+### 设计取舍
+
+- 只存模型元数据（id + 名字），不存 env、路径、prompt、回复
+- 读不出来 / 写不进去都退化成内存缓存，绝不阻断请求
+- 写入用 tmp + rename，避免半个文件
+- 刷新失败时保留上一次的好数据——清空会让选择器重启后出现再消失（`agentconnect` 的 runtime-model-catalog 里记了这个坑）
 ## [0.27.3] - 2026-11-28
 
 > 模型列表改成问 CLI 要，路由里从 1 个变回 15 个

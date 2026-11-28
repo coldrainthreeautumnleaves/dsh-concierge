@@ -343,31 +343,35 @@ html[data-dsh-glass="1"][data-dsh-wall-video="1"] #dsh-concierge-glass::after {
   display: none !important;
 }
 
-/* 视频壁纸下的文字对比度 —— 不改字色，只加柔光。
-   试过两版白字都被否了，原因是硬性的：DSH 的界面底色是浅的，
-   弹层、输入框、设置页、插件市场都自带浅色底，白字压上去整块消失。
-   而且白字必须带 !important 才能压过 DSH 自己的文字色，一旦带上
-   !important 就会穿透所有子元素，只能靠不断加例外去堵，堵不完。
+/* 视频壁纸下的文字对比度 —— 用差值混合，让文字自己适配背后的明暗。
 
-   所以换一条不会碰到任何底色的路：保持原来的深色字，在字后面加一层
-   白色柔光。效果是字自己在发亮，从画面上「浮」起来，
-   而所有浮层和面板完全不受影响 —— 因为只加了 text-shadow。 */
+   试过的三条路都不行：
+   ① 白字：DSH 的界面底色是浅的，弹层/输入框/设置页/气泡都是浅底，
+      白字压上去整块消失；而且白字必须带 !important 才压得过 DSH 自己的
+      文字色，一带上就穿透所有子元素，只能不断加例外，堵不完。
+   ② 暗化板：整列发灰，挡掉壁纸。
+   ③ 白色柔光：安全，但不够亮眼。
+
+   差值混合是唯一在数学上正确的做法：文字取反背景。
+   深底显白、浅底显黑，背后是视频、浅色面板还是气泡都自动适配，
+   不需要列任何例外。代价是颜色会被反成反色，观感偏「反色高亮」。 */
 html[data-dsh-glass="1"][data-dsh-wall-video="1"] [data-conversation-region] :is(p, li, h1, h2, h3, h4, h5, h6, blockquote, td, th, dd, dt, strong, em) {
-  text-shadow:
-    0 0 2px rgba(255, 255, 255, .85),
-    0 0 8px rgba(255, 255, 255, .55),
-    0 1px 2px rgba(255, 255, 255, .45);
+  color: #ffffff;
+  mix-blend-mode: difference;
 }
 html[data-dsh-glass="1"][data-dsh-wall-video="1"] [class*="_sidebarCol"] :is(span, div, p, a, small, time) {
-  text-shadow:
-    0 0 2px rgba(255, 255, 255, .80),
-    0 0 8px rgba(255, 255, 255, .50);
+  color: #ffffff;
+  mix-blend-mode: difference;
 }
-/* 深色方案反过来：白字 + 深色柔光 */
-html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"][data-dsh-wall-video="1"] [data-conversation-region] :is(p, li, h1, h2, h3, h4, h5, h6, blockquote, td, th, dd, dt, strong, em),
-html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"][data-dsh-wall-video="1"] [class*="_sidebarCol"] :is(span, div, p, a, small, time) {
-  color: rgba(255, 255, 255, .97) !important;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, .70), 0 0 10px rgba(0, 0, 0, .45);
+/* 浮层和输入框不参与差值混合：它们有自己的浅色底，正常字色本来就够清楚，
+   混合层反而会让文字颜色变得不可预测。 */
+html[data-dsh-glass="1"][data-dsh-wall-video="1"] [data-conversation-region] :is(
+  [role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"], [role="tooltip"],
+  [class*="_composerSeat"], [class*="_composerStack"], [class*="_composer"],
+  [class*="_popover"], [class*="_hovercard"], [class*="_portal"], [class*="_menu"]
+) :is(p, li, span, div, h1, h2, h3, h4, h5, h6, label, button, a, td, th, dd, dt, strong, em, small, time) {
+  mix-blend-mode: normal !important;
+  color: var(--dsw-alias-label-primary) !important;
 }
 
 html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-glass > div:first-child::after {

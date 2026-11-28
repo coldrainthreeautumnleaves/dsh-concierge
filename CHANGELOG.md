@@ -7,6 +7,29 @@
 ## [Unreleased]
 
 
+## [0.30.0] - 2026-11-28
+
+> 删掉路由的全部功能
+
+### Removed
+
+- 路由: 删除 `claude-code` provider，聊天框模型菜单里不再有「路由」这一项
+- 路由: 删除 `acp.js`、`sdkclient.js`、`omnitool.js`、`modelsstore.js` 四个文件
+- 路由: 删除 `streamClaudeCode`、`createClaudeCodeAdapter`、`applyClaudeProvider`、`planClaudePrompt` 等整套 provider 代码
+- 路由: 删除「路由」标签页和它背后的状态、加载函数、两个卡片
+- 路由: 删除 `/claude-info`、`/claude-toggle`、`/claude-run`、`/gateways`、`/switch-gateway`、`/magpie-route`、`/trim-models`、`/restore-config` 八个端点
+- 路由: 删除 `findClaudeCli`、`runClaudeOnce`、`readRoutingTools`、`readCcSwitch`、`readClaudeVersion`、`resolveRouteModelName`、`readRouteModels`、`readMagpieApplied`、`listGateways`、`readClaudeRoute`、`pickGatewayBase`、`probeGatewayModels`、`switchGateway` 等辅助函数
+- 工具: 删除 `omni` 工具和 `ctx.tools.restrict` 调用，`inject` 回到 `['webServer']`
+
+### 为什么删
+
+Claude 模型的请求在 codeflow 上一直 403，试过的所有本地手段（换 UA、加头、改 beta、换协议、SDK 直连、经 Magpie、收工具数量）都没能解决。留着这套代码只会让模型菜单里多一个选了就报错的选项，排查范围也大一圈。
+
+DeepSeek 模型走 `magpie-anthropic` 那条路完全正常，不需要这些代码。
+
+`index.js` 从 176KB 降到 105KB。
+
+回滚用 `git checkout before-remove-route`。
 ## [0.29.0] - 2026-11-28
 
 > 把所有工具收成一个 omni，绕开上游「tools 数量」限制

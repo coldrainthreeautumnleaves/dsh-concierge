@@ -322,11 +322,6 @@ html[data-dsh-wall="custom"] #dsh-concierge-glass > div:first-child::before,
 html[data-dsh-wall="custom"] #dsh-concierge-glass > div:first-child::after {
   display: none;
 }
-/* 精简模式：两层彩色光斑也藏掉。
-   它们是静态的，但各占一个全屏合成层，每帧都要参与混合。
-   藏掉之后壁纸只剩一条静态渐变 —— 没有可混合的东西，合成开销接近零。
-   这是「强制精简」开关真正省电的地方，比调帧率直接得多。 */
-html[data-dsh-perf="low"] #dsh-concierge-glass > div:first-child::before,
 /* 视频壁纸下把顶栏和侧栏改成实底。
    它们原来盖在壁纸上做半透明，壁纸是静态渐变时合成器可以缓存；
    但视频每帧都在变，上面每一层半透明都要跟着重新混合一遍 —— 这是
@@ -339,9 +334,6 @@ html[data-dsh-wall-video="1"] [class*="_bottomRow"] {
   -webkit-backdrop-filter: none !important;
 }
 
-html[data-dsh-perf="low"] #dsh-concierge-glass > div:first-child::after {
-  display: none;
-}
 html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-glass > div:first-child::after {
   background: radial-gradient(1000px 780px at 90% 2%, rgba(36, 56, 92, 0.8) 0%, rgba(36, 56, 92, 0) 60%);
 }
@@ -2252,8 +2244,7 @@ window.addEventListener('resize', () => {
       if (!layer) return
       // 颗粒是一层全屏纹理，合成器每帧都要把它和上面十几层半透明面混一遍。
       // 精简模式（强制精简 / 自动降级）下直接不生成，等于少一层全屏混合。
-      const lite = perf.forced || perf.low
-      const url = isGlassSkin() && look.enabled && !lite ? grainImage(look.grain) : ''
+      const url = isGlassSkin() && look.enabled ? grainImage(look.grain) : ''
       layer.style.setProperty('--dsh-grain', url || 'none')
     }
 

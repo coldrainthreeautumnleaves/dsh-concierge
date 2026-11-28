@@ -7,6 +7,15 @@
 ## [Unreleased]
 
 
+## [0.26.9] - 2026-11-28
+
+> 启动时不再漏注册：llm 服务晚到时自动补上
+
+### Fixed
+
+- Claude Code（ACP）: 重启 DSH 后偶发「开关是开的、模型菜单里却没有」——cordis 按服务可用性激活插件，加载顺序不保证（dsh-base 里写明 "Row order carries no load semantics"），启动时 `llm` 服务可能还没就绪，`ctx.get('llm')` 返回 `undefined`，旧代码直接 `return`，于是什么都没注册。现在改用 `ctx.inject(['llm'])`：服务一出现就补注册，不用再手动关一次开一次
+- Claude Code（ACP）: 启动读开关和用户点开关可能同时到达，两次注册撞车会抛 `DUPLICATE_ADAPTER`。现在串行执行，后来者等前一次完成
+
 ## [0.26.8] - 2026-11-28
 
 > 插件接管时连 magpie 的接入状态一起关掉，界面不再提示「重新接入」

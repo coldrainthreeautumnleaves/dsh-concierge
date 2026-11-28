@@ -340,10 +340,42 @@ export function apply(ctx) {
   }
   // 注册 Claude Code 提供方（聊天框模型菜单里出现「Claude Code」）。
   // 失败不能把插件带崩：只记一条日志。
-  async function applyClaudeProvider(enabled) {
-    state.claudeEnabled = !!enabled
+  //
+  // cordis 是按「服务可用性」激活插件的，加载顺序不保证（dsh-base 里写明了
+  // "Row order carries no load semantics"）。启动时 llm 服务可能还没就绪，
+  // ctx.get('llm') 返回 undefined。以前这里直接 return，于是偶发注册不上，
+  // 必须手动关一次再开一次才生效。现在拿不到 llm 就先记账，
+  // 等 ctx.inject(['llm']) 的回调补一次。
+  let llmRef = null
+  let claudeLoaded = false
+  let claudeWarned = false
+  let claudeQueue = Promise.resolve()
+
+  function llmService() {
+    if (llmRef) return llmRef
     const llm = ctx.get('llm')
-    if (!llm || typeof llm.registerAdapter !== 'function') return
+    if (llm && typeof llm.registerAdapter === 'function') llmRef = llm
+    return llmRef
+  }
+
+  // 启动读开关和用户点开关可能同时到达：串行执行，避免两次注册撞车
+  // （llm 对同一个 provider 重复注册会抛 DUPLICATE_ADAPTER）。
+  function applyClaudeProvider(enabled) {
+    state.claudeEnabled = !!enabled
+    const run = () => applyClaudeProviderNow(state.claudeEnabled)
+    claudeQueue = claudeQueue.then(run, run)
+    return claudeQueue
+  }
+
+  async function applyClaudeProviderNow(enabled) {
+    const llm = llmService()
+    if (!llm) {
+      if (!claudeWarned) {
+        claudeWarned = true
+        console.warn('[dsh-concierge] llm service is not ready yet; will register when it appears')
+      }
+      return
+    }
     if (!enabled) {
       if (typeof state.claudeHandle === 'function') state.claudeHandle()
       state.claudeHandle = null
@@ -518,13 +550,26 @@ export function apply(ctx) {
         console.warn('[dsh-concierge] show gateway providers failed:', messageOf(error))
         return false
       })
+  // llm 就绪后补一次注册：启动时它可能比本插件晚到。
+  ctx.inject(['llm'], (childCtx) => {
+    const llm = childCtx.get('llm')
+    if (!llm || typeof llm.registerAdapter !== 'function') return
+    llmRef = llm
+    // 开关还没从磁盘读出来时先别动，等 readClaudeEnabled 的结果
+    if (claudeLoaded) void applyClaudeProvider(state.claudeEnabled)
+  })
+
   // 按开关状态决定是否注册；插件卸载时撤销
   ctx.effect(() => {
     // 启动时先探一次网关，后面同步取用
     pickGatewayBase().catch(() => {})
+    const load = (enabled) => {
+      claudeLoaded = true
+      return applyClaudeProvider(enabled)
+    }
     readClaudeEnabled()
-      .then((enabled) => applyClaudeProvider(enabled))
-      .catch(() => applyClaudeProvider(true))
+      .then(load)
+      .catch(() => load(true))
     return () => {
       if (typeof state.claudeHandle === 'function') state.claudeHandle()
       state.claudeHandle = null

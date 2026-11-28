@@ -327,6 +327,18 @@ html[data-dsh-wall="custom"] #dsh-concierge-glass > div:first-child::after {
    藏掉之后壁纸只剩一条静态渐变 —— 没有可混合的东西，合成开销接近零。
    这是「强制精简」开关真正省电的地方，比调帧率直接得多。 */
 html[data-dsh-perf="low"] #dsh-concierge-glass > div:first-child::before,
+/* 视频壁纸下把顶栏和侧栏改成实底。
+   它们原来盖在壁纸上做半透明，壁纸是静态渐变时合成器可以缓存；
+   但视频每帧都在变，上面每一层半透明都要跟着重新混合一遍 —— 这是
+   视频壁纸下最贵的一项，比解码还贵。改成实底之后它们就是静态层。 */
+html[data-dsh-wall-video="1"] [class*="_sidebarCol"],
+html[data-dsh-wall-video="1"] #dsh-concierge-top,
+html[data-dsh-wall-video="1"] [class*="_bottomRow"] {
+  background-color: color-mix(in srgb, var(--dsw-alias-settings-card-fill) 100%, transparent) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
 html[data-dsh-perf="low"] #dsh-concierge-glass > div:first-child::after {
   display: none;
 }
@@ -887,6 +899,7 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
         if (on) document.documentElement.dataset.dshWall = 'custom'
         else delete document.documentElement.dataset.dshWall
       }
+      if (typeof document !== 'undefined') delete document.documentElement.dataset.dshWallVideo
       if (!look.enabled || look.skin !== 'glass') { markCustom(false); return }
       const mode = look.wall && look.wall.mode
       const url = wallpaperUrl(look.wall && look.wall.src)
@@ -920,6 +933,9 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
         node.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover'
         media.appendChild(node)
         bindWallVideo(node)
+        // 视频在动，叠在它上面的半透明面板每帧都要重新混合。
+        // 打个标记让顶栏和侧栏变实底，合成器就能把它们当静态层缓存。
+        document.documentElement.dataset.dshWallVideo = '1'
         markCustom(true)
       }
     }
@@ -5790,20 +5806,11 @@ html[data-dsh-glass-scheme="dark"] .uc-card::after {
                 h('option', { value: 'high' }, t('wallQualityHigh')),
                 h('option', { value: 'ultra' }, t('wallQualityUltra')),
               )),
-            settingRow(t('wallFps'), t('wallFpsHint'),
-              h('select', {
-                className: 'uc-select',
-                value: String(perfSnapshot.wallFps),
-                onChange: (event) => {
-                  perf.wallFps = Number(event.target.value)
-                  savePerfPrefs()
-                  perfUpdate({})
-                },
-              },
-                h('option', { value: '0' }, t('wallFpsFollow')),
-                h('option', { value: '30' }, '30'),
-                h('option', { value: '60' }, '60'),
-              )),
+            // 这里原来有一个「壁纸帧率」下拉框（跟随上限 / 30 / 60）。
+            // 删掉是因为它没有诚实的实现方式：<video> 没法在不改变播放速度的
+            // 前提下降低帧率——playbackRate 会变慢动作，requestVideoFrameCallback
+            // 跳帧不减少解码，CSS 做不到，定时 seek 反而更贵。
+            // 真要让视频壁纸少解码，只能换一个低帧率的源文件。
             settingRow(t('wallPauseFullscreen'), t('wallPauseFullscreenHint'), switchControl(perfSnapshot.wallPauseFullscreen, () => {
               perf.wallPauseFullscreen = !perf.wallPauseFullscreen
               savePerfPrefs()

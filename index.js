@@ -390,6 +390,9 @@ export function apply(ctx) {
       // 插件接管了，把网关 provider 从 DSH 配置里摘掉——不然模型菜单里
       // 会有两份一模一样的模型，用户不知道点哪个
       await takeOverRouteProvider()
+      // 提前把 ACP 进程和默认会话建起来：不然用户发第一句话要等 3-4 秒
+      //（进程启动 + initialize + session/new），体感是「刚打开就好慢」。
+      warmupAcp()
     } catch (error) {
       console.warn('[dsh-concierge] Claude Code provider registration failed:', messageOf(error))
       state.claudeHandle = null
@@ -3381,6 +3384,17 @@ function disposeAcpClient() {
   acpClient = null
 }
 
+// 把 ACP 进程和默认会话提前建好，省掉用户发第一句话时的 3-4 秒冷启动。
+// 失败不要紧：真正请求时 getAcpClient 会重建，错误也会在那时报出来。
+function warmupAcp() {
+  try {
+    const client = getAcpClient()
+    if (client && typeof client.warmup === 'function') void client.warmup()
+  } catch {
+    /* CLI 没装 / 网关没配，等真正请求时再报 */
+  }
+}
+
 // CLI 报「模型不存在或没有权限」时补一句能动手的说明。
 //
 // 这个错误几乎只有一个来源：模型名和 ANTHROPIC_BASE_URL 不是同一套。
@@ -3416,15 +3430,41 @@ function planClaudePrompt(all, sessionId) {
   return { send: fresh, reset: false }
 }
 
+// DSH 每轮除了聊天，还会发一个「生成会话标题」的小请求（maxTokens 很小，
+// system 是固定的标题模板）。它如果跟聊天挤在同一条 ACP 会话里，会有三个后果：
+//   1. 标题的提问进聊天历史，模型上下文被污染；
+//   2. acpSentTexts 被两个请求轮流覆盖，下一轮聊天前缀对不上，只能重放整段；
+//   3. 标题请求还会切模型，切走再切回让聊天的 prompt 缓存整个失效。
+// 所以这类请求单开一条会话、用完即弃，也不参与增量记账、不切模型。
+function isSideRequest(options) {
+  const max = Number(options && options.maxTokens)
+  if (Number.isFinite(max) && max > 0 && max <= 256) return true
+  const system = String((options && options.system) || '')
+  return /concise title for an AI coding-assistant session/i.test(system)
+}
+
+// 旁路请求的 prompt：ACP 只有 text 块，没有 system 通道，把 DSH 给的 system
+// 放在最前面当一条用户消息。不给的话标题请求就只是「用户让助手记住一个词」
+// 这种裸文本，模型只会反问，标题变成胡话（实测）。
+function sidePrompt(all, options) {
+  const list = truncateHistory(all)
+  const system = String((options && options.system) || '').trim()
+  if (!system) return list
+  return [{ role: 'user', text: '[系统指令]\n' + system }, ...list]
+}
+
 export async function* streamClaudeCode(options) {
   // 把完整对话整理出来，用来比对「哪些还没发过」；真正发多少由 planClaudePrompt 决定
+  const side = isSideRequest(options)
   const all = turnPromptMessages(options && options.messages, 0)
   if (!all.length) {
     yield { type: 'finish', reason: { kind: 'stop' } }
     return
   }
-  const plan = planClaudePrompt(all, acpClient ? acpClient.sessionId : null)
-  if (plan.reset) disposeAcpClient()
+  const plan = side
+    ? { send: sidePrompt(all, options), reset: false }
+    : planClaudePrompt(all, acpClient ? acpClient.sessionId : null)
+  if (!side && plan.reset) disposeAcpClient()
   if (!plan.send.length) {
     yield { type: 'finish', reason: { kind: 'stop' } }
     return
@@ -3442,12 +3482,17 @@ export async function* streamClaudeCode(options) {
       plan.send,
       (chunk, kind) => queue.push({ text: chunk, kind: kind === 'thought' ? 'thought' : 'text' }),
       options && options.signal,
-      picked,
+      // 旁路请求不切模型：切走再切回会让聊天那侧的缓存整段失效
+      side ? '' : picked,
+      side ? 'side' : 'default',
+      // 旁路每轮换一条干净会话，别让上一轮的标题提问留在上下文里
+      side,
     )
     .then((result) => {
       settled = true
-      // 这一轮真正送达了：记下来，下一轮只发增量
-      if (result && result.sessionId) {
+      // 这一轮真正送达了：记下来，下一轮只发增量。旁路请求不记账，
+      // 否则会把聊天侧的 acpSentTexts 冲掉。
+      if (!side && result && result.sessionId) {
         acpSentTexts = all.map((m) => m.text)
         acpSentSession = result.sessionId
       }

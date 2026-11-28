@@ -159,8 +159,12 @@ export function createAcpClient(options = {}) {
   const useShell = command !== 'claude-agent-acp' && process.platform === 'win32'
   let child = null
   let rpc = null
-  let ready = null
-  let sessionId = null
+  // 一个 CLI 进程里可以有多个会话。默认会话跑聊天，旁路会话（生成标题这类
+  // 小 maxTokens 请求）单独一条——挤在同一条里会互相污染上下文，也会把
+  // 聊天侧的增量记账冲掉（实测两个请求合并成一个回合，标题的提问进了聊天历史）。
+  let handshaked = false
+  const sessions = new Map() // key -> sessionId
+  const pending = new Map() // key -> Promise<sessionId>
 
   function ensureChild() {
     if (child && rpc && !rpc.closed) return { child, rpc }
@@ -195,38 +199,48 @@ export function createAcpClient(options = {}) {
       // 让 CLI 按「被拒」处理并继续，而不是继续等。
       return { outcome: { outcome: 'cancelled' } }
     })
-    sessionId = null
-    ready = null
+    sessions.clear()
+    pending.clear()
+    handshaked = false
     return { child, rpc }
   }
 
-  async function ensureReady() {
-    if (sessionId && rpc && !rpc.closed) return sessionId
-    if (ready) return ready
+  // 取（或建）一个会话。key 决定用哪一条：'default' 是聊天，其它是旁路。
+  // forceNew 用于旁路请求：每轮换一条干净的会话，避免标题的旧提问越积越多。
+  async function ensureSession(key = 'default', forceNew = false) {
+    if (forceNew) sessions.delete(key)
+    const existing = sessions.get(key)
+    if (existing && rpc && !rpc.closed) return existing
+    const inflight = pending.get(key)
+    if (inflight) return inflight
     const { rpc: client } = ensureChild()
-    ready = (async () => {
-      // 声明能收 session 通知：CLI 有「通知」通道时会把警告走 sessionUpdate:
-      // 'notice'，没有时只能把 `> **Warning:** …` 塞进 agent_message_chunk。
-      // 原来 clientCapabilities 是空对象，于是那段警告混在正文里，用户看到的
-      // 回答开头就顶着一块 Claude Code 的公告（实测 23:07 那一轮）。
-      await client.request(
-        'initialize',
-        {
-          protocolVersion: 1,
-          clientCapabilities: { session: { notices: {} } },
-        },
-        60000,
-      )
+    const job = (async () => {
+      if (!handshaked) {
+        // 声明能收 session 通知：CLI 有「通知」通道时会把警告走 sessionUpdate:
+        // 'notice'，没有时只能把 `> **Warning:** …` 塞进 agent_message_chunk。
+        // 原来 clientCapabilities 是空对象，于是那段警告混在正文里，用户看到的
+        // 回答开头就顶着一块 Claude Code 的公告（实测 23:07 那一轮）。
+        await client.request(
+          'initialize',
+          {
+            protocolVersion: 1,
+            clientCapabilities: { session: { notices: {} } },
+          },
+          60000,
+        )
+        handshaked = true
+      }
       const result = await client.request('session/new', { cwd: options.cwd || process.cwd(), mcpServers: [] }, 120000)
-      sessionId = result && result.sessionId
-      if (!sessionId) throw new Error('ACP 会话创建失败')
-      return sessionId
+      const sid = result && result.sessionId
+      if (!sid) throw new Error('ACP 会话创建失败')
+      sessions.set(key, sid)
+      return sid
     })()
+    pending.set(key, job)
     try {
-      return await ready
-    } catch (error) {
-      ready = null
-      throw error
+      return await job
+    } finally {
+      pending.delete(key)
     }
   }
 
@@ -234,7 +248,7 @@ export function createAcpClient(options = {}) {
     // 当前会话 id：调用方靠它判断「这一轮还是不是同一个会话」。
     // 进程重启 / 会话重建时它会变（或变回 null），调用方就该重放整段历史。
     get sessionId() {
-      return sessionId
+      return sessions.get('default') || null
     },
     // 跑一轮：text 是这一段要发给 CLI 的文字；onChunk 收增量正文。
     // text 可以是字符串（只有这一轮），也可以是 {role, text} 数组（带历史）。
@@ -248,8 +262,8 @@ export function createAcpClient(options = {}) {
     // 只认前者的话思考就整段丢掉，界面上看不到任何推理过程。
     // model 非空时先尝试 session/set_config_option 把会话切到那个模型，
     // 切不了（不是 ACP 的选项）就沿用 CLI 当前的，不中断这一轮。
-    async prompt(text, onChunk, signal, model) {
-      const sid = await ensureReady()
+    async prompt(text, onChunk, signal, model, sessionKey = 'default', forceNewSession = false) {
+      const sid = await ensureSession(sessionKey, forceNewSession)
       const { rpc: client } = ensureChild()
       if (model) {
         try {
@@ -317,6 +331,16 @@ export function createAcpClient(options = {}) {
         if (signal) signal.removeEventListener('abort', onAbort)
       }
     },
+    // 提前建好进程和默认会话。失败不要紧：真正请求时会再建一次，
+    // 这里只是把冷启动（进程 + initialize + session/new，实测 3-4 秒）
+    // 挪到插件加载阶段，用户发第一句话时就不用等。
+    async warmup(sessionKey = 'default') {
+      try {
+        await ensureSession(sessionKey)
+      } catch {
+        /* 等真正请求时再报错 */
+      }
+    },
     dispose() {
       try {
         if (child && !child.killed) child.kill()
@@ -325,8 +349,9 @@ export function createAcpClient(options = {}) {
       }
       child = null
       rpc = null
-      ready = null
-      sessionId = null
+      sessions.clear()
+      pending.clear()
+      handshaked = false
     },
   }
 }

@@ -384,7 +384,13 @@ export function apply(ctx) {
       await releaseRouteProvider()
       return
     }
-    if (state.claudeHandle) return
+    // 已经注册过也要再确认一次接管：注册成功但摘 provider 失败时（比如
+    // 那次 magpie 正好在写配置），没有这条就再也不会重试，菜单里会一直
+    // 有两份一样的模型。
+    if (state.claudeHandle) {
+      await takeOverRouteProvider()
+      return
+    }
     try {
       const version = await readClaudeVersion()
       state.claudeHandle = llm.registerAdapter([CLAUDE_PROVIDER], createClaudeCodeAdapter(version))
@@ -401,16 +407,15 @@ export function apply(ctx) {
   }
 
   // 两条链路是二选一：
-    // 两条链路是二选一：
-    //   装了插件：网关 → 模型 → 插件 → 聊天框
-    //   没装插件：网关 → 模型 → 聊天框
-    //
-    // 两个 provider 同时挂在 DSH 上时，模型菜单里会出现两份一样的模型，
-    // 用户不知道点哪个。所以插件接管时把网关自己的 provider 从
-    // cordis.patch.yml 里摘掉，让出时再放回来。
-    //
-    // 摘掉的那条原样存到 update-center，恢复时写回——不是重新生成，
-    // 用户在 magpie 那边调过的字段不会丢。
+  //   装了插件：网关 → 模型 → 插件 → 聊天框
+  //   没装插件：网关 → 模型 → 聊天框
+  //
+  // 两个 provider 同时挂在 DSH 上时，模型菜单里会出现两份一样的模型，
+  // 用户不知道点哪个。所以插件接管时把网关自己的 provider 从
+  // cordis.patch.yml 里摘掉，让出时再放回来。
+  //
+  // 摘掉的那条原样存到 update-center，恢复时写回——不是重新生成，
+  // 用户在 magpie 那边调过的字段不会丢。
     const HIDDEN_PROVIDERS_FILE = path.join(
       homedir(),
       '.dsh',
@@ -470,8 +475,13 @@ export function apply(ctx) {
       }
     }
 
-    // hide：把 llm-pi-ai 里的 provider 全摘掉，摘下来的存进备份；
-    // 顺带让 magpie 认为 DSH 没接入
+    // hide：只摘「网关自己写进来的」provider，摘下来的存进备份；
+    // 顺带让 magpie 认为 DSH 没接入。
+    //
+    // 不能无差别全摘：用户可能自己也在 llm-pi-ai 下加过 provider（实测就有一个
+    // 手写的 `aq`），那是人家的配置，插件没资格动。
+    // 判断依据是备份里的记录 + magpie 的 applied.json —— 凡是插件上一次亲手摘过
+    // 的、或者 magpie 当前认作自己那条的，才算网关的。
     async function hideGatewayProviders() {
       const file = await findProfileConfig()
       if (!file) return false
@@ -487,29 +497,53 @@ export function apply(ctx) {
       const names = Object.keys(providers)
       if (!names.length) return false
 
-      // 已经摘过就不重复摘，免得把上一次的备份覆盖成空
+      // 备份里已经有东西就沿用，别再覆盖一遍——但也**不能因此跳过摘除**。
+      // magpie 会在它自己启动/刷新时把 provider 写回来，配置文件里就又有了；
+      // 光看备份非空就 return，配置里的 provider 会一直留着，模型菜单出现两份。
       const existing = await readHiddenProviders()
-      if (Object.keys(existing).length) return true
+      const stash = Object.keys(existing).length ? existing : {}
 
-      const stash = {}
-      for (const name of names) stash[name] = providers[name]
+      // 认领规则：备份里有名字的算网关的；备份是空的（第一次接管）就把当前
+      // 配置里除 `aq` 这类手工条目以外的都当成 magpie 写的。
+      // magpie 写进来的那条 provider 名固定是 `magpie-anthropic`，其余按前缀认。
+      const isGatewayOwned = (name) => {
+        if (name === '__applied') return false
+        if (stash[name]) return true
+        return name === 'magpie-anthropic' || name.startsWith('magpie')
+      }
+      const mine = names.filter(isGatewayOwned)
+      const keep = names.filter((name) => !isGatewayOwned(name))
+      if (!mine.length) return false
+
+      for (const name of mine) {
+        // 只补备份里没有的，避免把原始值覆盖成「magpie 重写后的那份」
+        if (!stash[name]) stash[name] = providers[name]
+      }
       await writeHiddenProviders(stash)
 
-      entry.config.providers = {}
+      // 只删自己认领的那些，其余（用户手写的 provider）原样留着
+      const next = {}
+      for (const name of keep) next[name] = providers[name]
+      entry.config.providers = next
       await writeFile(file, yaml.dump(list, { lineWidth: -1 }), 'utf8')
 
       // 让 magpie 那边也认为没接入，否则界面会提示「重新接入」
-      const savedApplied = await stashMagpieDshApplied()
-      if (savedApplied) {
-        // 和 provider 备份放一起，让出时一起还原
-        const merged = Object.assign({}, stash)
-        merged.__applied = savedApplied
-        await writeHiddenProviders(merged)
+      if (!stash.__applied) {
+        const savedApplied = await stashMagpieDshApplied()
+        if (savedApplied) {
+          stash.__applied = savedApplied
+          await writeHiddenProviders(stash)
+        }
+      } else {
+        // 备份里有原始记录，配置里那份也清掉，免得 magpie 以为还连着
+        await stashMagpieDshApplied()
       }
       return true
     }
 
-    // show：把之前摘下来的 provider 原样放回去
+    // show：把之前摘下来的 provider 原样放回去。
+    // 只还原备份里认领过的那些；配置里已有的（用户手写的 provider、或 magpie
+    // 自己又写回来的）一律不动。
     async function showGatewayProviders() {
       const stash = await readHiddenProviders()
       const allNames = Object.keys(stash)

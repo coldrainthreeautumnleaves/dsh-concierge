@@ -7,6 +7,28 @@
 ## [Unreleased]
 
 
+## [0.27.5] - 2026-11-28
+
+> 接管只摘 magpie 自己写的 provider，用户手写的不动
+
+### Fixed
+
+- 路由: 接管时会把 `llm-pi-ai` 下的 provider **全部**摘掉，包括用户自己手写的（实测有一个手写的 `aq`）。现在按认领规则来：备份里记过名字的、或者名字是 `magpie` / `magpie-anthropic` 的才算网关的，其余原样留着
+- 路由: `if (state.claudeHandle) return` 会跳过接管。注册成功但摘 provider 失败时（比如那次 magpie 正好在写配置），之后再也不重试，菜单里就一直有两份一样的模型。现在已注册的情况下也会再确认一次接管
+- 路由: 备份文件非空时 `hideGatewayProviders` 直接 return true，于是 magpie 把 provider 写回来之后不会再摘。现在备份非空也照样摘，只是不覆盖备份里的原始值
+
+### 认领规则
+
+    stash[name] 存在           → 网关的，摘
+    name 以 magpie 开头        → 网关的，摘
+    其余（如手写的 aq）        → 用户的，不碰
+
+实测：
+
+    配置里: aq, magpie-anthropic
+    认领（要摘）: magpie-anthropic
+    保留: aq
+    结果: 只剩 aq
 ## [0.27.4] - 2026-11-28
 
 > 模型目录存盘，冷启动不再等 3 秒；prompt 缓存延到 1 小时

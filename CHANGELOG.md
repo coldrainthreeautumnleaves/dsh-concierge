@@ -7,6 +7,19 @@
 ## [Unreleased]
 
 
+## [0.26.7] - 2026-11-28
+
+> 插件不再失忆：完整对话历史都交给 CLI
+
+### Fixed
+
+- Claude Code（ACP）: 用插件时模型看不到前面的对话，每次提问都像第一次见面。原因是 `turnPromptText` 只取「最后一条 assistant 之后」的那几条——DSH 每轮重新整理消息，插件只把本轮提问递进去，历史全丢了。现在新增 `turnPromptMessages`，把完整对话整理成 `[{role, text}]` 交给 ACP 的 `session/prompt`（它本来就支持多段 prompt）
+- Claude Code（ACP）: 注入的上下文（运行时提醒、时间戳、记忆预取）和用户真正说的话分不清，模型容易把上下文当成用户说的。现在给非 `source.kind === 'user'` 的消息加 `[上下文]` 前缀
+- Claude Code（ACP）: 长会话会把整个历史塞进 prompt，可能超上下文。现在超过 40 条就截断——保留最早一条 + 最近 39 条，中间标「（中间省略了一段较早的对话）」
+
+### Changed
+
+- Claude Code（ACP）: `acp.js` 的 `prompt()` 现在接受字符串或 `[{role, text}]` 数组，字符串自动包成一条，旧调用方式不受影响
 ## [0.26.6] - 2026-11-28
 
 > 去掉自研路由台的痕迹，网关只剩 magpie 和 CCR

@@ -232,6 +232,12 @@ export function createAcpClient(options = {}) {
 
   return {
     // 跑一轮：text 是这一段要发给 CLI 的文字；onChunk 收增量正文。
+    // text 可以是字符串（只有这一轮），也可以是 {role, text} 数组（带历史）。
+    //
+    // 为什么数组：CLI 自己是有会话记忆的，但那是它自己的会话。DSH 这边每轮
+    // 重新整理消息，插件只把「本轮提问」递进去的话，模型就看不到前面的对话——
+    // 用户会感觉它失忆。把历史拼进 prompt 数组，CLI 就当成多轮对话处理。
+    //
     // onChunk(chunk, kind) 的 kind 是 'text' 或 'thought'——ACP 把「正文」和
     // 「思考」分成两种 session/update（agent_message_chunk / agent_thought_chunk），
     // 只认前者的话思考就整段丢掉，界面上看不到任何推理过程。
@@ -251,6 +257,16 @@ export function createAcpClient(options = {}) {
           /* 沿用当前模型 */
         }
       }
+      // 组装 prompt：字符串包成一条，数组原样用（每项 {role, text}）
+      const promptBlocks = Array.isArray(text)
+        ? text
+            .filter((m) => m && typeof m.text === 'string' && m.text.trim())
+            .map((m) => ({
+              type: 'text',
+              text: m.text,
+            }))
+        : [{ type: 'text', text: String(text == null ? '' : text) }]
+      if (!promptBlocks.length) promptBlocks.push({ type: 'text', text: '' })
       let cancelled = false
       const off = client.onMessage((message) => {
         if (message.method !== 'session/update') return
@@ -288,7 +304,7 @@ export function createAcpClient(options = {}) {
       try {
         const result = await client.request('session/prompt', {
           sessionId: sid,
-          prompt: [{ type: 'text', text }],
+          prompt: promptBlocks,
         }, options.promptTimeoutMs || 1800000)
         return { stopReason: result && result.stopReason, usage: result && result.usage, cancelled }
       } finally {

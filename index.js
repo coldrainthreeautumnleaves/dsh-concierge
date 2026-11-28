@@ -365,33 +365,106 @@ export function apply(ctx) {
   }
 
   // 两条链路是二选一：
-  //   装了插件：网关 → 模型 → 插件 → 聊天框
-  //   没装插件：网关 → 模型 → 聊天框
-  //
-  // 插件注册成功后调 /api/takeover 让网关把自己从 DSH 摘掉，
-  // 卸载/禁用时再调一次放回来。网关不在就静默跳过。
-  async function takeoverRoute(action) {
-    try {
-      const gateway = await pickGatewayBase()
-      const controller = new AbortController()
-      const timer = setTimeout(() => controller.abort(), 3000)
-      const res = await fetch(gateway + '/api/takeover', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ action }),
-        signal: controller.signal,
-      })
-      clearTimeout(timer)
-      if (!res.ok) return false
-      const body = await res.json()
-      return Boolean(body && body.ok)
-    } catch {
-      return false // 网关没开，或不是网关
-    }
-  }
-  const takeOverRouteProvider = () => takeoverRoute('hide')
-  const releaseRouteProvider = () => takeoverRoute('show')
+    // 两条链路是二选一：
+    //   装了插件：网关 → 模型 → 插件 → 聊天框
+    //   没装插件：网关 → 模型 → 聊天框
+    //
+    // 两个 provider 同时挂在 DSH 上时，模型菜单里会出现两份一样的模型，
+    // 用户不知道点哪个。所以插件接管时把网关自己的 provider 从
+    // cordis.patch.yml 里摘掉，让出时再放回来。
+    //
+    // 摘掉的那条原样存到 update-center，恢复时写回——不是重新生成，
+    // 用户在 magpie 那边调过的字段不会丢。
+    const HIDDEN_PROVIDERS_FILE = path.join(
+      homedir(),
+      '.dsh',
+      'update-center',
+      'dsh-concierge-hidden-providers.json',
+    )
 
+    async function readHiddenProviders() {
+      try {
+        const text = await readFile(HIDDEN_PROVIDERS_FILE, 'utf8')
+        const json = JSON.parse(text)
+        return json && typeof json === 'object' ? json : {}
+      } catch {
+        return {}
+      }
+    }
+
+    async function writeHiddenProviders(map) {
+      await mkdir(path.dirname(HIDDEN_PROVIDERS_FILE), { recursive: true })
+      await writeFile(HIDDEN_PROVIDERS_FILE, JSON.stringify(map, null, 2), 'utf8')
+    }
+
+    // hide：把 llm-pi-ai 里的 provider 全摘掉，摘下来的存进备份
+    async function hideGatewayProviders() {
+      const file = await findProfileConfig()
+      if (!file) return false
+      const yaml = loadYamlFromProfile()
+      if (!yaml) return false
+      const text = await readFile(file, 'utf8')
+      const doc = yaml.load(text)
+      const list = Array.isArray(doc) ? doc : (doc && doc.entries) || []
+      const entry = list.find((item) => item && item.id === 'llm-pi-ai')
+      const providers = entry && entry.config && entry.config.providers
+      if (!providers || typeof providers !== 'object') return false
+
+      const names = Object.keys(providers)
+      if (!names.length) return false
+
+      // 已经摘过就不重复摘，免得把上一次的备份覆盖成空
+      const existing = await readHiddenProviders()
+      if (Object.keys(existing).length) return true
+
+      const stash = {}
+      for (const name of names) stash[name] = providers[name]
+      await writeHiddenProviders(stash)
+
+      entry.config.providers = {}
+      await writeFile(file, yaml.dump(list, { lineWidth: -1 }), 'utf8')
+      return true
+    }
+
+    // show：把之前摘下来的 provider 原样放回去
+    async function showGatewayProviders() {
+      const stash = await readHiddenProviders()
+      const names = Object.keys(stash)
+      if (!names.length) return false
+
+      const file = await findProfileConfig()
+      if (!file) return false
+      const yaml = loadYamlFromProfile()
+      if (!yaml) return false
+      const text = await readFile(file, 'utf8')
+      const doc = yaml.load(text)
+      const list = Array.isArray(doc) ? doc : (doc && doc.entries) || []
+      const entry = list.find((item) => item && item.id === 'llm-pi-ai')
+      if (!entry) return false
+      if (!entry.config || typeof entry.config !== 'object') entry.config = {}
+      if (!entry.config.providers || typeof entry.config.providers !== 'object') {
+        entry.config.providers = {}
+      }
+
+      for (const name of names) {
+        // 已经有了就别覆盖——用户可能自己又加回来了
+        if (!entry.config.providers[name]) entry.config.providers[name] = stash[name]
+      }
+      await writeFile(file, yaml.dump(list, { lineWidth: -1 }), 'utf8')
+      await writeHiddenProviders({})
+      return true
+    }
+
+    const takeOverRouteProvider = () =>
+      hideGatewayProviders().catch((error) => {
+        console.warn('[dsh-concierge] hide gateway providers failed:', messageOf(error))
+        return false
+      })
+    const releaseRouteProvider = () =>
+      showGatewayProviders().catch((error) => {
+        console.warn('[dsh-concierge] show gateway providers failed:', messageOf(error))
+        return false
+      })
   // 按开关状态决定是否注册；插件卸载时撤销
   ctx.effect(() => {
     // 启动时先探一次网关，后面同步取用
@@ -3099,10 +3172,48 @@ function messageText(message) {
 // CLI 只收到规则、没有问题时，回答就是「你好，我能帮你做什么」这类空话，
 // 甚至蹦出一句用户口吻的句子。界面上看着像模型坏了。
 //
-// 现在的取法：从最后一条 assistant 消息之后开始，就是本轮的输入。
-// 其中 source.kind === 'user' 的才是提问，其余都是注入的上下文。
-// 拼的时候把上下文放前面、提问放最后——提问落在末尾，模型才不会把它当成
-// 又一段背景材料。
+// 把 DSH 的消息数组整理成给 CLI 的多轮对话。
+//
+// 以前只取「最后一条 assistant 之后」的那几条，等于每轮从零开始——
+// 模型看不到前面聊过什么，用户会觉得它失忆。
+//
+// 现在改成：把完整对话按顺序整理成 [{role, text}]。
+//   - assistant 的回复保留（去掉空的和纯工具调用的）
+//   - user 的消息保留，但注入的上下文（source.kind !== 'user'）标一下，
+//     免得模型把「运行时提醒」「记忆预取」当成用户说的话
+//   - 太长的历史截断：保留开头一条 + 最近若干条，中间用省略标记
+//     （不截断会把整个会话塞进 prompt，长会话直接超上下文）
+const PROMPT_HISTORY_MAX = 40
+const PROMPT_HISTORY_MAX_CHARS = 120000
+
+function turnPromptMessages(messages) {
+  const list = Array.isArray(messages) ? messages : []
+  const out = []
+  for (const message of list) {
+    if (!message) continue
+    const role = message.role
+    if (role !== 'user' && role !== 'assistant') continue
+    const text = messageText(message).trim()
+    if (!text) continue
+    if (role === 'user') {
+      const kind = message.source && typeof message.source.kind === 'string' ? message.source.kind : ''
+      // 注入的上下文加个前缀，和用户真正说的话区分开
+      out.push({ role, text: kind === 'user' || !kind ? text : `[上下文] ${text}` })
+    } else {
+      out.push({ role, text })
+    }
+  }
+
+  // 截断：留最早一条 + 最近 N 条，中间省略
+  if (out.length > PROMPT_HISTORY_MAX) {
+    const head = out.slice(0, 1)
+    const tail = out.slice(out.length - (PROMPT_HISTORY_MAX - 1))
+    return [...head, { role: 'user', text: '（中间省略了一段较早的对话）' }, ...tail]
+  }
+  return out
+}
+
+// 只要最后一条用户消息（旧行为，留着给需要「纯提问」的地方用）。
 function turnPromptText(messages) {
   const list = Array.isArray(messages) ? messages : []
   let start = 0
@@ -3174,13 +3285,15 @@ function withModelHint(message) {
 
 // 导出给测试用（scripts/test-turn-prompt.mjs）：喂一段和会话日志里形状相同的
 // 消息，检查挑出来的提问对不对。运行时不消费这个导出。
-export { turnPromptText, probeGatewayModels }
+export { turnPromptText, turnPromptMessages, probeGatewayModels }
 
 // 导出给冒烟测试用（scripts/smoke-stream.mjs）：直接喂一段对话，检查吐出来的
 // StreamChunk 里有没有 reasoning 块、正文块顺序对不对。运行时不消费这个导出。
 export async function* streamClaudeCode(options) {
-  const prompt = turnPromptText(options && options.messages)
-  if (!prompt) {
+  // 把完整对话交给 CLI，不只是本轮提问——只递最后一句的话模型看不到
+  // 前面聊过什么，用户会觉得它失忆。
+  const history = turnPromptMessages(options && options.messages)
+  if (!history.length) {
     yield { type: 'finish', reason: { kind: 'stop' } }
     return
   }
@@ -3194,7 +3307,7 @@ export async function* streamClaudeCode(options) {
   const picked = String((options && options.model) || '').replace(/\[[^\]]*\]$/, '')
   const running = client
     .prompt(
-      prompt,
+      history,
       (chunk, kind) => queue.push({ text: chunk, kind: kind === 'thought' ? 'thought' : 'text' }),
       options && options.signal,
       picked,

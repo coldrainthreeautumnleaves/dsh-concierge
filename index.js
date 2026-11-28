@@ -29,7 +29,6 @@ const ROUTE = '/dsh-concierge'
 
 // 本机可能存在的网关，按优先级排。
 //
-//   19999  路由台（自研）
 //   3425   magpie
 //   3456   Claude Code Router（CCR）默认端口
 //
@@ -41,7 +40,6 @@ const ROUTE = '/dsh-concierge'
 // 必须放在文件顶部：const 有暂时性死区，定义在用到它的函数后面，
 // 那些函数执行时会抛 ReferenceError。
 const LOCAL_GATEWAYS = [
-  { base: 'http://127.0.0.1:19999', id: 'route', name: '路由台' },
   { base: 'http://127.0.0.1:3425', id: 'magpie', name: 'Magpie' },
   { base: 'http://127.0.0.1:3456', id: 'ccr', name: 'Claude Code Router' },
 ]
@@ -349,7 +347,7 @@ export function apply(ctx) {
     if (!enabled) {
       if (typeof state.claudeHandle === 'function') state.claudeHandle()
       state.claudeHandle = null
-      // 插件不再接管，把路由台放回 DSH
+      // 插件不再接管，把网关 provider 放回 DSH
       await releaseRouteProvider()
       return
     }
@@ -357,7 +355,7 @@ export function apply(ctx) {
     try {
       const version = await readClaudeVersion()
       state.claudeHandle = llm.registerAdapter([CLAUDE_PROVIDER], createClaudeCodeAdapter(version))
-      // 插件接管了，把路由台从 DSH 配置里摘掉——不然模型菜单里
+      // 插件接管了，把网关 provider 从 DSH 配置里摘掉——不然模型菜单里
       // 会有两份一模一样的模型，用户不知道点哪个
       await takeOverRouteProvider()
     } catch (error) {
@@ -367,11 +365,11 @@ export function apply(ctx) {
   }
 
   // 两条链路是二选一：
-  //   装了插件：路由台 → 模型 → 插件 → 聊天框
-  //   没装插件：路由台 → 模型 → 聊天框
+  //   装了插件：网关 → 模型 → 插件 → 聊天框
+  //   没装插件：网关 → 模型 → 聊天框
   //
-  // 插件注册成功后调 /api/takeover 让路由台把自己从 DSH 摘掉，
-  // 卸载/禁用时再调一次放回来。路由台不在就静默跳过。
+  // 插件注册成功后调 /api/takeover 让网关把自己从 DSH 摘掉，
+  // 卸载/禁用时再调一次放回来。网关不在就静默跳过。
   async function takeoverRoute(action) {
     try {
       const gateway = await pickGatewayBase()
@@ -388,7 +386,7 @@ export function apply(ctx) {
       const body = await res.json()
       return Boolean(body && body.ok)
     } catch {
-      return false // 路由台没开，或不是路由台
+      return false // 网关没开，或不是网关
     }
   }
   const takeOverRouteProvider = () => takeoverRoute('hide')
@@ -396,7 +394,7 @@ export function apply(ctx) {
 
   // 按开关状态决定是否注册；插件卸载时撤销
   ctx.effect(() => {
-    // 启动时先探一次网关（路由台优先），后面同步取用
+    // 启动时先探一次网关，后面同步取用
     pickGatewayBase().catch(() => {})
     readClaudeEnabled()
       .then((enabled) => applyClaudeProvider(enabled))
@@ -405,7 +403,7 @@ export function apply(ctx) {
       if (typeof state.claudeHandle === 'function') state.claudeHandle()
       state.claudeHandle = null
       disposeAcpClient()
-      // 插件被卸载/禁用：把路由台放回 DSH，让「没插件」那条链路恢复
+      // 插件被卸载/禁用：把网关 provider 放回 DSH，让「没插件」那条链路恢复
       void releaseRouteProvider()
     }
   }, 'dsh-concierge claude-code switch')
@@ -2252,32 +2250,26 @@ function runClaudeOnce(prompt, cwd, timeoutMs = 180000, signal = null, model = "
 async function readRoutingTools() {
   const tools = []
 
-  // 路由台：本机 19999（自己写的 Go 网关）
-  let routeUp = false
-  try {
+  // 本机网关：挨个探 LOCAL_GATEWAYS，端口只写在一处
+  for (const gw of LOCAL_GATEWAYS) {
+    let up = false
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), 800)
-    const res = await fetch('http://127.0.0.1:19999/v1/models', { signal: controller.signal })
-    clearTimeout(timer)
-    routeUp = res.ok
-  } catch {
-    routeUp = false
+    try {
+      const res = await fetch(gw.base + '/v1/models', { signal: controller.signal })
+      up = res.ok
+    } catch {
+      up = false
+    } finally {
+      clearTimeout(timer)
+    }
+    tools.push({
+      id: gw.id,
+      name: gw.name,
+      found: up,
+      detail: up ? gw.base.replace(/^https?:\/\//, '') : '',
+    })
   }
-  tools.push({ id: 'route', name: '路由台', found: routeUp, detail: routeUp ? '127.0.0.1:19999' : '' })
-
-  // Magpie：本机 3425 端口（OpenAI 兼容 + Anthropic 兼容都在这个端口）
-  let magpieUp = false
-  try {
-    const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), 800)
-    const res = await fetch('http://127.0.0.1:3425/v1/models', { signal: controller.signal })
-    clearTimeout(timer)
-    magpieUp = res.ok
-  } catch {
-    magpieUp = false
-  }
-  tools.push({ id: 'magpie', name: 'Magpie', found: magpieUp, detail: magpieUp ? '127.0.0.1:3425' : '' })
-
   const cc = await readCcSwitch()
   tools.push({
     id: 'cc-switch',
@@ -2559,11 +2551,7 @@ function runMagpieCli(args, timeoutMs = 60000) {
   })
 }
 
-// 探测 magpie 网关上哪些模型真的能用：对每个模型发一次最小请求，
-// 只保留返回 200 的。结果缓存 10 分钟，避免每轮都测。
-// 网关：优先用路由台（19999），没有就回落到 magpie（3425）。
-// 路由台自己也支持 /v1/models 和 /v1/messages，接口和 magpie 一致。
-const ROUTE_GATEWAY_BASE = 'http://127.0.0.1:19999'
+// 探测网关上哪些模型真的能用。结果缓存 10 分钟，避免每轮都测。
 const MAGPIE_GATEWAY_BASE = 'http://127.0.0.1:3425'
 
 let lastGatewayBase = ''
@@ -2615,16 +2603,16 @@ let modelProbeCache = { at: 0, models: null }
 
 // 网关上有哪些模型可以用。
 //
-// 这里是「路由台 → 模型 → 插件 → 聊天框」这条链路的中转层：
-// 路由台自己已经探测过每个模型的可用性（它有「全部探测」按钮，
+// 这里是「网关 → 模型 → 插件 → 聊天框」这条链路的中转层：
+// 网关自己可能已经探测过每个模型的可用性（有「全部探测」按钮，
 // 启动时也会拉清单），插件不该再探一遍。
 //
 // 原来这里对每个模型发一次 /v1/messages，16 个模型就是 16 个请求，
 // 每个超时 15 秒——菜单要等好几秒才出来，还白烧 token。
-// 现在直接问路由台的 /api/models，它返回的是探测结果（ok 字段），
+// 能问 /api/models 就问，它返回的是探测结果（ok 字段），
 // 秒回。
 //
-// 不是路由台（比如老的 magpie 3425）时没有这个端点，退回 /v1/models，
+// 没有这个端点（比如 magpie 3425）就退回 /v1/models，
 // 那个列表里的模型本来就是网关认为可用的，一样不用再探。
 async function probeGatewayModels() {
   const now = Date.now()
@@ -2635,7 +2623,7 @@ async function probeGatewayModels() {
   if (modelProbeCache.models && modelProbeCache.gateway === cacheKey && now - modelProbeCache.at < 10 * 60 * 1000) {
     return modelProbeCache.models
   }
-  // 先问路由台的探测结果：/api/models 带 ok 和 name
+  // 先问 /api/models：带 ok 和 name
   let entries = []
   try {
     const controller = new AbortController()
@@ -2686,7 +2674,7 @@ async function probeGatewayModels() {
       }
     }
   } catch {
-    /* 不是路由台，或它没开，退回下面的 /v1/models */
+    /* 不是这种网关，或它没开，退回下面的 /v1/models */
   }
 
   // 退路：/v1/models（magpie 只有这个）
@@ -2726,7 +2714,7 @@ async function probeGatewayModels() {
 // 本机有哪些网关在线。三个都探一遍，界面上能选着切。
 //
 // 为什么要有这个：settings.json 只能指向一个地址，换网关得手改配置文件。
-// 路由台、magpie、CCR 都是本机端口，切换就是改这一个字段。
+// magpie、CCR 都是本机端口，切换就是改这一个字段。
 async function listGateways() {
   const out = []
   for (const gw of LOCAL_GATEWAYS) {
@@ -2735,7 +2723,7 @@ async function listGateways() {
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), 900)
     try {
-      // 先问 /api/models（路由台自己的接口，带可用性），没有再退回 /v1/models
+      // 先问 /api/models（带可用性），没有再退回 /v1/models
       const res = await fetch(gw.base + '/api/models', { signal: controller.signal })
       if (res.ok) {
         const body = await res.json()
@@ -2810,12 +2798,12 @@ async function readClaudeRoute() {
     const json = JSON.parse(text)
     const env = json && json.env ? json.env : {}
     const baseUrl = typeof env.ANTHROPIC_BASE_URL === 'string' ? env.ANTHROPIC_BASE_URL : ''
-    // settings.json 指向本机端口时，探一下那个端口还活着没——路由台退出后
+    // settings.json 指向本机端口时，探一下那个端口还活着没——网关退出后
     // 这个指向会变成死地址，界面上却看不出问题。
-    // settings.json 指向本机端口时，探一下那个端口还活着没——路由台退出后
+    // settings.json 指向本机端口时，探一下那个端口还活着没——网关退出后
     // 这个指向会变成死地址，界面上却看不出问题。
     //
-    // 优先探 /api/models（路由台自己的接口，能顺带拿到可用模型数），
+    // 优先探 /api/models（能顺带拿到可用模型数），
     // 拿不到再退回 /v1/models（magpie 只有这个）。
     let alive = null
     let modelCount = null
@@ -3149,7 +3137,7 @@ function turnPromptText(messages) {
 }
 
 // 常驻一个 ACP 客户端：复用 CLI 进程和它自己的会话，省掉每轮冷启动。
-// 网关地址可能被用户改（换路由台 / 换 magpie），换了就把旧进程收掉重建，
+// 网关地址可能被用户改（换 magpie / 换 CCR），换了就把旧进程收掉重建，
 // 否则新地址不生效，还会拿旧网关的模型名去问新网关。
 let acpClient = null
 let acpClientBase = ''
@@ -3176,12 +3164,12 @@ function disposeAcpClient() {
 // CLI 报「模型不存在或没有权限」时补一句能动手的说明。
 //
 // 这个错误几乎只有一个来源：模型名和 ANTHROPIC_BASE_URL 不是同一套。
-// 比如地址已经指到路由台（19999），模型名还是 magpie 写的
-// codeflow/claude-haiku-5-5——路由台只认自己勾选的 id，回 404，
+// 比如地址已经指到另一个网关，模型名还是旧的
+// codeflow/claude-haiku-5-5——网关只认自己列表里的 id，回 404，
 // Claude Code 就把它翻译成「模型不存在或没有权限」。
 function withModelHint(message) {
   if (!/selected model|not exist|may not have access/i.test(message)) return message
-  return message + '（模型名和网关对不上：去路由台点一次「接入」重写 ~/.claude/settings.json，或把 ANTHROPIC_DEFAULT_*_MODEL 改成网关 /v1/models 里有的 id）'
+  return message + '（模型名和网关对不上：重写 ~/.claude/settings.json 里的模型名，或把 ANTHROPIC_DEFAULT_*_MODEL 改成网关 /v1/models 里有的 id）'
 }
 
 // 导出给测试用（scripts/test-turn-prompt.mjs）：喂一段和会话日志里形状相同的
@@ -3328,9 +3316,9 @@ function createClaudeCodeAdapter(version) {
     listModels: async () => {
       const usable = await probeGatewayModels()
       if (usable.length) {
-        // 来源写清楚：探的是哪个网关就写哪个，别一律写 magpie——
-        // 换成路由台之后菜单里还写 via magpie，排查时会被带偏。
-        const via = lastGatewayBase.includes(ROUTE_GATEWAY_BASE) ? 'via 路由台' : 'via magpie'
+        // 来源写清楚：探的是哪个网关就写哪个，排查时不会被带偏。
+        const gw = LOCAL_GATEWAYS.find((g) => lastGatewayBase.startsWith(g.base))
+        const via = gw ? 'via ' + gw.name : ''
         return usable.map((entry) => ({
           ...base,
           id: entry.id,

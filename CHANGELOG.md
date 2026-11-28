@@ -7,6 +7,19 @@
 ## [Unreleased]
 
 
+## [0.26.6] - 2026-11-28
+
+> 去掉自研路由台的痕迹，网关只剩 magpie 和 CCR
+
+### Changed
+
+- 路由: `LOCAL_GATEWAYS` 只剩 magpie（3425）和 CCR（3456）。自研的「路由台」（19999）已经不用了，从候选表、探测、切换器里一并去掉
+- 路由: `readRoutingTools` 不再给每个网关手写一遍探测代码，改成遍历 `LOCAL_GATEWAYS`——加网关只改一处
+- 路由: 模型来源的描述（`via xxx`）按实际网关名写，不再写死「via 路由台 / via magpie」
+
+### Fixed
+
+- 路由: 探测网关时 `clearTimeout` 写在 fetch 后面，`fetch` 抛错就不清理。现在放 `finally`
 ## [0.26.5] - 2026-11-28
 
 > 认得出 CC Switch 装了什么，不再一律显示「未安装」

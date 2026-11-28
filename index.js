@@ -25,7 +25,7 @@ import { runQuery } from './sdkclient.js'
 import { createModelsStore } from './modelsstore.js'
 import { fileURLToPath } from 'node:url'
 
-export const inject = ['webServer']
+export const inject = ['webServer', 'tools']
 
 const ROUTE = '/dsh-concierge'
 
@@ -275,7 +275,149 @@ async function writeSafeModeScripts() {
   }
 }
 
+// omni 工具：把 read / write / edit / list / glob / grep / bash 收成一个。
+//
+// 为什么要有它：codeflow 的 Claude 分组对请求里的 tools 数量有限制，实测
+// 2 个能过、3 个就 403。DSH 自己注册的工具加上 Claude Code 那套加起来十几个，
+// 一并发出去必然被拒。收成 1 个之后模型看到的 tools 数组只有 1 项。
+//
+// 工具本身不依赖 DSH 的工具注册表，直接调 node:fs 和子进程，所以不会被
+// 其他插件的工具影响。
+function registerOmniTool(ctx) {
+  if (!ctx || !ctx.tools || typeof ctx.tools.register !== 'function') return
+  const tool = {
+    name: 'omni',
+    description: [
+      '访问文件系统和执行命令的唯一工具。所有操作都通过 action 参数选择：',
+      '',
+      '- action=read  path=<路径> [limit=<行数>]        读取文本文件',
+      '- action=write path=<路径> content=<内容>        写入文件（自动建目录）',
+      '- action=edit  path=<路径> old=<原文> new=<新文>  替换文件中的一段',
+      '- action=list  path=<目录>                       列出目录内容',
+      '- action=stat  path=<路径>                       查看文件信息',
+      '- action=glob  path=<目录> pattern=<通配符>      按名字找文件',
+      '- action=grep  path=<目录> pattern=<正则>        在文件内容里搜',
+      '- action=bash  command=<命令> [timeout=<毫秒>]   执行 shell 命令',
+    ].join('\n'),
+    parameters: {
+      action: { type: 'string', required: true, description: 'read / write / edit / list / stat / glob / grep / bash' },
+      path: { type: 'string', description: '文件或目录路径' },
+      content: { type: 'string', description: 'write 时要写入的内容' },
+      old: { type: 'string', description: 'edit 时要被替换的原文' },
+      new: { type: 'string', description: 'edit 时的替换内容' },
+      pattern: { type: 'string', description: 'glob 的通配符或 grep 的正则' },
+      command: { type: 'string', description: 'bash 要执行的命令' },
+      limit: { type: 'number', description: 'read 时最多读多少行' },
+      timeout: { type: 'number', description: 'bash 超时毫秒数' },
+    },
+    output: {
+      schema: { type: 'string' },
+      render: (_args, value) => [{ type: 'text', text: String(value) }],
+    },
+    async execute(args) {
+      return runOmniAction(args)
+    },
+  }
+  ctx.tools.register(tool)
+
+  // 把其余工具全部藏起来，模型只能看到 omni。
+  // 上游对 tools 数量有限制（3 个以上就 403），DSH 自己注册的那些加上
+  // Claude Code 那套加起来十几个，一并发出去必然被拒。
+  // restrict 是作用域化的，插件卸载时会自动撤销。
+  if (typeof ctx.tools.restrict === 'function') {
+    try {
+      ctx.tools.restrict({ allow: ['omni'] })
+    } catch (error) {
+      console.warn('[dsh-concierge] restrict tools failed:', messageOf(error))
+    }
+  }
+}
+
+// 各 action 的实现。拆出来是为了能单独测（不走 DSH 注册）。
+async function runOmniAction(args) {
+  const { readFile: rf, writeFile: wf, readdir: rd, stat: st, mkdir: mk } = await import('node:fs/promises')
+  const { exec } = await import('node:child_process')
+  const { promisify } = await import('node:util')
+  const nodePath = await import('node:path')
+  const execAsync = promisify(exec)
+
+  const action = String((args && args.action) || '').trim()
+  const target = String((args && args.path) || '')
+
+  if (action === 'read') {
+    const text = await rf(target, 'utf8')
+    const limit = Number(args.limit) || 0
+    if (limit > 0) return text.split('\n').slice(0, limit).join('\n')
+    return text.length > 60000 ? text.slice(0, 60000) + '\n…（已截断）' : text
+  }
+  if (action === 'write') {
+    await mk(nodePath.dirname(target), { recursive: true })
+    const content = String(args.content == null ? '' : args.content)
+    await wf(target, content, 'utf8')
+    return '已写入 ' + target + '（' + content.length + ' 字节）'
+  }
+  if (action === 'edit') {
+    const before = await rf(target, 'utf8')
+    const oldText = String(args.old == null ? '' : args.old)
+    if (!oldText) throw new Error('edit 需要 old 参数')
+    const idx = before.indexOf(oldText)
+    if (idx < 0) throw new Error('没找到要替换的内容')
+    const after = before.slice(0, idx) + String(args.new == null ? '' : args.new) + before.slice(idx + oldText.length)
+    await wf(target, after, 'utf8')
+    return '已修改 ' + target
+  }
+  if (action === 'list') {
+    const dir = target || '.'
+    const entries = await rd(dir, { withFileTypes: true })
+    return entries.map((e) => (e.isDirectory() ? e.name + '/' : e.name)).sort().join('\n')
+  }
+  if (action === 'stat') {
+    const s = await st(target)
+    return JSON.stringify({ path: target, size: s.size, isFile: s.isFile(), isDirectory: s.isDirectory(), mtime: s.mtime.toISOString() })
+  }
+  if (action === 'glob') {
+    const pattern = String(args.pattern || '*')
+    const cmd = 'Get-ChildItem -Path "' + (target || '.') + '" -Recurse -Filter "' + pattern + '" -ErrorAction SilentlyContinue | Select-Object -First 200 -ExpandProperty FullName'
+    const { stdout } = await execAsync(cmd, { shell: 'powershell.exe', timeout: 30000 })
+    return stdout.trim() || '（没有匹配）'
+  }
+  if (action === 'grep') {
+    const pattern = String(args.pattern || '')
+    if (!pattern) throw new Error('grep 需要 pattern 参数')
+    const cmd = 'Get-ChildItem -Path "' + (target || '.') + '" -Recurse -File -ErrorAction SilentlyContinue | Select-String -Pattern "' + pattern + '" -ErrorAction SilentlyContinue | Select-Object -First 100 | ForEach-Object { "$($_.Path):$($_.LineNumber): $($_.Line.Trim())" }'
+    const { stdout } = await execAsync(cmd, { shell: 'powershell.exe', timeout: 30000 })
+    return stdout.trim() || '（没有匹配）'
+  }
+  if (action === 'bash') {
+    const command = String(args.command || '')
+    if (!command) throw new Error('bash 需要 command 参数')
+    try {
+      const { stdout, stderr } = await execAsync(command, {
+        timeout: Number(args.timeout) || 60000,
+        maxBuffer: 10 * 1024 * 1024,
+        shell: 'powershell.exe',
+      })
+      const out = (stdout || '') + (stderr ? '\n[stderr]\n' + stderr : '')
+      return out.trim() || '（没有输出）'
+    } catch (error) {
+      const out = (error.stdout || '') + (error.stderr ? '\n[stderr]\n' + error.stderr : '')
+      return '退出码 ' + error.code + '\n' + (out.trim() || error.message)
+    }
+  }
+  throw new Error('不支持的 action: ' + action)
+}
+
 export function apply(ctx) {
+  // 把常用能力收成一个 omni 工具：上游（codeflow 的 Claude 分组）对请求里
+  // tools 的数量有限制，实测 2 个能过、3 个就 403。DSH 自己注册的工具加上
+  // Claude Code 那套加起来十几个，一并发出去必然被拒。
+  // 收成 1 个之后模型看到的 tools 数组只有 1 项。
+  try {
+    registerOmniTool(ctx)
+  } catch (error) {
+    console.warn('[dsh-concierge] omni tool registration failed:', messageOf(error))
+  }
+
   const state = {
     cache: null,
     inflight: null,

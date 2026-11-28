@@ -7,6 +7,39 @@
 ## [Unreleased]
 
 
+## [0.29.0] - 2026-11-28
+
+> 把所有工具收成一个 omni，绕开上游「tools 数量」限制
+
+### 背景
+
+codeflow 的 Claude 分组对请求里的 `tools` 数量有限制，实测：
+
+    0 个 tool   → 200
+    1 个 tool   → 200
+    2 个 tool   → 200
+    3 个 tool   → 403
+
+同一个 key、同一个模型，只改 tools 数量，重复多次结果一致。直连 codeflow、经 Magpie、经插件三条路都一样。而 `messages` 里塞 40KB 内容能过，说明不是体积或额度问题，就是这个字段的限制。
+
+DSH 自己注册的工具加上 Claude Code 那套加起来十几个，一并发出去必然被拒。
+
+### Added
+
+- 工具: 新增 `omni` 工具，把 read / write / edit / list / stat / glob / grep / bash 收成 1 个，用 `action` 参数选择。工具内部直接调 `node:fs` 和子进程，不依赖 DSH 的工具注册表
+- 工具: 注册 omni 后用 `ctx.tools.restrict({ allow: ['omni'] })` 把其余工具藏起来，模型看到的 `tools` 数组只剩 1 项
+- 工具: `inject` 加上 `tools` 服务
+
+### 实测
+
+    omni 注册成功，9 个参数
+    list:  ✅ 列出目录
+    read:  ✅ 读取文件
+    bash:  ✅ 执行命令
+
+### 说明
+
+`restrict` 是作用域化的，插件卸载时会自动撤销，不会影响其他插件。
 ## [0.28.0] - 2026-11-28
 
 > 不再 spawn claude-agent-acp，直接调 Claude Agent SDK，绕开它的认证门

@@ -2738,6 +2738,20 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
       updateAll: '全部更新',
       plugins: '插件',
       upToDate: '最新',
+      statusError: '加载失败',
+      statusDisabled: '已禁用',
+      statusIgnored: '已忽略',
+      statusUpdate: '可更新',
+      statusLocal: '本地',
+      statusLatest: '已是最新',
+      changelogHide: '收起更新内容',
+      openHomepage: '打开主页',
+      moreActions: '更多操作',
+      enableToggleLabel: '{name} 启用开关',
+      uninstallTitle: '卸载 {name}？',
+      uninstallBody: '该插件的本地配置与缓存会被删除，之后可以从 npm 重新安装。',
+      uninstallConfirm: '卸载',
+      loading: '正在加载',
       update: '更新',
       updating: '更新中',
       updated: '{name} 已更新到 {version}',
@@ -2798,6 +2812,7 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
       boostWaiting: '等待 UAC 确认…',
       boostTimeout: '没等到提权结果：UAC 可能被取消，或系统不允许弹窗。可以双击 E:\\全局\\fix_startup_speed.cmd 手动执行。',
       perfTitle: '聊天性能',
+      perfDiagTitle: '性能诊断',
       perfFps: '帧率',
       perfRows: '消息行',
       perfLongTasks: '长任务',
@@ -2938,6 +2953,14 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
       tabUpdate: '更新',
       pendingTitle: '待更新',
       updateSettings: '更新设置',
+      maintenanceTitle: '刷新与重启',
+      aboutVersionLabel: '当前版本',
+      dangerTitle: '重置',
+      dangerResetHint: '把外观、性能与打字机设置恢复成默认值。已安装的插件不会被卸载。',
+      dangerResetAction: '恢复全部默认设置',
+      resetTitle: '恢复全部默认设置？',
+      resetBody: '以下设置将恢复默认：外观（主题、皮肤、颜色、字号、透明度、颗粒）、性能（全部渲染开关与刷新率上限）、打字机。已安装的插件和 GitHub Token 不会被删除。此操作不可撤销。',
+      resetConfirm: '恢复默认',
       tabPlugins: '插件',
       tabLook: '外观',
       tabPerf: '性能',
@@ -3011,6 +3034,20 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
       updateAll: 'Update all',
       plugins: 'Plugins',
       upToDate: 'Current',
+      statusError: 'Failed to load',
+      statusDisabled: 'Disabled',
+      statusIgnored: 'Ignored',
+      statusUpdate: 'Update available',
+      statusLocal: 'Local',
+      statusLatest: 'Up to date',
+      changelogHide: 'Hide changelog',
+      openHomepage: 'Open homepage',
+      moreActions: 'More actions',
+      enableToggleLabel: 'Enable switch for {name}',
+      uninstallTitle: 'Uninstall {name}?',
+      uninstallBody: 'The plugin local configuration and cache will be deleted. You can reinstall it from npm afterwards.',
+      uninstallConfirm: 'Uninstall',
+      loading: 'Loading',
       update: 'Update',
       updating: 'Updating',
       updated: '{name} updated to {version}',
@@ -3071,6 +3108,7 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
       boostWaiting: 'Waiting for the UAC prompt…',
       boostTimeout: 'No result from the elevation prompt: UAC was probably cancelled. You can run fix_startup_speed.cmd by hand instead.',
       perfTitle: 'Chat performance',
+      perfDiagTitle: 'Performance diagnostics',
       perfFps: 'FPS',
       perfRows: 'Rows',
       perfLongTasks: 'Long tasks',
@@ -3211,6 +3249,14 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
       tabUpdate: 'Update',
       pendingTitle: 'Pending updates',
       updateSettings: 'Update settings',
+      maintenanceTitle: 'Reload and restart',
+      aboutVersionLabel: 'Current version',
+      dangerTitle: 'Reset',
+      dangerResetHint: 'Restore appearance, performance and typewriter settings to their defaults. Installed plugins are not removed.',
+      dangerResetAction: 'Restore all defaults',
+      resetTitle: 'Restore all defaults?',
+      resetBody: 'These settings will be reset: appearance (theme, skin, colours, font size, transparency, grain), performance (all rendering switches and the refresh cap) and the typewriter. Installed plugins and the GitHub token are not deleted. This cannot be undone.',
+      resetConfirm: 'Restore defaults',
       tabPlugins: 'Plugins',
       tabLook: 'Appearance',
       tabPerf: 'Performance',
@@ -3675,6 +3721,48 @@ html[data-dsh-glass-scheme="dark"] .uc-card::after {
 /* ---- 标签页切换：不做整页动画 ----
    切标签是这一页最高频的动作，加过渡等于每次都在等；下划线的颜色过渡已经够表达状态变化。 */
 
+/* ---- 行内「更多操作」：默认收起，点 ⋯ 在行下方展开 ----
+   不做浮层是刻意的：卡片有 overflow:hidden 裁圆角，浮层会被裁掉；
+   展开式既不会裁，也不用算坐标。 */
+.uc-row { position: relative; }
+.uc-row-extra { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; padding-top: 8px; border-top: var(--uc-hairline) solid var(--uc-sep); }
+.uc-row-extra .uc-btn { height: 28px; font-size: var(--uc-fs-small); }
+
+/* ---- 折叠区：用原生 details/summary，自带展开语义和键盘操作 ---- */
+.uc-disclose { padding: 0 16px; }
+.uc-disclose-summary { display: flex; align-items: center; gap: 8px; padding: 16px 0; cursor: pointer; font-size: var(--uc-fs-lead); line-height: var(--uc-lh-lead); font-weight: 500; color: var(--dsw-alias-label-primary); list-style: none; }
+.uc-disclose-summary::-webkit-details-marker { display: none; }
+.uc-disclose-summary::after { content: '⌄'; margin-left: auto; color: var(--dsw-alias-label-tertiary); transition: transform var(--uc-dur-fast) var(--uc-ease-std); }
+.uc-disclose[open] > .uc-disclose-summary::after { transform: rotate(180deg); }
+.uc-disclose-summary:focus-visible { outline: var(--dsw-focus-ring-width, 2px) solid var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary)); outline-offset: 2px; border-radius: var(--dsw-radius-sm); }
+.uc-disclose-body { padding-bottom: 8px; }
+.uc-disclose-body .uc-row-setting:first-of-type { padding-top: 4px; }
+.uc-disclose-meta { margin-left: auto; margin-right: 8px; font-size: var(--uc-fs-small); line-height: var(--uc-lh-small); color: var(--dsw-alias-label-tertiary); font-variant-numeric: tabular-nums; }
+.uc-disclose-flat > .uc-disclose-summary::after { margin-left: 0; }
+/* 危险区：全页唯一一处红框，用间距（48px）而不是更大的字号表达「这里不一样」 */
+.uc-danger-zone { margin-top: 36px; display: flex; flex-direction: column; gap: 8px; padding: 16px; border: 1px solid color-mix(in srgb, var(--dsw-alias-state-error-primary) 45%, transparent); border-radius: var(--uc-r-card); }
+.uc-danger-title { font-size: var(--uc-fs-lead); line-height: var(--uc-lh-lead); font-weight: 500; color: var(--dsw-alias-state-error-primary); }
+.uc-danger-hint { font-size: var(--uc-fs-small); line-height: var(--uc-lh-small); color: var(--dsw-alias-label-tertiary); }
+.uc-btn-danger-outline { align-self: flex-start; margin-top: 4px; border-color: color-mix(in srgb, var(--dsw-alias-state-error-primary) 55%, transparent); color: var(--dsw-alias-state-error-primary); }
+.uc-btn-danger-outline:hover:not(:disabled) { background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 10%, transparent); }
+
+/* ---- 骨架屏：首次加载用等高骨架，不要空转圈 ---- */
+.uc-skeleton { display: flex; flex-direction: column; gap: 8px; }
+.uc-skeleton-row { display: flex; flex-direction: column; gap: 8px; padding: 16px; border-radius: var(--uc-r-card); background: var(--dsw-alias-settings-card-fill); border: var(--uc-hairline) solid var(--dsw-alias-settings-card-stroke); }
+.uc-skeleton-bar { height: 12px; border-radius: var(--dsw-radius-xs); background: color-mix(in srgb, var(--dsw-alias-label-primary) 10%, transparent); animation: uc-skeleton-pulse 1.4s ease-in-out infinite; }
+.uc-skeleton-bar-sm { height: 10px; }
+@keyframes uc-skeleton-pulse { 0%, 100% { opacity: .5; } 50% { opacity: .95; } }
+.uc-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* ---- 确认弹窗 ---- */
+.uc-modal-mask { position: fixed; inset: 0; z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 24px; background: var(--dsw-alias-bg-mask-2, rgba(0, 0, 0, .32)); animation: uc-fade 120ms var(--uc-ease-std); }
+.uc-modal { width: min(440px, 100%); display: flex; flex-direction: column; gap: 12px; padding: 20px; border: var(--uc-hairline) solid var(--dsw-alias-border-l2); border-radius: var(--dsw-radius-lg); background: var(--dsw-alias-bg-layer-1); box-shadow: var(--uc-shadow-3); }
+.uc-modal-title { font-size: var(--uc-fs-lead); line-height: var(--uc-lh-lead); font-weight: 500; color: var(--dsw-alias-label-primary); }
+.uc-modal-body { font-size: var(--uc-fs-body); line-height: var(--uc-lh-body); color: var(--dsw-alias-label-tertiary); }
+.uc-modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+.uc-btn-danger-solid { background: var(--dsw-alias-state-error-primary); border-color: transparent; color: var(--dsw-alias-label-on-color); }
+.uc-btn-danger-solid:hover:not(:disabled) { background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 88%, var(--dsw-alias-label-primary)); }
+
 /* 无障碍：系统要求减少动效时保留状态反馈，只去掉位移。
    注意是 120ms 而不是 0ms —— 设成 0 会让开关「瞬间跳」，失去因果感。 */
 @media (prefers-reduced-motion: reduce) {
@@ -3806,7 +3894,31 @@ html[data-dsh-glass-scheme="dark"] .uc-card::after {
       const [tokenState, setTokenState] = React.useState(null)
       const [npmSpec, setNpmSpec] = React.useState('')
       const [installingNpm, setInstallingNpm] = React.useState(false)
-      const [confirmUninstall, setConfirmUninstall] = React.useState(null)
+      // 卸载走确认弹窗：原地两步既没说清会丢什么，也没有取消路径
+      const [uninstallTarget, setUninstallTarget] = React.useState(null)
+      // 行内「更多操作」展开的是哪一行（一次只开一行）
+      const [extraOpen, setExtraOpen] = React.useState(null)
+      // 「恢复全部默认设置」的确认弹窗
+      const [resetOpen, setResetOpen] = React.useState(false)
+      const resetAllPrefs = () => {
+        try {
+          for (const key of ['dsh-concierge:look', 'dsh-concierge:perf', 'dsh-concierge:typer', 'dsh-concierge:announced']) {
+            localStorage.removeItem(key)
+          }
+        } catch {
+          /* 存储不可用时也要能继续重载 */
+        }
+        try {
+          window.location.reload()
+        } catch {
+          /* bridge 不可用就什么都不做 */
+        }
+      }
+      // 确认弹窗打开时把焦点放到「取消」上：破坏性按钮不该是默认焦点
+      const cancelRef = React.useRef(null)
+      React.useEffect(() => {
+        if (uninstallTarget && cancelRef.current) cancelRef.current.focus()
+      }, [uninstallTarget])
       const [openLog, setOpenLog] = React.useState(null)
       const [ignoreTick, setIgnoreTick] = React.useState(0)
 
@@ -4481,7 +4593,7 @@ html[data-dsh-glass-scheme="dark"] .uc-card::after {
           setNotice({ kind: 'err', text: error && error.message ? error.message : String(error) })
         } finally {
           setBusy(null)
-          setConfirmUninstall(null)
+          setUninstallTarget(null)
         }
       }, [busy, load, t])
 
@@ -4665,7 +4777,19 @@ html[data-dsh-glass-scheme="dark"] .uc-card::after {
           tabButton('about', t('tabAbout')),
         ),
 
-        loading ? h('div', { className: 'uc-progress', role: 'progressbar' }) : null,
+        // 首次加载用等高骨架（内容结构是可预测的，不该空转圈）；
+        // 已经有数据时只加一条顶部细进度条，不要把列表清空再重建。
+        loading && !data
+          ? h('div', { className: 'uc-skeleton', 'aria-busy': 'true' },
+              h('span', { className: 'uc-sr-only' }, t('loading')),
+              [0, 1, 2, 3].map((i) => h('div', { key: i, className: 'uc-skeleton-row' },
+                h('div', { className: 'uc-skeleton-bar', style: { width: '38%' } }),
+                h('div', { className: 'uc-skeleton-bar uc-skeleton-bar-sm', style: { width: '22%' } }),
+              )),
+            )
+          : loading
+            ? h('div', { className: 'uc-progress', role: 'progressbar', 'aria-label': t('loading') })
+            : null,
 
         data && data.pending && Array.isArray(data.pending.disabled) && data.pending.disabled.length > 0
           ? h('div', { className: 'uc-notice uc-notice-err' },
@@ -4735,16 +4859,6 @@ html[data-dsh-glass-scheme="dark"] .uc-card::after {
                 appNew && !appDismissed && DESKTOP_UPDATES
                   ? [
                       h('button', {
-                        key: 'recheck',
-                        type: 'button',
-                        className: 'uc-btn',
-                        onClick: () => {
-                          setAppDismissed(false)
-                          refreshDesktop()
-                          load(true)
-                        },
-                      }, t('recheck')),
-                      h('button', {
                         key: 'update',
                         type: 'button',
                         className: 'uc-btn uc-btn-accent',
@@ -4797,24 +4911,6 @@ html[data-dsh-glass-scheme="dark"] .uc-card::after {
             )
           : null,
 
-        data && tab === 'update'
-          ? h('section', { className: 'uc-card' },
-              h('div', { className: 'uc-stats uc-stats-card' },
-                h('div', { className: 'uc-stat' },
-                  h('div', { className: 'uc-stat-value' }, String(rows.length)),
-                  h('div', { className: 'uc-stat-label' }, t('statPlugins')),
-                ),
-                h('div', { className: 'uc-stat' },
-                  h('div', { className: updatable > 0 ? 'uc-stat-value uc-stat-value-hot' : 'uc-stat-value' }, String(updatable)),
-                  h('div', { className: 'uc-stat-label' }, t('statUpdates')),
-                ),
-                h('div', { className: 'uc-stat' },
-                  h('div', { className: 'uc-stat-value uc-stat-value-text' }, relativeTime(data.checkedAt, t)),
-                  h('div', { className: 'uc-stat-label' }, t('statChecked')),
-                ),
-              ),
-            )
-          : null,
 
 
 
@@ -4823,7 +4919,11 @@ html[data-dsh-glass-scheme="dark"] .uc-card::after {
             type: 'button',
             className: 'uc-btn',
             disabled: loading || busy !== null,
-            onClick: () => load(true),
+            onClick: () => {
+              setAppDismissed(false)
+              refreshDesktop()
+              load(true)
+            },
           }, loading ? t('checking') : t('check')),
           updatable > 0
             ? h('button', {
@@ -4833,14 +4933,30 @@ html[data-dsh-glass-scheme="dark"] .uc-card::after {
                 onClick: updateAll,
               }, bulkBusy ? t('updating') : `${t('updateAll')} ${updatable}`)
             : null,
-          h('button', { type: 'button', className: 'uc-btn', onClick: reloadUi }, t('reloadUi')),
-          h('button', {
-            type: 'button',
-            className: 'uc-btn',
-            disabled: restarting,
-            onClick: restartNow,
-          }, restarting ? t('restartingApp') : t('restartApp')),
         ) : null,
+
+        // 刷新 / 重启是「更新没生效」时的补救手段，不是常规路径，收进折叠区。
+        // 用原生 details/summary：自带展开语义和键盘操作，不用自己写状态。
+        tab === 'update'
+          ? h('section', { className: 'uc-card' },
+              h('details', { className: 'uc-disclose' },
+                h('summary', { className: 'uc-disclose-summary' }, t('maintenanceTitle')),
+                h('div', { className: 'uc-disclose-body' },
+                  settingRow(t('reloadUi'), t('reloadHint'), h('button', {
+                    type: 'button',
+                    className: 'uc-btn',
+                    onClick: reloadUi,
+                  }, t('reloadUi'))),
+                  settingRow(t('restartApp'), t('restartHint'), h('button', {
+                    type: 'button',
+                    className: 'uc-btn',
+                    disabled: restarting,
+                    onClick: restartNow,
+                  }, restarting ? t('restartingApp') : t('restartApp'))),
+                ),
+              ),
+            )
+          : null,
 
         // 「更新」页只列有更新的那几行；全量列表在「插件」页。
         data && tab === 'update' && updatable > 0
@@ -5162,8 +5278,9 @@ html[data-dsh-glass-scheme="dark"] .uc-card::after {
                             onUpdate: updateOne,
                             onRollback: openRollback,
                             onToggle: toggleRow,
-                            onAskUninstall: (item) => setConfirmUninstall(item.name),
-                            confirmUninstall,
+                            onAskUninstall: (item) => setUninstallTarget(item),
+                            extraOpen,
+                            onToggleExtra: (name) => setExtraOpen(extraOpen === name ? null : name),
                             onUninstall: uninstallRow,
                             ignored: ignoreMap[row.name] === row.latest,
                             onIgnore: () => setIgnore(row.name, row.latest),
@@ -5404,42 +5521,54 @@ html[data-dsh-glass-scheme="dark"] .uc-card::after {
             h('div', { className: 'uc-card-title' }, t('perfTitle')),
           ),
           h('div', { className: 'uc-perf' },
-            h('div', { className: 'uc-perf-stats' },
-              h('div', { className: 'uc-perf-stat' },
-                h('div', { className: 'uc-perf-value' },
-                  String(perfSnapshot.fps),
-                  h('span', { className: 'uc-perf-cap' }, ` / ${perfSnapshot.refreshOverride > 0 ? perfSnapshot.refreshOverride : perfSnapshot.refresh}`),
+            // 诊断信息默认收起：它是观测，不是配置。
+            // 折叠标题那一行摘要已经回答了「现在好不好」，图只在想查是哪几秒掉帧时才需要展开。
+            h('details', { className: 'uc-disclose uc-disclose-flat' },
+              h('summary', { className: 'uc-disclose-summary' },
+                t('perfDiagTitle'),
+                h('span', { className: 'uc-disclose-meta' },
+                  `${perfSnapshot.fps} fps · ${t('perfLongTasks')} ${perfSnapshot.longTasks}`),
+              ),
+              h('div', { className: 'uc-disclose-body' },
+              h('div', { className: 'uc-perf-stats' },
+                h('div', { className: 'uc-perf-stat' },
+                  h('div', { className: 'uc-perf-value' },
+                    String(perfSnapshot.fps),
+                    h('span', { className: 'uc-perf-cap' }, ` / ${perfSnapshot.refreshOverride > 0 ? perfSnapshot.refreshOverride : perfSnapshot.refresh}`),
+                  ),
+                  h('div', { className: 'uc-perf-label' }, t('perfFps')),
                 ),
-                h('div', { className: 'uc-perf-label' }, t('perfFps')),
+                h('div', { className: 'uc-perf-stat' },
+                  h('div', { className: 'uc-perf-value' }, String(perfSnapshot.rows)),
+                  h('div', { className: 'uc-perf-label' }, t('perfRows')),
+                ),
+                h('div', { className: 'uc-perf-stat' },
+                  h('div', { className: 'uc-perf-value' }, String(perfSnapshot.longTasks)),
+                  h('div', { className: 'uc-perf-label' }, t('perfLongTasks')),
+                ),
+                h('div', { className: 'uc-perf-stat' },
+                  h('div', { className: 'uc-perf-value' }, `${perfSnapshot.blocking}ms`),
+                  h('div', { className: 'uc-perf-label' }, t('perfBlocking')),
+                ),
               ),
-              h('div', { className: 'uc-perf-stat' },
-                h('div', { className: 'uc-perf-value' }, String(perfSnapshot.rows)),
-                h('div', { className: 'uc-perf-label' }, t('perfRows')),
+              // 图表对读屏是一个整体：给整块 role="img" + 一句话摘要，柱子本身不逐根播报
+              h('div', {
+                className: 'uc-spark-wrap',
+                role: 'img',
+                'aria-label': t('perfSparkLabel', { ms: perfSnapshot.peak }),
+              },
+                h('div', { className: 'uc-spark', 'aria-hidden': 'true' },
+                  (Array.isArray(perfSnapshot.history) ? perfSnapshot.history : []).map((item, index) => h('span', {
+                    key: index,
+                    className: 'uc-spark-bar',
+                    title: `${item.count} · ${item.ms}ms`,
+                    style: { height: `${Math.max(8, Math.min(100, Math.round((item.ms / Math.max(1, perfSnapshot.peak)) * 100)))}%` },
+                  })),
+                ),
+                h('span', { className: 'uc-spark-cap' }, t('perfPeak', { ms: perfSnapshot.peak })),
               ),
-              h('div', { className: 'uc-perf-stat' },
-                h('div', { className: 'uc-perf-value' }, String(perfSnapshot.longTasks)),
-                h('div', { className: 'uc-perf-label' }, t('perfLongTasks')),
+
               ),
-              h('div', { className: 'uc-perf-stat' },
-                h('div', { className: 'uc-perf-value' }, `${perfSnapshot.blocking}ms`),
-                h('div', { className: 'uc-perf-label' }, t('perfBlocking')),
-              ),
-            ),
-            // 图表对读屏是一个整体：给整块 role="img" + 一句话摘要，柱子本身不逐根播报
-            h('div', {
-              className: 'uc-spark-wrap',
-              role: 'img',
-              'aria-label': t('perfSparkLabel', { ms: perfSnapshot.peak }),
-            },
-              h('div', { className: 'uc-spark', 'aria-hidden': 'true' },
-                (Array.isArray(perfSnapshot.history) ? perfSnapshot.history : []).map((item, index) => h('span', {
-                  key: index,
-                  className: 'uc-spark-bar',
-                  title: `${item.count} · ${item.ms}ms`,
-                  style: { height: `${Math.max(8, Math.min(100, Math.round((item.ms / Math.max(1, perfSnapshot.peak)) * 100)))}%` },
-                })),
-              ),
-              h('span', { className: 'uc-spark-cap' }, t('perfPeak', { ms: perfSnapshot.peak })),
             ),
             settingRow(t('perfAuto'), t('perfAutoHint'), switchControl(perfSnapshot.auto, () => {
               perf.auto = !perf.auto
@@ -5577,66 +5706,23 @@ html[data-dsh-glass-scheme="dark"] .uc-card::after {
           ),
         ) : null,
 
+        // 版本信息不折叠：版本号和入口是这一页最常看的东西，藏进折叠等于没有
         tab === 'about' ? h('section', { className: 'uc-card' },
-          h('button', {
-            type: 'button',
-            className: 'uc-log-head',
-            onClick: () => setOpenAbout(!openAbout),
-          },
-            h('span', { className: 'uc-log-chevron', 'data-open': openAbout ? '1' : '0' }, '▸'),
-            h('span', { className: 'uc-log-version' }, t('aboutTitle')),
-            h('span', { className: 'uc-log-count' }, `dsh-concierge · ${aboutData ? `v${aboutData.version}` : '…'}${aboutData && aboutData.license ? ` · ${aboutData.license}` : ''}`),
+          h('div', { className: 'uc-card-head' },
+            h('div', { className: 'uc-card-title' }, t('aboutTitle')),
           ),
-          h('div', { className: 'uc-collapse', 'data-open': openAbout ? '1' : '0' },
-            h('div', { className: 'uc-collapse-inner' },
-            h('div', { className: 'uc-about' },
-            h('p', null, t('aboutIntro')),
-            aboutData && aboutData.description
-              ? h('p', { className: 'uc-about-desc' }, aboutData.description)
-              : null,
-            h('div', { className: 'uc-about-links' },
+          h('div', { className: 'uc-perf' },
+            settingRow(t('aboutVersionLabel'), t('aboutIntro'),
+              h('span', { className: 'uc-row-value' }, aboutData ? `v${aboutData.version}` : '…')),
+            settingRow(t('aboutRepo'), aboutData && aboutData.license ? aboutData.license : null,
               h('a', {
-                className: 'uc-token-link',
+                className: 'uc-btn',
                 href: 'https://github.com/coldrainthreeautumnleaves/dsh-concierge',
                 target: '_blank',
                 rel: 'noreferrer',
-              }, t('aboutRepo')),
-              aboutData && aboutData.license ? h('span', { className: 'uc-about-license' }, aboutData.license) : null,
-            ),
-            ),
-            ),
-          ),
-        ) : null,
-
-        // 「关于」页第一块：功能介绍与结论，默认收起，和下面的版本日志分开。
-        tab === 'about' ? h('section', { className: 'uc-card' },
-          h('button', {
-            type: 'button',
-            className: 'uc-log-head',
-            onClick: () => setOpenGuide(!openGuide),
-          },
-            h('span', { className: 'uc-log-chevron', 'data-open': openGuide ? '1' : '0' }, '▸'),
-            h('span', { className: 'uc-log-version' }, t('aboutDesignTitle')),
-            h('span', { className: 'uc-log-count' }, t('aboutDesignHint')),
-          ),
-          h('div', { className: 'uc-collapse', 'data-open': openGuide ? '1' : '0' },
-            h('div', { className: 'uc-collapse-inner' },
-            h('div', { className: 'uc-design' },
-                [
-                  ['aboutDesignUpdateTitle', ['aboutDesignUpdate1', 'aboutDesignUpdate2']],
-                  ['aboutDesignPluginTitle', ['aboutDesignPlugin1', 'aboutDesignPlugin2']],
-                  ['aboutDesignInstallTitle', ['aboutDesignInstall1']],
-                  ['aboutDesignLookTitle', ['aboutDesignLook1', 'aboutDesignLook2', 'aboutDesignLook3']],
-                  ['aboutDesignPerfTitle2', ['aboutDesignPerf4']],
-                  ['aboutDesignAboutTitle', ['aboutDesignAbout1']],
-                ].map(([titleKey, itemKeys]) =>
-                  h('div', { key: titleKey, className: 'uc-design-group' },
-                    h('div', { className: 'uc-log-group' }, t(titleKey)),
-                    h('ul', { className: 'uc-log-items' }, itemKeys.map((key) => h('li', { key }, t(key)))),
-                  ),
-                ),
-              ),
-            ),
+              }, t('aboutRepo'))),
+            settingRow(t('check'), t('autoHint'),
+              h('button', { type: 'button', className: 'uc-btn', onClick: () => setTab('update') }, t('check'))),
           ),
         ) : null,
 
@@ -5704,57 +5790,224 @@ html[data-dsh-glass-scheme="dark"] .uc-card::after {
                 })(),
           ),
         ) : null,
+
+        // 功能介绍：默认收起。它是一次性阅读内容，不该占日志的位置。
+        tab === 'about' ? h('section', { className: 'uc-card' },
+          h('button', {
+            type: 'button',
+            className: 'uc-log-head',
+            onClick: () => setOpenGuide(!openGuide),
+          },
+            h('span', { className: 'uc-log-chevron', 'data-open': openGuide ? '1' : '0' }, '▸'),
+            h('span', { className: 'uc-log-version' }, t('aboutDesignTitle')),
+            h('span', { className: 'uc-log-count' }, t('aboutDesignHint')),
+          ),
+          h('div', { className: 'uc-collapse', 'data-open': openGuide ? '1' : '0' },
+            h('div', { className: 'uc-collapse-inner' },
+            h('div', { className: 'uc-design' },
+                [
+                  ['aboutDesignUpdateTitle', ['aboutDesignUpdate1', 'aboutDesignUpdate2']],
+                  ['aboutDesignPluginTitle', ['aboutDesignPlugin1', 'aboutDesignPlugin2']],
+                  ['aboutDesignInstallTitle', ['aboutDesignInstall1']],
+                  ['aboutDesignLookTitle', ['aboutDesignLook1', 'aboutDesignLook2', 'aboutDesignLook3']],
+                  ['aboutDesignPerfTitle2', ['aboutDesignPerf4']],
+                  ['aboutDesignAboutTitle', ['aboutDesignAbout1']],
+                ].map(([titleKey, itemKeys]) =>
+                  h('div', { key: titleKey, className: 'uc-design-group' },
+                    h('div', { className: 'uc-log-group' }, t(titleKey)),
+                    h('ul', { className: 'uc-log-items' }, itemKeys.map((key) => h('li', { key }, t(key)))),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ) : null,
+
+        // 危险区：整个插件唯一一处红框。破坏性入口只出现一次，集中在这里。
+        tab === 'about' ? h('section', { className: 'uc-danger-zone' },
+          h('div', { className: 'uc-danger-title' }, t('dangerTitle')),
+          h('div', { className: 'uc-danger-hint' }, t('dangerResetHint')),
+          h('button', {
+            type: 'button',
+            className: 'uc-btn uc-btn-danger-outline',
+            onClick: () => setResetOpen(true),
+          }, t('dangerResetAction')),
+        ) : null,
         h('footer', { className: 'uc-foot' },
           h('span', null, t('autoHint')),
           h('span', null, data ? relativeTime(data.checkedAt, t) : ''),
         ),
+
+        // 卸载确认：不可逆操作，说清会丢什么，默认焦点在「取消」。
+        // 之前是原地两步（点一下变「确认卸载？」），既没说明后果，也没有取消路径。
+        uninstallTarget
+          ? h('div', {
+              className: 'uc-modal-mask',
+              onClick: (event) => {
+                if (event.target === event.currentTarget) setUninstallTarget(null)
+              },
+            },
+              h('div', {
+                className: 'uc-modal',
+                role: 'alertdialog',
+                'aria-modal': 'true',
+                'aria-labelledby': 'uc-uninstall-title',
+                'aria-describedby': 'uc-uninstall-body',
+                onKeyDown: (event) => {
+                  if (event.key === 'Escape') setUninstallTarget(null)
+                },
+              },
+                h('div', { className: 'uc-modal-title', id: 'uc-uninstall-title' },
+                  t('uninstallTitle', { name: uninstallTarget.name })),
+                h('div', { className: 'uc-modal-body', id: 'uc-uninstall-body' }, t('uninstallBody')),
+                h('div', { className: 'uc-modal-actions' },
+                  h('button', {
+                    type: 'button',
+                    className: 'uc-btn',
+                    ref: cancelRef,
+                    onClick: () => setUninstallTarget(null),
+                  }, t('cancel')),
+                  h('button', {
+                    type: 'button',
+                    className: 'uc-btn uc-btn-danger-solid',
+                    disabled: busy !== null,
+                    onClick: () => uninstallRow(uninstallTarget),
+                  }, t('uninstallConfirm')),
+                ),
+              ),
+            )
+          : null,
+
+        // 恢复全部默认设置：破坏性但可重建，说明里只列会被清掉的项
+        resetOpen
+          ? h('div', {
+              className: 'uc-modal-mask',
+              onClick: (event) => {
+                if (event.target === event.currentTarget) setResetOpen(false)
+              },
+            },
+              h('div', {
+                className: 'uc-modal',
+                role: 'alertdialog',
+                'aria-modal': 'true',
+                'aria-labelledby': 'uc-reset-title',
+                'aria-describedby': 'uc-reset-body',
+                onKeyDown: (event) => {
+                  if (event.key === 'Escape') setResetOpen(false)
+                },
+              },
+                h('div', { className: 'uc-modal-title', id: 'uc-reset-title' }, t('resetTitle')),
+                h('div', { className: 'uc-modal-body', id: 'uc-reset-body' }, t('resetBody')),
+                h('div', { className: 'uc-modal-actions' },
+                  h('button', {
+                    type: 'button',
+                    className: 'uc-btn',
+                    onClick: () => setResetOpen(false),
+                  }, t('cancel')),
+                  h('button', {
+                    type: 'button',
+                    className: 'uc-btn uc-btn-danger-solid',
+                    onClick: resetAllPrefs,
+                  }, t('resetConfirm')),
+                ),
+              ),
+            )
+          : null,
       )
     }
 
     function renderRow(row, ctx) {
       const {
         t, active, busy, onUpdate, onRollback, onToggle,
-        onAskUninstall, confirmUninstall, onUninstall,
-        ignored, onIgnore, onUnignore, openLog, onToggleLog,
+        onAskUninstall, ignored, onIgnore, onUnignore,
+        openLog, onToggleLog, extraOpen, onToggleExtra,
       } = ctx
       const updating = busy === row.name
-      const kindLabel = row.kind === 'registry'
-        ? t('kindRegistry')
-        : row.kind === 'git'
-          ? t('kindGit')
-          : t('kindLocal')
-      const dotClass = row.updateAvailable
-        ? 'uc-dot uc-dot-warn'
-        : row.error
-          ? 'uc-dot uc-dot-err'
-          : row.kind === 'local'
-            ? 'uc-dot'
-            : 'uc-dot uc-dot-ok'
+
+      // 状态只用一个 pill 表达。原来「圆点 + 文字 + tag」三重编码，
+      // 三种符号说同一件事，读起来比信息本身还吵。
+      // 类型（npm / GitHub / 本地）不再逐行标注：分组标题已经写了，
+      // 再挂一个灰 pill 只是重复，一行两个灰块最难看。
+      const status = row.error
+        ? { text: t('statusError'), cls: 'uc-tag uc-tag-bad' }
+        : row.enabled === false
+          ? { text: t('statusDisabled'), cls: 'uc-tag' }
+          : row.updateAvailable
+            ? ignored
+              ? { text: t('statusIgnored'), cls: 'uc-tag' }
+              : { text: t('statusUpdate'), cls: 'uc-tag uc-tag-hot' }
+            : row.kind === 'local'
+              ? { text: t('statusLocal'), cls: 'uc-tag' }
+              : { text: t('statusLatest'), cls: 'uc-tag' }
+
+      const selfRow = row.name === 'dsh-concierge'
+      const canToggle = !selfRow
+      const canUninstall = !selfRow
+      const hasExtra = Boolean(
+        (row.updateAvailable && row.changelog) ||
+        row.updateAvailable ||
+        row.kind === 'registry' ||
+        row.kind === 'git' ||
+        canUninstall ||
+        row.homepage,
+      )
+      const open = extraOpen === row.name
 
       return h('div', { key: row.name, className: 'uc-row' },
-        h('span', { className: dotClass, 'aria-hidden': true }),
         h('div', { className: 'uc-row-main' },
           h('div', { className: 'uc-row-name' },
             h('span', null, localizedText(row.title, active) || row.name),
-            h('span', { className: 'uc-tag' }, kindLabel),
-            row.enabled === false ? h('span', { className: 'uc-tag' }, 'disabled') : null,
-            row.homepage
-              ? h('a', {
-                  className: 'uc-row-link',
-                  href: row.homepage,
-                  target: '_blank',
-                  rel: 'noreferrer',
-                  title: row.homepage,
-                }, '↗')
-              : null,
+            h('span', { className: status.cls }, status.text),
           ),
           h('div', { className: 'uc-row-pkg' }, row.name),
-          row.error ? h('div', { className: 'uc-row-err' }, row.error) : null,
+          row.error ? h('div', { className: 'uc-row-err', role: 'alert' }, row.error) : null,
           row.notes && row.notes.length > 0
             ? h('div', { className: 'uc-row-note' }, row.notes.join(' · '))
             : null,
           row.changelog && openLog === row.name
             ? h('div', { className: 'uc-changelog' }, row.changelog)
+            : null,
+          // 次要操作默认收起，点 ⋯ 在行内展开。
+          // 不做浮层是因为卡片 overflow:hidden 裁圆角，浮层会被裁掉。
+          hasExtra && open
+            ? h('div', { className: 'uc-row-extra' },
+                row.updateAvailable && row.changelog
+                  ? h('button', {
+                      type: 'button',
+                      className: 'uc-btn uc-btn-ghost',
+                      onClick: () => onToggleLog(row.name),
+                    }, openLog === row.name ? t('changelogHide') : t('changelog'))
+                  : null,
+                row.updateAvailable
+                  ? ignored
+                    ? h('button', { type: 'button', className: 'uc-btn uc-btn-ghost', onClick: onUnignore }, t('unignore'))
+                    : h('button', { type: 'button', className: 'uc-btn uc-btn-ghost', onClick: onIgnore }, t('ignoreVersion'))
+                  : null,
+                row.kind === 'registry' || row.kind === 'git'
+                  ? h('button', {
+                      type: 'button',
+                      className: 'uc-btn uc-btn-ghost',
+                      disabled: busy !== null,
+                      onClick: () => onRollback(row),
+                    }, t('rollback'))
+                  : null,
+                row.homepage
+                  ? h('a', {
+                      className: 'uc-btn uc-btn-ghost',
+                      href: row.homepage,
+                      target: '_blank',
+                      rel: 'noreferrer',
+                    }, t('openHomepage'))
+                  : null,
+                canUninstall
+                  ? h('button', {
+                      type: 'button',
+                      className: 'uc-btn uc-btn-ghost uc-btn-danger',
+                      disabled: busy !== null,
+                      onClick: () => onAskUninstall(row),
+                    }, t('uninstall'))
+                  : null,
+              )
             : null,
         ),
         h('div', { className: 'uc-vers' },
@@ -5764,6 +6017,7 @@ html[data-dsh-glass-scheme="dark"] .uc-card::after {
             : null,
         ),
         h('div', { className: 'uc-row-act' },
+          // 主操作：有更新才是「更新」，其余情况状态 pill 已经说清楚了，不再放占位文字
           row.updateAvailable && !ignored
             ? h('button', {
                 type: 'button',
@@ -5771,52 +6025,30 @@ html[data-dsh-glass-scheme="dark"] .uc-card::after {
                 disabled: busy !== null,
                 onClick: () => onUpdate(row),
               }, updating ? t('updating') : t('update'))
-            : row.updateAvailable && ignored
-              ? h('span', { className: 'uc-muted' }, t('ignoredVersion', { version: row.latest }))
-              : h('span', { className: 'uc-muted' }, row.kind === 'local' ? t('local') : t('upToDate')),
-          row.updateAvailable
-            ? ignored
-              ? h('button', { type: 'button', className: 'uc-btn uc-btn-ghost', onClick: onUnignore }, t('unignore'))
-              : h('button', { type: 'button', className: 'uc-btn uc-btn-ghost', onClick: onIgnore }, t('ignoreVersion'))
             : null,
-          row.changelog && row.updateAvailable
+          // 启停用开关，和外观 / 性能页统一（之前这里是按钮，那边是开关）
+          canToggle
+            ? h('label', { className: 'uc-switch' },
+                h('input', {
+                  type: 'checkbox',
+                  role: 'switch',
+                  checked: row.enabled !== false,
+                  disabled: busy !== null,
+                  'aria-label': t('enableToggleLabel', { name: row.name }),
+                  onChange: () => onToggle(row),
+                }),
+                h('span', { className: 'uc-switch-track', 'aria-hidden': 'true' }),
+              )
+            : null,
+          hasExtra
             ? h('button', {
                 type: 'button',
-                className: 'uc-btn uc-btn-ghost',
-                onClick: () => onToggleLog(row.name),
-              }, t('changelog'))
+                className: 'uc-icon-btn',
+                'aria-label': t('moreActions'),
+                'aria-expanded': open ? 'true' : 'false',
+                onClick: () => onToggleExtra(row.name),
+              }, h('span', { 'aria-hidden': 'true' }, '⋯'))
             : null,
-          row.kind === 'registry' || row.kind === 'git'
-            ? h('button', {
-                type: 'button',
-                className: 'uc-btn uc-btn-ghost',
-                disabled: busy !== null,
-                onClick: () => onRollback(row),
-              }, t('rollback'))
-            : null,
-          row.name === 'dsh-concierge'
-            ? null
-            : h('button', {
-                type: 'button',
-                className: 'uc-btn uc-btn-ghost',
-                disabled: busy !== null,
-                onClick: () => onToggle(row),
-              }, row.enabled === false ? t('enable') : t('disable')),
-          row.name === 'dsh-concierge'
-            ? null
-            : confirmUninstall === row.name
-              ? h('button', {
-                  type: 'button',
-                  className: 'uc-btn uc-btn-ghost uc-btn-danger',
-                  disabled: busy !== null,
-                  onClick: () => onUninstall(row),
-                }, t('confirmUninstall'))
-              : h('button', {
-                  type: 'button',
-                  className: 'uc-btn uc-btn-ghost',
-                  disabled: busy !== null,
-                  onClick: () => onAskUninstall(row),
-                }, t('uninstall')),
         ),
       )
     }

@@ -762,6 +762,154 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
       document.head.appendChild(style)
     }
 
+    // 只认 MattSkillsDeck 那一张确认卡（「关闭整个 MattSkillsDeck」）。
+    //
+    // 为什么还要管：那张卡的位置由 deck 自己按**点击时抓下的锚点**算
+    // （deckDoorCapture → computeTipPlace）。锚点一旦过期（窗口改过尺寸、
+    // 上一轮点过、或那次抓到的矩形不可用），算出来的坐标会跑到窗口右下角，
+    // 甚至贴到窗口边缘外面——用户看到的就是「位置不对」和「不显示」。
+    //
+    // 和 0.30.2 及以前的区别（那次是和 deck 抢同一个元素，越抢越乱）：
+    //   1. 只写这一个元素，别的插件浮层一概不碰；
+    //   2. 不猜坐标——先写一次，量出实际中心，再按偏差收敛（最多 3 轮）。
+    //      卡片若处在某个 transform 祖先里，left/top 会相对那个祖先解析，
+    //      一轮写不准，靠实测偏差才收敛得下来；
+    //   3. deck 重渲染时用 CSSOM 赋值会清掉我们的 !important，所以盯住这张卡
+    //      的 style 属性，被改写就补一次（同一帧内合并，不会死循环）。
+    const OTHER_DIALOG = '[role="dialog"][aria-modal="true"][aria-label*="MattSkillsDeck"]'
+
+    function installOtherDialogGuard() {
+      if (typeof document === 'undefined' || typeof window === 'undefined') return
+      if (typeof MutationObserver !== 'function') return
+      if (!document.body) return
+
+      let frame = 0
+      let watched = null
+      let watchObserver = null
+      let timer = 0
+
+      // 目标：会话区里、输入区以上那块的中间。
+      // data-conversation-region="chat" 把输入区也包在里面，所以下边界要取
+      // 输入区座位的顶，不然中心点会落在输入卡上。
+      function target() {
+        let left = 0
+        let top = 0
+        let right = window.innerWidth
+        let bottom = window.innerHeight
+        const host = document.querySelector('[data-conversation-region="chat"]')
+          || document.querySelector('[class*="_centerCol"]')
+        if (host) {
+          const r = host.getBoundingClientRect()
+          if (r.width > 240) {
+            left = r.left
+            right = r.right
+            top = r.top
+            bottom = r.bottom
+          }
+        }
+        const seat = document.querySelector('[data-composer-seat]')
+          || document.querySelector('[data-composer-dock]')
+        if (seat) {
+          const s = seat.getBoundingClientRect()
+          if (s.height > 0 && s.top > top) bottom = Math.min(bottom, s.top)
+        }
+        if (bottom - top < 80) bottom = top + 80
+        return { x: (left + right) / 2, y: (top + bottom) / 2 }
+      }
+
+      function place() {
+        frame = 0
+        const card = document.querySelector(OTHER_DIALOG)
+        if (!card) return
+        // 目标点固定不动；pos 才是要写进 left/top 的值。每轮按「目标 - 实测中心」
+        // 修正 pos，直到实测中心落在目标上。目标本身不能参与累加，否则每轮都在
+        // 目标上再叠一次偏差，越修越偏。
+        const aim = target()
+        // 已经在目标位置就直接返回，一个字节都不写。
+        // 写 style 会触发下面那个盯 style 的观察者，没有这个提前返回就会变成
+        // 「写 → 触发 → 再写」的空转，一直占着一帧一次的重排。
+        let cur = null
+        try {
+          cur = card.getBoundingClientRect()
+        } catch {
+          return
+        }
+        if (cur && cur.width && cur.height) {
+          const cx = cur.left + cur.width / 2
+          const cy = cur.top + cur.height / 2
+          if (Math.abs(aim.x - cx) < 2 && Math.abs(aim.y - cy) < 2) return
+        }
+        let posX = aim.x
+        let posY = aim.y
+        for (let pass = 0; pass < 3; pass += 1) {
+          card.style.setProperty('position', 'fixed', 'important')
+          card.style.setProperty('left', Math.round(posX) + 'px', 'important')
+          card.style.setProperty('top', Math.round(posY) + 'px', 'important')
+          card.style.setProperty('right', 'auto', 'important')
+          card.style.setProperty('bottom', 'auto', 'important')
+          card.style.setProperty('transform', 'translate(-50%, -50%)', 'important')
+          card.style.setProperty('margin', '0', 'important')
+          let r = null
+          try {
+            r = card.getBoundingClientRect()
+          } catch {
+            return
+          }
+          // 还没布局出来（宽度为 0）：下一帧再量，别在这一轮写死坐标。
+          if (!r || !r.width || !r.height) return
+          const dx = aim.x - (r.left + r.width / 2)
+          const dy = aim.y - (r.top + r.height / 2)
+          if (Math.abs(dx) < 2 && Math.abs(dy) < 2) return
+          posX += dx
+          posY += dy
+        }
+      }
+
+      function schedule() {
+        if (!frame) frame = requestAnimationFrame(place)
+        // 卡片挂载后还会因为状态更新重渲染一次，补两次延迟落位盖住那个窗口。
+        if (timer) clearTimeout(timer)
+        timer = setTimeout(() => {
+          timer = 0
+          if (!frame) frame = requestAnimationFrame(place)
+        }, 260)
+      }
+
+      // 盯住这张卡自己的 style：deck 的重渲染会重写 left/top（不带优先级），
+      // 我们写在它上面的 !important 会被 CSSOM 一起清掉，所以被改就补回来。
+      function watch(card) {
+        if (watched === card) return
+        watched = card
+        if (watchObserver) {
+          watchObserver.disconnect()
+          watchObserver = null
+        }
+        if (!card) return
+        watchObserver = new MutationObserver(() => schedule())
+        watchObserver.observe(card, { attributes: true, attributeFilter: ['style'] })
+      }
+
+      const mountObserver = new MutationObserver(() => {
+        const card = document.querySelector(OTHER_DIALOG)
+        if (!card) {
+          watch(null)
+          return
+        }
+        watch(card)
+        schedule()
+      })
+      mountObserver.observe(document.body, { childList: true, subtree: true })
+      window.addEventListener('resize', () => {
+        if (document.querySelector(OTHER_DIALOG)) schedule()
+      })
+
+      const first = document.querySelector(OTHER_DIALOG)
+      if (first) {
+        watch(first)
+        schedule()
+      }
+    }
+
     // 宿主在启动过程中还会往 head 里追加样式表，追加在后面的同权重规则会赢。
     // 每次应用外观时把这张表挪到 head 末尾，保证玻璃/留边的规则始终压在上面。
     // 只有它后面确实还有别的节点时才挪：重复插入同一个 <style> 会让浏览器把整张
@@ -5757,6 +5905,7 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
         readLookPrefs()
         installPerfCss()
         installLookCss()
+        installOtherDialogGuard()
         ensureGlassNodes()
         lookCtx = ctx
         applyLook()

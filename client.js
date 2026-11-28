@@ -73,7 +73,9 @@ window.__ModuleLoader__.load({
       // 0 = 跟随上面的刷新率上限
       wallFps: 0,
       wallPauseFullscreen: true,
-      wallPauseBattery: true,
+      // 默认关：笔记本拔电就停壁纸，用户会以为「视频切了不播」。
+      // 真要用这个开关再手动打开。
+      wallPauseBattery: false,
       // Off by default: freezing every animation in the chat flow also freezes
       // the thinking/streaming indicators, which reads as "the app is stuck".
       longPref: false,
@@ -363,6 +365,18 @@ html[data-dsh-glass="1"][data-dsh-wall-video="1"] [class*="_sidebarCol"] :is(spa
   color: #ffffff;
   mix-blend-mode: difference;
 }
+/* 品牌字标退出差值混合。它是一块图形标识，混进侧栏的差值层之后
+   会被反成实心黑块（截图里 HARNESS 那个黑方框就是这么来的）。 */
+html[data-dsh-glass="1"][data-dsh-wall-video="1"] :is(
+  [class*="_logo"], [class*="_Logo"], [class*="_wordmark"], [class*="_appTitle"], [class*="_brand"]
+),
+html[data-dsh-glass="1"][data-dsh-wall-video="1"] :is(
+  [class*="_logo"], [class*="_Logo"], [class*="_wordmark"], [class*="_appTitle"], [class*="_brand"]
+) * {
+  mix-blend-mode: normal !important;
+  color: var(--dsw-alias-label-primary) !important;
+}
+
 /* 浮层和输入框不参与差值混合：它们有自己的浅色底，正常字色本来就够清楚，
    混合层反而会让文字颜色变得不可预测。 */
 html[data-dsh-glass="1"][data-dsh-wall-video="1"] [data-conversation-region] :is(

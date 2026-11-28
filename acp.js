@@ -164,6 +164,7 @@ export function createAcpClient(options = {}) {
   // 聊天侧的增量记账冲掉（实测两个请求合并成一个回合，标题的提问进了聊天历史）。
   let handshaked = false
   const sessions = new Map() // key -> sessionId
+  const sessionModels = new Map() // sessionId -> 已经切过去的模型，避免每轮重复切
   const pending = new Map() // key -> Promise<sessionId>
 
   function ensureChild() {
@@ -200,6 +201,7 @@ export function createAcpClient(options = {}) {
       return { outcome: { outcome: 'cancelled' } }
     })
     sessions.clear()
+    sessionModels.clear()
     pending.clear()
     handshaked = false
     return { child, rpc }
@@ -260,18 +262,24 @@ export function createAcpClient(options = {}) {
     // onChunk(chunk, kind) 的 kind 是 'text' 或 'thought'——ACP 把「正文」和
     // 「思考」分成两种 session/update（agent_message_chunk / agent_thought_chunk），
     // 只认前者的话思考就整段丢掉，界面上看不到任何推理过程。
-    // model 非空时先尝试 session/set_config_option 把会话切到那个模型，
-    // 切不了（不是 ACP 的选项）就沿用 CLI 当前的，不中断这一轮。
+    //
+    // 模型只在真的变了时才切。set_config_option 在 claude-agent-acp 里要
+    // 重新解析模型、查上下文窗口，实测一次可以卡十几秒（见
+    // LodyAI/acp-extension-claude PR #13：模型切换 ~15s → ~3ms 的优化）。
+    // 每轮都调一次等于每轮都付这笔钱，所以按会话记住切过的模型。
     async prompt(text, onChunk, signal, model, sessionKey = 'default', forceNewSession = false) {
       const sid = await ensureSession(sessionKey, forceNewSession)
       const { rpc: client } = ensureChild()
-      if (model) {
+      const wantModel = String(model || '')
+      const applied = sessionModels.get(sid)
+      if (wantModel && applied !== wantModel) {
         try {
           await client.request('session/set_config_option', {
             sessionId: sid,
             configId: 'model',
-            value: model,
+            value: wantModel,
           }, 30000)
+          sessionModels.set(sid, wantModel)
         } catch {
           /* 沿用当前模型 */
         }

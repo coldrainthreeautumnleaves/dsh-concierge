@@ -381,6 +381,29 @@ html[data-dsh-glass="1"][data-dsh-wall-video="1"] :is(
   color: var(--dsw-alias-label-primary) !important;
   text-shadow: none !important;
 }
+/* 设置页 / 插件市场这类「工作界面」在视频壁纸下必须有一块托底。
+   它们是拿来操作的，不是拿来看壁纸的：白字直接压在电车、鹿、植物上，
+   一行标题都读不出来（实测截图确认）。
+   不透明度取 0.94 —— 低于 0.86 时次要文字对比度会掉到 3.35:1 以下，
+   这是之前测出来的硬线。对话区不在此列，那边保留「壁纸完整可见」。 */
+html[data-dsh-glass="1"][data-dsh-wall-video="1"] [role="dialog"],
+html[data-dsh-glass="1"][data-dsh-wall-video="1"] [role="alertdialog"],
+html[data-dsh-glass="1"][data-dsh-wall-video="1"] [data-settings-surface],
+html[data-dsh-glass="1"][data-dsh-wall-video="1"] [data-slot="settings.section"] {
+  background-color: color-mix(in srgb, var(--dsw-alias-bg-base) 94%, transparent) !important;
+}
+/* 设置页里的文字回到常规色：有实底就不该再用白字 */
+html[data-dsh-glass="1"][data-dsh-wall-video="1"] [role="dialog"] :is(p, li, span, div, h1, h2, h3, h4, h5, h6, label, button, a, td, th),
+html[data-dsh-glass="1"][data-dsh-wall-video="1"] [data-settings-surface] :is(p, li, span, div, h1, h2, h3, h4, h5, h6, label, button, a, td, th) {
+  color: var(--dsw-alias-label-primary) !important;
+  text-shadow: none !important;
+}
+/* 弹层里的次要文字用次级色，别一起刷成纯黑 */
+html[data-dsh-glass="1"][data-dsh-wall-video="1"] [role="dialog"] :is(small, time, [class*="hint"], [class*="Hint"]),
+html[data-dsh-glass="1"][data-dsh-wall-video="1"] [data-settings-surface] :is(small, time, [class*="hint"], [class*="Hint"]) {
+  color: var(--dsw-alias-label-secondary) !important;
+}
+
 /* 行内代码：白字在浅色代码底上会糊，改成半透明深底 */
 html[data-dsh-glass="1"][data-dsh-wall-video="1"] :not(pre) > code {
   background-color: rgba(0, 0, 0, .45) !important;

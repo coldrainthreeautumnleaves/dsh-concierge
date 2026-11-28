@@ -1268,13 +1268,22 @@ window.addEventListener('resize', () => {
         if (!pendingFloating.size || floatingTimer) return
         floatingTimer = setTimeout(() => {
           floatingTimer = 0
-          const nodes = [...pendingFloating].slice(0, 40)
+          // 诊断够用就收工：这个观察者挂在 document.body 上、subtree: true，
+          // 每轮还要对最多 40 个节点各下钻 40 个后代 —— 一次最多 1640 次
+          // getComputedStyle + getBoundingClientRect，全是强制样式重算和强制布局。
+          // 记录封顶（20 条）之后再观察没有任何收益，只会一直偷帧。
+          if (floatingLog.length >= 20) {
+            observer.disconnect()
+            return
+          }
+          const nodes = [...pendingFloating].slice(0, 6)
           pendingFloating = new Set()
           for (const node of nodes) {
             noteFloating(node)
             const kids = node.querySelectorAll ? node.querySelectorAll('*') : []
-            for (let i = 0; i < kids.length && i < 40; i++) noteFloating(kids[i])
+            for (let i = 0; i < kids.length && i < 8; i++) noteFloating(kids[i])
           }
+          if (floatingLog.length >= 20) observer.disconnect()
         }, 500)
       })
       observer.observe(document.body, { childList: true, subtree: true })

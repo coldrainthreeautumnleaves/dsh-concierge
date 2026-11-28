@@ -7,6 +7,38 @@
 ## [Unreleased]
 
 
+## [0.28.0] - 2026-11-28
+
+> 不再 spawn claude-agent-acp，直接调 Claude Agent SDK，绕开它的认证门
+
+### 背景
+
+`claude-agent-acp` 0.113 起加了一道认证门（`hide-claude-auth.js` 的 `refuseClaudeSubscriptionTurn`）：它读 SDK 缓存的 `AccountInfo`，判断账号有没有可用凭据。走中转站时凭据在 `settings.json` 的 env 里（`ANTHROPIC_AUTH_TOKEN`），SDK 报的 `apiKeySource` 是 `none`，不在它的白名单里，于是每轮都回 `Authentication required`，CLI 根本不发请求。
+
+上游 Issue：[agentclientprotocol/claude-agent-acp#1270](https://github.com/agentclientprotocol/claude-agent-acp/issues/1270)
+
+试过不行的：`ANTHROPIC_API_KEY`、两个都给、`settings.json` 里的 `apiKeyHelper`（CLI 自己认了，但认证门读的是 SDK 缓存）、`_CLAUDE_CODE_ASSUME_FIRST_PARTY_BASE_URL`。
+
+### Changed
+
+- Claude Code（SDK）: 新增 `sdkclient.js`，直接调 `@anthropic-ai/claude-agent-sdk` 的 `query()`，不再 spawn `claude-agent-acp`
+- Claude Code（SDK）: SDK 从 `claude-agent-acp` 的依赖目录里取（它本来就装着），不另装一份。`@agentproto/adapter-claude-sdk` 那条路试过，依赖 `@agentproto/memory@0.1.1` 在 npm 上不存在，装不上
+- Claude Code（SDK）: 模型用 `options.model` 指定，不再有 ACP 的 `session/new` + `set_config_option` 那两笔启动开销
+- Claude Code（SDK）: 开了 `includePartialMessages`，思考和正文都按增量吐（`thinking_delta` / `text_delta`）
+- 路由: `listModels` 改从网关 `/v1/models` 拿，不再依赖 ACP 的 `configOptions`
+
+### Removed
+
+- Claude Code（SDK）: ACP 的会话管理与增量记账（`getAcpClient` / `planClaudePrompt` / `acpSentTexts`）——SDK 每次 `query()` 都是独立调用，没有跨轮会话，聊天侧改为每轮带完整历史
+
+### 实测
+
+    DeepSeek 模型  首字 3226ms  总 3972ms  "好"
+    多轮记忆       首字 3678ms  总 4810ms
+                   2 个块：[reasoning] The user asked "我叫什么？…"
+                           [text] 小王
+
+`acp.js` 暂时留着（`claudeGatewayEnv` 还在用），其余 ACP 逻辑已经不再调用。
 ## [0.27.6] - 2026-11-28
 
 > 冷启动那 7 秒挪到插件加载阶段，首字从 7.1 秒降到 1.3 秒

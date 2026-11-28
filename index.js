@@ -20,7 +20,8 @@ import { mkdir, readFile, readdir, rm, stat as statOf, writeFile } from 'node:fs
 import { homedir } from 'node:os'
 import { createRequire } from 'node:module'
 import path from 'node:path'
-import { createAcpClient, claudeGatewayEnv } from './acp.js'
+import { claudeGatewayEnv } from './acp.js'
+import { runQuery } from './sdkclient.js'
 import { createModelsStore } from './modelsstore.js'
 import { fileURLToPath } from 'node:url'
 
@@ -611,7 +612,7 @@ export function apply(ctx) {
     return () => {
       if (typeof state.claudeHandle === 'function') state.claudeHandle()
       state.claudeHandle = null
-      disposeAcpClient()
+      /* SDK 无需释放 */
       // 插件被卸载/禁用：把网关 provider 放回 DSH，让「没插件」那条链路恢复
       void releaseRouteProvider()
     }
@@ -3384,88 +3385,39 @@ function turnPromptText(messages) {
   return [...context, ...request].join('\n\n')
 }
 
-// 常驻一个 ACP 客户端：复用 CLI 进程和它自己的会话，省掉每轮冷启动。
-// 网关地址可能被用户改（换 magpie / 换 CCR），换了就把旧进程收掉重建，
-// 否则新地址不生效，还会拿旧网关的模型名去问新网关。
-let acpClient = null
-let acpClientBase = ''
-// 每轮只发「新增的用户消息」：ACP 会话自己记得上下文（实测第二轮只发
-// 「我叫什么？」就能答出上一轮的名字，输入 193 token）。
-//
-// 之前每轮把整段历史重放一遍，等于让模型把聊过的内容再读一次：prompt 每次
-// 都是新的、吃不到缓存，首字延迟随对话长度线性上涨——用户感觉「从插件聊天
-// 好慢」。现在只在会话变了（进程重启、网关切换、DSH 改写历史）时重放一次。
-let acpSentTexts = null // 上一轮已经发出去的消息文本
-let acpSentSession = null // 发出去时所在的 ACP 会话 id
-
-// 模型目录的磁盘缓存。CLI 报上来的清单要建一次会话才拿得到（冷启动 3-7 秒），
-// 而 DSH 每条消息前都会问一遍，所以存盘。
+// 模型目录的磁盘缓存。DSH 每条消息前都会问一遍模型清单，
+// 而清单要从网关 /v1/models 拿，所以存盘。
 const modelsStore = createModelsStore({
   file: path.join(homedir(), '.dsh', 'update-center', 'dsh-concierge-models.json'),
   warn: (event, fields) => console.warn('[dsh-concierge] ' + event, fields),
 })
 
-// 指纹：CLI 可执行文件变了（升级、换路径）就不认旧缓存。
+// 指纹：SDK 文件变了（升级）就不认旧缓存。
 // 用路径 + 大小 + mtime，够用且不用读文件内容。
 async function acpFingerprint() {
   try {
-    const bin = process.env.CLAUDE_CODE_ACP_BIN || 'claude-agent-acp'
-    const { execFileSync } = await import('node:child_process')
-    let resolved = bin
-    try {
-      resolved = execFileSync(process.platform === 'win32' ? 'where' : 'which', [bin], {
-        encoding: 'utf8',
-      })
-        .split(/\r?\n/)
-        .map((s) => s.trim())
-        .find(Boolean) || bin
-    } catch {
-      /* 找不到就用名字本身当指纹 */
-    }
-    const info = await statOf(resolved)
-    return `${resolved}|${info.size}|${info.mtimeMs}`
+    const file = path.join(
+      homedir(),
+      'AppData', 'Roaming', 'npm', 'node_modules', '@agentclientprotocol', 'claude-agent-acp',
+      'node_modules', '@anthropic-ai', 'claude-agent-sdk', 'sdk.mjs',
+    )
+    const info = await statOf(file)
+    return `${file}|${info.size}|${info.mtimeMs}`
   } catch {
     // 拿不到就当没有指纹——调用方会跳过缓存，走实时发现
     return ''
   }
 }
 
-function getAcpClient() {
-  const env = claudeGatewayEnv()
-  if (acpClient && acpClientBase === env.ANTHROPIC_BASE_URL) return acpClient
-  if (acpClient) disposeAcpClient()
-  acpClientBase = env.ANTHROPIC_BASE_URL
-  acpClient = createAcpClient({ env, cwd: process.cwd() })
-  return acpClient
-}
-
-function disposeAcpClient() {
-  acpSentTexts = null
-  acpSentSession = null
-  if (!acpClient) return
-  try {
-    acpClient.dispose()
-  } catch {
-    /* 已经退出 */
-  }
-  acpClient = null
-}
-
-// 把 ACP 进程和默认会话提前准备好，省掉用户发第一句话时的冷启动
-//（进程 + initialize + session/new，实测 3-4 秒）。
-//
-// 模型不在这里切：warmupAcp 在模块初始化时就被调用，那时候 currentModel
-// 还没定义（const 有暂时性死区，调用会抛 ReferenceError）。等 DSH 第一次
-// 问 listModels 时，模型清单和 CLI 当前模型都已经读到了，那时候再切。
-// 失败不要紧：真正请求时 getAcpClient 会重建，错误也会在那时报出来。
+// 预热：把 SDK 模块先加载进来，省掉用户发第一句话时的模块解析开销。
+// SDK 每次 query 都是独立的一次调用，没有「会话」需要提前建。
+let warmedUp = false
 function warmupAcp() {
-  try {
-    const client = getAcpClient()
-    if (!client || typeof client.warmup !== 'function') return
-    void client.warmup('default')
-  } catch {
-    /* CLI 没装 / 网关没配，等真正请求时再报 */
-  }
+  if (warmedUp) return
+  warmedUp = true
+  void import('./sdkclient.js').catch(() => {
+    /* SDK 找不到等真正请求时再报 */
+  })
 }
 
 // CLI 报「模型不存在或没有权限」时补一句能动手的说明。
@@ -3485,28 +3437,10 @@ export { turnPromptText, turnPromptMessages, probeGatewayModels }
 
 // 导出给冒烟测试用（scripts/smoke-stream.mjs）：直接喂一段对话，检查吐出来的
 // StreamChunk 里有没有 reasoning 块、正文块顺序对不对。运行时不消费这个导出。
-// 决定这一轮往 ACP 会话里发什么。
-//   - 会话没换、历史前缀对得上 → 只发新增的用户消息（助手回复 CLI 自己就有）
-//   - 会话换了 / 进程重启 → 整段重放
-//   - 会话没换但历史被 DSH 改写（截断、编辑）→ 重建会话再整段重放，避免上下文重复
-function planClaudePrompt(all, sessionId) {
-  if (!all.length) return { send: [], reset: false }
-  const sent = acpSentTexts
-  const sameSession = !!sent && !!sessionId && sessionId === acpSentSession
-  const prefixOk = sameSession && sent.length <= all.length && sent.every((text, i) => all[i].text === text)
-  if (!prefixOk) {
-    // 同一个会话却对不上前缀：旧上下文已经和 DSH 的历史不一致了，重建更干净
-    return { send: truncateHistory(all), reset: sameSession }
-  }
-  const fresh = all.slice(sent.length).filter((m) => m.role === 'user')
-  if (!fresh.length) return { send: truncateHistory(all), reset: false }
-  return { send: fresh, reset: false }
-}
-
 // DSH 每轮除了聊天，还会发一个「生成会话标题」的小请求（maxTokens 很小，
 // system 是固定的标题模板）。它如果跟聊天挤在同一条 ACP 会话里，会有三个后果：
 //   1. 标题的提问进聊天历史，模型上下文被污染；
-//   2. acpSentTexts 被两个请求轮流覆盖，下一轮聊天前缀对不上，只能重放整段；
+  //   2. 旁路请求（生成标题）单开一路，别把它的提问混进聊天历史；
 //   3. 标题请求还会切模型，切走再切回让聊天的 prompt 缓存整个失效。
 // 所以这类请求单开一条会话、用完即弃，也不参与增量记账、不切模型。
 function isSideRequest(options) {
@@ -3527,48 +3461,47 @@ function sidePrompt(all, options) {
 }
 
 export async function* streamClaudeCode(options) {
-  // 把完整对话整理出来，用来比对「哪些还没发过」；真正发多少由 planClaudePrompt 决定
+  // 把完整对话整理出来。
   const side = isSideRequest(options)
   const all = turnPromptMessages(options && options.messages, 0)
   if (!all.length) {
     yield { type: 'finish', reason: { kind: 'stop' } }
     return
   }
+  // SDK 每次 query() 都是独立的一次调用，没有跨轮的会话记忆，
+  // 所以聊天侧每轮都要把完整历史带上（不然模型失忆）。
+  // 旁路请求（生成标题）只需要本轮。
   const plan = side
     ? { send: sidePrompt(all, options), reset: false }
-    : planClaudePrompt(all, acpClient ? acpClient.sessionId : null)
-  if (!side && plan.reset) disposeAcpClient()
+    : { send: all, reset: false }
   if (!plan.send.length) {
     yield { type: 'finish', reason: { kind: 'stop' } }
     return
   }
-  // ACP 会边生成边推增量，用队列把它转成 DSH 的 StreamChunk。
-  // 队列元素带 kind：'thought' 是思考（agent_thought_chunk），'text' 是正文。
+  // SDK 会边生成边推增量，用队列把它转成 DSH 的 StreamChunk。
+  // 队列元素带 kind：'thought' 是思考（thinking_delta），'text' 是正文。
   const queue = []
   let settled = false
   let failure = null
-  const client = getAcpClient()
-  // 用户在菜单里选的是网关模型 id；它不是 ACP 的选项时就沿用 CLI 当前模型
-  const picked = String((options && options.model) || '').replace(/\[[^\]]*\]$/, '')
-  const running = client
-    .prompt(
-      plan.send,
-      (chunk, kind) => queue.push({ text: chunk, kind: kind === 'thought' ? 'thought' : 'text' }),
-      options && options.signal,
-      // 旁路请求不切模型：切走再切回会让聊天那侧的缓存整段失效
-      side ? '' : picked,
-      side ? 'side' : 'default',
-      // 旁路每轮换一条干净会话，别让上一轮的标题提问留在上下文里
-      side,
-    )
+  // 用户在菜单里选的是网关模型 id
+  const picked = String((options && options.model) || '')
+  // 发出去的文字：只发这一轮新增的（plan.send），不是整段历史。
+  // SDK 的 query() 每轮都是新会话，没有 CLI 自己的会话记忆，所以历史要自己带。
+  // 聊天侧带完整历史（不然模型失忆），旁路只带本轮（标题请求不需要上下文）。
+  const promptText = side
+    ? plan.send.map((m) => m.text).join('\n\n')
+    : all.map((m) => `${m.role === 'assistant' ? 'Assistant' : 'User'}: ${m.text}`).join('\n\n')
+  const env = claudeGatewayEnv()
+  const running = runQuery({
+    prompt: promptText,
+    system: side ? String((options && options.system) || '') : '',
+    model: picked,
+    env,
+    onChunk: (chunk, kind) => queue.push({ text: chunk, kind: kind === 'thought' ? 'thought' : 'text' }),
+    signal: options && options.signal,
+  })
     .then((result) => {
       settled = true
-      // 这一轮真正送达了：记下来，下一轮只发增量。旁路请求不记账，
-      // 否则会把聊天侧的 acpSentTexts 冲掉。
-      if (!side && result && result.sessionId) {
-        acpSentTexts = all.map((m) => m.text)
-        acpSentSession = result.sessionId
-      }
       return result
     })
     .catch((error) => {
@@ -3682,26 +3615,14 @@ function createClaudeCodeAdapter(version) {
     // 把 magpie 网关上真能用的模型都报给 DSH：先探测、只留返回 200 的，
     // 一个都不通时退回当前默认（applied.json 里 magpie 给 Claude Code 选的那个）。
     listModels: async () => {
-      // 优先用 CLI 自己报的清单：session/new 的 configOptions 里就有，
-      // 而且是它认的 id（带 [1m] 后缀）。网关 /v1/models 给的是裸 id，
-      // 拿去问 CLI 会 404——这就是「路由里只显示一个模型」的原因。
-      const fromCli = getAcpClient().models
-      if (fromCli.length) {
-        // 读到了就顺手存盘，下次冷启动时菜单不会空
+      // SDK 没有「会话」可问，模型清单从网关 /v1/models 拿。
+      // 拿到的裸 id 后面补 [1m]——SDK 认带后缀的那份，也能认裸的，
+      // 但补上能压掉「不认识这个模型，按 1m 窗口处理」的警告。
+      const fromGateway = await probeGatewayModels()
+      if (fromGateway.length) {
         const fp = await acpFingerprint()
-        if (fp) void modelsStore.set('claude-code', fp, fromCli).catch(() => {})
-        // 顺手把模型切到 DSH 当前选中的那个：set_config_option 一次要几秒，
-        // 放在这里做，等用户真发消息时就不用再等。
-        void (async () => {
-          try {
-            const want = await currentModel()
-            const id = String((want && want.id) || '')
-            if (id) await getAcpClient().warmup('default', id)
-          } catch {
-            /* 预热失败不影响选择器 */
-          }
-        })()
-        return fromCli.map((entry) => ({
+        if (fp) void modelsStore.set('claude-code', fp, fromGateway).catch(() => {})
+        return fromGateway.map((entry) => ({
           ...base,
           id: entry.id,
           name: entry.name || entry.id,

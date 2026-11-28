@@ -334,43 +334,40 @@ html[data-dsh-wall-video="1"] [class*="_bottomRow"] {
   -webkit-backdrop-filter: none !important;
 }
 
-/* 视频壁纸下的正文可读性 —— 在字的背后垫一块板，而不是压暗整张壁纸。
-   用户要的是「壁纸看得见 + 字看得清」，所以板子只铺在会话列里，
-   上半屏留白给壁纸，往下逐渐加厚（消息多在下半屏）。
+/* 视频模式下关掉颗粒层。
+   颗粒是铺在玻璃根层上的一个全屏 SVG 噪声伪元素。静态壁纸下它是缓存好的
+   静态层；视频下它每帧都要和变化的画面重新混合一次，等于给整屏加了一次
+   per-frame 全屏 blend。
+   官方从来不这么干——它全站 24 处无限动画全是图标级小元素，
+   没有任何一处给大面积元素叠纹理层。 */
+html[data-dsh-glass="1"][data-dsh-wall-video="1"] #dsh-concierge-glass::after {
+  display: none !important;
+}
 
-   这里必须用 !important：下面 L680 那条
-     html[data-dsh-glass="1"] [data-conversation-region="chat"] { background: transparent; }
-   优先级相同但位置在后，而 background 是简写、会把 background-image 重置成 none，
-   不加 !important 的话这条板子完全不生效（第一版就是这么失效的）。 */
-html[data-dsh-wall-video="1"] [data-conversation-region] {
-  background-image: linear-gradient(
-    180deg,
-    rgba(8, 12, 20, .12) 0%,
-    rgba(8, 12, 20, .22) 45%,
-    rgba(8, 12, 20, .30) 100%
-  ) !important;
+/* 视频壁纸下正文转白 —— 不加任何底板。
+   用户要的是「壁纸完整可见 + 字看得清」，所以不铺暗化层：
+   白字 + 一层投影直接压在画面上，投影负责把字从任意一帧里托出来。
+   底板试过两版都被否了（一版太淡没效果，一版整列发灰挡画面）。
+
+   两个细节：
+   ① 选择器必须带 html[data-dsh-glass="1"] 前置。data-dsh-wall-video 是
+      applyWallpaper 写的，外观关掉时虽然会删，但只要有一刻残留，不带前置的
+      规则就会把白字和底板铺到原生皮肤上（截图里那层灰膜就是这么来的）。
+   ② 只挑文字元素，不动 code / pre / a：代码块有自己的底色，链接要保持强调色。 */
+html[data-dsh-glass="1"][data-dsh-wall-video="1"] [data-conversation-region] :is(p, li, h1, h2, h3, h4, h5, h6, blockquote, td, th, dd, dt, strong, em) {
+  color: rgba(255, 255, 255, .97) !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, .62), 0 0 12px rgba(0, 0, 0, .30);
 }
-html[data-dsh-glass-scheme="dark"][data-dsh-wall-video="1"] [data-conversation-region] {
-  background-image: linear-gradient(
-    180deg,
-    rgba(0, 0, 0, .22) 0%,
-    rgba(0, 0, 0, .32) 45%,
-    rgba(0, 0, 0, .42) 100%
-  ) !important;
+/* 行内代码：白字在浅色代码底上会糊，改成半透明深底 */
+html[data-dsh-glass="1"][data-dsh-wall-video="1"] [data-conversation-region] :not(pre) > code {
+  background-color: rgba(0, 0, 0, .45) !important;
+  color: rgba(255, 255, 255, .92) !important;
+  border-color: rgba(255, 255, 255, .18) !important;
 }
-/* 正文再加一层极细投影，把字从画面纹理里托出来 */
-html[data-dsh-wall-video="1"] [data-conversation-region] :is(p, li, h1, h2, h3, h4, h5, h6, blockquote, td, th, dd, dt) {
-  text-shadow: 0 1px 2px rgba(0, 0, 0, .38);
-}
-html[data-dsh-glass-scheme="dark"][data-dsh-wall-video="1"] [data-conversation-region] :is(p, li, h1, h2, h3, h4, h5, h6, blockquote, td, th, dd, dt) {
-  text-shadow: 0 1px 2px rgba(0, 0, 0, .62);
-}
-/* 侧栏会话列表同样垫一层，比正文轻（行短，不需要那么厚） */
-html[data-dsh-wall-video="1"] [class*="_sidebarCol"] {
-  background-image: linear-gradient(180deg, rgba(8, 12, 20, .10) 0%, rgba(8, 12, 20, .18) 100%) !important;
-}
-html[data-dsh-glass-scheme="dark"][data-dsh-wall-video="1"] [class*="_sidebarCol"] {
-  background-image: linear-gradient(180deg, rgba(0, 0, 0, .20) 0%, rgba(0, 0, 0, .30) 100%) !important;
+/* 侧栏会话列表同样转白，不加底板 */
+html[data-dsh-glass="1"][data-dsh-wall-video="1"] [class*="_sidebarCol"] :is(span, div, p, a) {
+  color: rgba(255, 255, 255, .93) !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .55);
 }
 
 html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-glass > div:first-child::after {
@@ -961,7 +958,11 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
         node.muted = true
         node.setAttribute('muted', '')
         node.setAttribute('playsinline', '')
-        node.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover'
+        // contain: strict 让视频不影响任何祖先的 layout/paint（官方对固定尺寸容器
+        // 就是这么用的）；translateZ(0) 把它钉成单一合成层，避免每帧重新判定层叠。
+        node.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;contain:strict;transform:translateZ(0)'
+        node.preload = 'auto'
+        node.disablePictureInPicture = true
         media.appendChild(node)
         bindWallVideo(node)
         // 视频在动，叠在它上面的半透明面板每帧都要重新混合。

@@ -3286,6 +3286,18 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
 .uc-row-name span:first-child { overflow-wrap: anywhere; white-space: normal; line-height: 1.35; }
 .uc-tag { flex: none; font-size: var(--uc-fs-small); padding: 0 8px; border-radius: 999px; background: var(--uc-surface-2); color: var(--dsw-alias-label-secondary); }
 .uc-tag-hot { color: var(--dsw-alias-brand-primary); }
+/* 状态徽章：连上了用绿色，连不上用红色。
+   颜色只占一小块，不抢地址那行的注意力 */
+.uc-tag-ok { color: var(--dsw-alias-state-business-primary, #2a9d6e); background: color-mix(in srgb, var(--dsw-alias-state-business-primary, #2a9d6e) 12%, transparent); }
+.uc-tag-bad { color: var(--dsw-alias-state-error-primary, #d33); background: color-mix(in srgb, var(--dsw-alias-state-error-primary, #d33) 12%, transparent); }
+/* 网关切换按钮：一个芯片代表一个本机网关。
+   亮着 = 在跑且可切；on = 当前正在用；暗的 = 没运行 */
+.uc-gw { appearance: none; display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--dsw-alias-border-l1); background: var(--uc-surface-2); color: var(--dsw-alias-label-secondary); font-size: var(--uc-fs-small); cursor: pointer; transition: border-color .12s ease, color .12s ease, background .12s ease; }
+.uc-gw:hover:not(:disabled) { color: var(--dsw-alias-label-primary); border-color: color-mix(in srgb, var(--uc-accent) 40%, var(--dsw-alias-border-l1)); }
+.uc-gw-on { color: var(--dsw-alias-label-primary); border-color: var(--uc-accent); background: color-mix(in srgb, var(--uc-accent) 10%, var(--uc-surface-2)); }
+.uc-gw:disabled { opacity: .45; cursor: default; }
+.uc-gw-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--dsw-alias-label-tertiary, #bbb); flex: none; }
+.uc-gw-dot-on { background: var(--dsw-alias-state-business-primary, #2a9d6e); }
 .uc-row-pkg { margin-top: 4px; font-size: var(--uc-fs-small); color: var(--dsw-alias-label-secondary); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; overflow-wrap: anywhere; text-overflow: ellipsis; white-space: nowrap; }
 .uc-row-note { margin-top: 4px; font-size: var(--uc-fs-small); color: var(--dsw-alias-label-secondary); }
 .uc-row-err { margin-top: 4px; font-size: var(--uc-fs-small); color: var(--dsw-alias-state-error-primary); }
@@ -3602,11 +3614,48 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
           setClaudeError(`读取失败：${(error && error.message) || String(error)}`)
         }
       }, [])
+      // 本机网关列表：三个都探一遍，界面上能直接切
+      const [gateways, setGateways] = React.useState([])
+      const [gatewayBusy, setGatewayBusy] = React.useState(false)
+      const loadGateways = React.useCallback(async () => {
+        try {
+          const res = await fetch(`${API}/gateways`)
+          const body = await res.json()
+          if (body && body.ok && Array.isArray(body.gateways)) setGateways(body.gateways)
+        } catch {
+          /* 探不到就保持上一次的 */
+        }
+      }, [])
+      // 切到另一个网关：改 settings.json 的 ANTHROPIC_BASE_URL，再重读一遍
+      const switchToGateway = React.useCallback(async (id) => {
+        if (gatewayBusy) return
+        setGatewayBusy(true)
+        try {
+          const res = await fetch(`${API}/switch-gateway`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ id }),
+          })
+          const body = await res.json()
+          if (!body || !body.ok) {
+            setClaudeError((body && body.error) || '切换失败')
+          } else {
+            setClaudeError('')
+          }
+          await loadClaudeInfo()
+          await loadGateways()
+        } catch (error) {
+          setClaudeError(`切换失败：${(error && error.message) || String(error)}`)
+        } finally {
+          setGatewayBusy(false)
+        }
+      }, [gatewayBusy, loadClaudeInfo, loadGateways])
       React.useEffect(() => {
         if (tab !== 'claude') return
         loadClaudeInfo()
         loadMagpieInfo()
-      }, [tab, loadClaudeInfo, loadMagpieInfo])
+        loadGateways()
+      }, [tab, loadClaudeInfo, loadMagpieInfo, loadGateways])
       const toggleClaude = React.useCallback(async () => {
         if (claudeBusy) return
         setClaudeBusy(true)
@@ -4603,17 +4652,29 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
                 ),
               ),
               h('div', { className: 'uc-perf' },
-                settingRow('路由', 'settings.json 指向的地址',
-                  h('span', { className: 'uc-row-value' },
-                    claudeInfo && claudeInfo.route && claudeInfo.route.baseUrl
-                      ? h('span', null,
-                          claudeInfo.route.baseUrl,
-                          claudeInfo.route.alive === false
-                            ? h('span', { style: { color: 'var(--dsw-alias-state-error-primary, #d33)' } }, '  · 连不上（网关没启动？）')
-                            : claudeInfo.route.alive === true
-                              ? h('span', { style: { color: 'var(--dsw-alias-state-business-primary, #2a9d6e)' } }, '  · 通')
-                              : null)
-                      : '未配置')),
+                settingRow('路由', '点一下切换本机网关',
+                  h('div', { style: { display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-end' } },
+                    gateways.length
+                      ? gateways.map((gw) =>
+                          h('button', {
+                            key: gw.id,
+                            type: 'button',
+                            className: 'uc-gw' + (claudeInfo && claudeInfo.route && claudeInfo.route.baseUrl === gw.base ? ' uc-gw-on' : ''),
+                            disabled: gatewayBusy || !gw.up,
+                            title: gw.up
+                              ? `${gw.base}${gw.modelCount != null ? ` · ${gw.modelCount} 个模型` : ''}`
+                              : `${gw.name} 没在运行`,
+                            onClick: () => switchToGateway(gw.id),
+                          },
+                            h('span', { className: 'uc-gw-dot' + (gw.up ? ' uc-gw-dot-on' : '') }),
+                            h('span', null, gw.name),
+                          ),
+                        )
+                      : h('span', { className: 'uc-row-value' },
+                          claudeInfo && claudeInfo.route && claudeInfo.route.baseUrl
+                            ? claudeInfo.route.baseUrl
+                            : '未配置')),
+                ),
                 settingRow('模型', '当前映射的模型',
                   h('span', { className: 'uc-row-value' },
                     claudeInfo && claudeInfo.route && claudeInfo.route.sonnet
@@ -4633,7 +4694,7 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
                         : claudeInfo.switcher.current
                           ? `CC Switch · 当前 ${claudeInfo.switcher.current}`
                           : `CC Switch · 已装（${claudeInfo.switcher.storage || '未知存储'}）`)),
-                settingRow('路由工具', '自动检测，同时用两个会冲突',
+                settingRow('路由工具', '本机装了哪些，谁在接管',
                   h('span', { className: 'uc-row-value' },
                     !claudeInfo || !claudeInfo.routing
                       ? '—'
@@ -4649,7 +4710,7 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
                     !claudeInfo
                       ? '读取中…'
                       : claudeInfo.installed
-                        ? '已接入（聊天框模型菜单里选 Claude Code）'
+                        ? '已接入（聊天框菜单里选「路由」）'
                         : '没找到 claude.exe')),
                 settingRow('跑一次', '用当前路由跑一轮',
                   h('div', { style: { display: 'flex', gap: '8px', alignItems: 'center' } },

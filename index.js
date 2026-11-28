@@ -452,6 +452,45 @@ export function apply(ctx) {
     'dsh-concierge claude info route',
   )
 
+  // 本机有哪些网关在线，给界面上的切换器用
+  ctx.effect(
+    () => ctx.webServer.register({
+      kind: 'exact',
+      path: `${ROUTE}/gateways`,
+      handler: withGuard(ctx, async (request, response) => {
+        if (request.method !== 'GET') return sendNodeJson(response, { ok: false }, 405)
+        try {
+          const gateways = await listGateways()
+          const route = await readClaudeRoute()
+          return sendNodeJson(response, { ok: true, gateways, current: route && route.baseUrl ? route.baseUrl : '' }, 200)
+        } catch (error) {
+          return sendNodeJson(response, { ok: false, error: messageOf(error) }, 200)
+        }
+      }),
+    }),
+    'dsh-concierge gateways route',
+  )
+
+  // 把 settings.json 切到另一个本机网关
+  ctx.effect(
+    () => ctx.webServer.register({
+      kind: 'exact',
+      path: `${ROUTE}/switch-gateway`,
+      handler: withGuard(ctx, async (request, response) => {
+        if (request.method !== 'POST') return sendNodeJson(response, { ok: false }, 405)
+        try {
+          const body = await readNodeJson(request)
+          const id = body && typeof body.id === 'string' ? body.id : ''
+          if (!id) return sendNodeJson(response, { ok: false, error: '没说要切到哪个' }, 400)
+          return sendNodeJson(response, await switchGateway(id), 200)
+        } catch (error) {
+          return sendNodeJson(response, { ok: false, error: messageOf(error) }, 200)
+        }
+      }),
+    }),
+    'dsh-concierge switch gateway route',
+  )
+
   ctx.effect(
     () => ctx.webServer.register({
       kind: 'exact',
@@ -2509,7 +2548,7 @@ let lastGatewayBase = ''
 function settingsGatewayBase() {
   try {
     const file = path.join(homedir(), '.claude', 'settings.json')
-    const json = JSON.parse(readFileSync(file, 'utf8'))
+    const json = JSON.parse(readFileSync(file, 'utf8').replace(/^\uFEFF/, ''))
     const base = json && json.env ? json.env.ANTHROPIC_BASE_URL : ''
     return typeof base === 'string' ? base.replace(/\/+$/, '') : ''
   } catch {
@@ -2518,11 +2557,15 @@ function settingsGatewayBase() {
 }
 
 async function pickGatewayBase() {
+  // 每次都看 settings.json：用户可能刚用 CC Switch 或界面上的切换器换了网关，
+  // 记住上一次的结果会让插件继续走旧网关。
+  const picked = settingsGatewayBase()
+  if (picked) {
+    lastGatewayBase = picked
+    return picked
+  }
   if (lastGatewayBase) return lastGatewayBase
   const candidates = []
-  // settings.json 里写的地址优先——那是用户/CC Switch 明确选的
-  const fromSettings = settingsGatewayBase()
-  if (fromSettings) candidates.push(fromSettings)
   for (const gw of LOCAL_GATEWAYS) {
     if (!candidates.includes(gw.base)) candidates.push(gw.base)
   }
@@ -2559,11 +2602,13 @@ let modelProbeCache = { at: 0, models: null }
 // 那个列表里的模型本来就是网关认为可用的，一样不用再探。
 async function probeGatewayModels() {
   const now = Date.now()
-  if (modelProbeCache.models && now - modelProbeCache.at < 10 * 60 * 1000) {
+  // 缓存要带上「是哪个网关的结果」——settings.json 换成另一个网关后，
+  // 旧缓存里的模型对不上新网关，得重新拉。
+  const cacheKey = await pickGatewayBase()
+  const gateway = cacheKey
+  if (modelProbeCache.models && modelProbeCache.gateway === cacheKey && now - modelProbeCache.at < 10 * 60 * 1000) {
     return modelProbeCache.models
   }
-  const gateway = await pickGatewayBase()
-
   // 先问路由台的探测结果：/api/models 带 ok 和 name
   let entries = []
   try {
@@ -2649,9 +2694,89 @@ async function probeGatewayModels() {
   }
 
   entries.sort((a, b) => a.id.localeCompare(b.id))
-  modelProbeCache = { at: now, models: entries }
+  modelProbeCache = { at: now, models: entries, gateway: cacheKey }
   return entries
 }
+// 本机有哪些网关在线。三个都探一遍，界面上能选着切。
+//
+// 为什么要有这个：settings.json 只能指向一个地址，换网关得手改配置文件。
+// 路由台、magpie、CCR 都是本机端口，切换就是改这一个字段。
+async function listGateways() {
+  const out = []
+  for (const gw of LOCAL_GATEWAYS) {
+    let up = false
+    let modelCount = null
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 900)
+    try {
+      // 先问 /api/models（路由台自己的接口，带可用性），没有再退回 /v1/models
+      const res = await fetch(gw.base + '/api/models', { signal: controller.signal })
+      if (res.ok) {
+        const body = await res.json()
+        const list = Array.isArray(body && body.models) ? body.models : []
+        up = true
+        modelCount = list.filter((m) => m && m.ok && m.selected !== false).length
+      } else {
+        const res2 = await fetch(gw.base + '/v1/models', { signal: controller.signal })
+        up = res2.ok
+        if (res2.ok) {
+          const body2 = await res2.json()
+          modelCount = Array.isArray(body2 && body2.data) ? body2.data.length : null
+        }
+      }
+    } catch {
+      up = false
+    } finally {
+      clearTimeout(timer)
+    }
+    out.push({ id: gw.id, name: gw.name, base: gw.base, up, modelCount })
+  }
+  return out
+}
+
+// 把 settings.json 的 ANTHROPIC_BASE_URL 改到另一个本机网关。
+//
+// 只动这一个字段，其余原样写回——settings.json 里还有模型映射、
+// modelPicker、env 里别的键，整份重写会把它们弄丢。
+async function switchGateway(id) {
+  const target = LOCAL_GATEWAYS.find((g) => g.id === id)
+  if (!target) return { ok: false, error: '不认识这个网关：' + id }
+
+  // 目标得在线，切过去才发现连不上没意义
+  const gateways = await listGateways()
+  const gw = gateways.find((g) => g.id === id)
+  if (!gw || !gw.up) {
+    return { ok: false, error: `$
+{target.name} 没在运行，先把它的进程启动起来` }
+  }
+
+  const file = path.join(homedir(), '.claude', 'settings.json')
+  let json
+  try {
+    // 去掉可能的 BOM：PowerShell 的 Set-Content 会加，JSON.parse 不认
+    const raw = await readFile(file, 'utf8')
+    json = JSON.parse(raw.replace(/^\uFEFF/, ''))
+  } catch (error) {
+    return { ok: false, error: '读不了 settings.json：' + messageOf(error) }
+  }
+  if (!json || typeof json !== 'object') return { ok: false, error: 'settings.json 格式不对' }
+  if (!json.env || typeof json.env !== 'object') json.env = {}
+
+  const before = json.env.ANTHROPIC_BASE_URL || ''
+  json.env.ANTHROPIC_BASE_URL = target.base
+
+  try {
+    await writeFile(file, JSON.stringify(json, null, 2) + '\n', 'utf8')
+  } catch (error) {
+    return { ok: false, error: '写不了 settings.json：' + messageOf(error) }
+  }
+
+  // 缓存里记的网关也得跟着换，不然这一轮还按旧的走
+  lastGatewayBase = target.base
+  modelProbeCache = { at: 0, models: null }
+  return { ok: true, from: before, to: target.base, name: target.name }
+}
+
 async function readClaudeRoute() {
   const file = path.join(homedir(), '.claude', 'settings.json')
   try {
@@ -2661,18 +2786,47 @@ async function readClaudeRoute() {
     const baseUrl = typeof env.ANTHROPIC_BASE_URL === 'string' ? env.ANTHROPIC_BASE_URL : ''
     // settings.json 指向本机端口时，探一下那个端口还活着没——路由台退出后
     // 这个指向会变成死地址，界面上却看不出问题。
+    // settings.json 指向本机端口时，探一下那个端口还活着没——路由台退出后
+    // 这个指向会变成死地址，界面上却看不出问题。
+    //
+    // 优先探 /api/models（路由台自己的接口，能顺带拿到可用模型数），
+    // 拿不到再退回 /v1/models（magpie 只有这个）。
     let alive = null
+    let modelCount = null
+    let gatewayName = ''
     const localMatch = /^https?:\/\/(127\.0\.0\.1|localhost)(?::(\d+))?/i.exec(baseUrl)
     if (localMatch) {
       const port = localMatch[2] || '80'
+      const hit = LOCAL_GATEWAYS.find((g) => {
+        try {
+          return new URL(g.base).port === port
+        } catch {
+          return false
+        }
+      })
+      gatewayName = hit ? hit.name : ''
+      const controller = new AbortController()
+      const timer = setTimeout(() => controller.abort(), 1200)
       try {
-        const controller = new AbortController()
-        const timer = setTimeout(() => controller.abort(), 1200)
-        const res = await fetch(`http://127.0.0.1:${port}/v1/models`, { signal: controller.signal })
-        clearTimeout(timer)
-        alive = res.ok
+        const res = await fetch(`http://127.0.0.1:${port}/api/models`, { signal: controller.signal })
+        if (res.ok) {
+          const body = await res.json()
+          const list = Array.isArray(body && body.models) ? body.models : []
+          alive = true
+          modelCount = list.filter((m) => m && m.ok && m.selected !== false).length
+        } else {
+          const res2 = await fetch(`http://127.0.0.1:${port}/v1/models`, { signal: controller.signal })
+          alive = res2.ok
+          if (res2.ok) {
+            const body2 = await res2.json()
+            const list = Array.isArray(body2 && body2.data) ? body2.data : []
+            modelCount = list.length
+          }
+        }
       } catch {
         alive = false
+      } finally {
+        clearTimeout(timer)
       }
     }
     return {
@@ -2680,6 +2834,8 @@ async function readClaudeRoute() {
       file,
       baseUrl,
       alive,
+      modelCount,
+      gatewayName,
       model: typeof json.model === 'string' ? json.model : '',
       sonnet: typeof env.ANTHROPIC_DEFAULT_SONNET_MODEL === 'string' ? env.ANTHROPIC_DEFAULT_SONNET_MODEL : '',
       haiku: typeof env.ANTHROPIC_DEFAULT_HAIKU_MODEL === 'string' ? env.ANTHROPIC_DEFAULT_HAIKU_MODEL : '',

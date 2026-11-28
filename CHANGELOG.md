@@ -7,6 +7,21 @@
 ## [Unreleased]
 
 
+## [0.26.4] - 2026-11-28
+
+> 三个本机网关能在界面上直接切，不用再手改 settings.json
+
+### Added
+
+- 路由: 「路由」那行改成网关切换器，本机装了哪些网关各显示一个芯片——亮着表示在跑、当前用的那个高亮、没运行的置灰。点一下就切，不用再手改 `~/.claude/settings.json`
+- 路由: `GET /dsh-concierge/gateways` 返回三个本机网关的在线状态和可用模型数；`POST /dsh-concierge/switch-gateway` 切过去。切换只改 `ANTHROPIC_BASE_URL` 这一个字段，其余原样写回
+- 路由: 网关切换后模型缓存跟着失效，不会继续拿旧网关的清单
+
+### Fixed
+
+- 路由: `settings.json` 开头有 BOM 时 `JSON.parse` 直接抛错，`settingsGatewayBase()` 只好返回空、退回默认网关——表现是切到 magpie 后插件还报路由台的 16 个模型。现在读之前先去掉 BOM（PowerShell 的 `Set-Content -Encoding UTF8` 会写进去）
+- 路由: `pickGatewayBase()` 记住上一次的结果就不再看 `settings.json` 了，用户用 CC Switch 或界面切换器换了网关之后插件还走旧的。现在每次都以 `settings.json` 为准
+- 路由: 模型缓存只按 10 分钟过期，不判断是哪个网关的结果，换网关后仍然命中旧缓存。现在缓存带上网关地址，对不上就重拉
 ## [0.26.3] - 2026-11-28
 
 > 设置页改名叫「路由」，字体和排版收一遍

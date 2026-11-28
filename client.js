@@ -334,6 +334,43 @@ html[data-dsh-wall-video="1"] [class*="_bottomRow"] {
   -webkit-backdrop-filter: none !important;
 }
 
+/* 视频壁纸下的正文可读性。
+   用户要的是「壁纸看得见 + 字看得清」，所以不去压暗整块壁纸，而是分两层：
+   ① 会话区背后一层很轻的暗化，顶部 8% 到底部 20%，越往下越重
+      （消息多在下半屏，上半屏留给壁纸）；
+   ② 正文加一层极细的投影，把字从画面纹理里托出来。
+   两层都很淡，单看几乎看不出，叠起来才把对比度拉够。
+   浅色方案下用中性黑，深色方案下用中性白，避免把画面染色。 */
+html[data-dsh-wall-video="1"] [data-conversation-region] {
+  background-image: linear-gradient(
+    180deg,
+    rgba(10, 14, 22, .08) 0%,
+    rgba(10, 14, 22, .14) 50%,
+    rgba(10, 14, 22, .20) 100%
+  );
+}
+html[data-dsh-glass-scheme="dark"][data-dsh-wall-video="1"] [data-conversation-region] {
+  background-image: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, .16) 0%,
+    rgba(0, 0, 0, .24) 50%,
+    rgba(0, 0, 0, .32) 100%
+  );
+}
+html[data-dsh-wall-video="1"] [data-conversation-region] :is(p, li, h1, h2, h3, h4, h5, h6, blockquote, td, th, dd, dt) {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .30);
+}
+html[data-dsh-glass-scheme="dark"][data-dsh-wall-video="1"] [data-conversation-region] :is(p, li, h1, h2, h3, h4, h5, h6, blockquote, td, th, dd, dt) {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .55);
+}
+/* 侧栏的会话列表同样弱，给它一层更轻的暗化（列表行短，不需要那么重） */
+html[data-dsh-wall-video="1"] [class*="_sidebarCol"] {
+  background-image: linear-gradient(180deg, rgba(10, 14, 22, .06) 0%, rgba(10, 14, 22, .12) 100%);
+}
+html[data-dsh-glass-scheme="dark"][data-dsh-wall-video="1"] [class*="_sidebarCol"] {
+  background-image: linear-gradient(180deg, rgba(0, 0, 0, .14) 0%, rgba(0, 0, 0, .22) 100%);
+}
+
 html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-glass > div:first-child::after {
   background: radial-gradient(1000px 780px at 90% 2%, rgba(36, 56, 92, 0.8) 0%, rgba(36, 56, 92, 0) 60%);
 }

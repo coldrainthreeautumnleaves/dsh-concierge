@@ -3216,7 +3216,10 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
 
   /* 纵深：阴影半径按 3 倍递增表达层级，比加深不透明度有效得多 */
   --uc-shadow: var(--dsw-elevation-panel);
-  --uc-shadow-1: 0 1px 2px rgba(16, 24, 40, .06);
+  /* 描边用 box-shadow 的环而不是 border：border 画在盒子内侧，
+     分组灰带这类贴边元素够不到它，边缘就会显出一条缝。
+     环画在盒子外侧，带子和卡片边缘重合，没有缝。 */
+  --uc-shadow-1: 0 0 0 var(--uc-hairline) var(--dsw-alias-settings-card-stroke), 0 1px 2px rgba(16, 24, 40, .06);
   --uc-shadow-2: 0 8px 24px rgba(16, 24, 40, .10);
   --uc-shadow-3: 0 24px 48px -12px rgba(16, 24, 40, .16);
 
@@ -3280,7 +3283,7 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
   outline-offset: 2px;
 }
 
-.uc-hero { position: relative; overflow: hidden; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 20px; border-radius: var(--uc-r-card); background: var(--dsw-alias-settings-card-fill); border: var(--uc-hairline) solid var(--dsw-alias-settings-card-stroke); box-shadow: var(--uc-shadow-1); }
+.uc-hero { position: relative; overflow: hidden; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 20px; border-radius: var(--uc-r-card); background: var(--dsw-alias-settings-card-fill); box-shadow: var(--uc-shadow-1); }
 .uc-glow { display: none; }
 .uc-hero-body { position: relative; min-width: 0; }
 .uc-hero-kicker { font-size: var(--uc-fs-small); color: var(--dsw-alias-label-secondary); margin-bottom: 8px; }
@@ -3314,7 +3317,7 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
 .uc-btn-danger:hover:not(:disabled) { background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 10%, transparent) !important; }
 
 .uc-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-.uc-stat { border-radius: var(--uc-r-card); background: var(--dsw-alias-settings-card-fill); padding: 16px; border: var(--uc-hairline) solid var(--dsw-alias-settings-card-stroke); box-shadow: var(--uc-shadow-1); }
+.uc-stat { border-radius: var(--uc-r-card); background: var(--dsw-alias-settings-card-fill); padding: 16px; box-shadow: var(--uc-shadow-1); }
 .uc-stat-value { font-size: var(--uc-fs-title); font-weight: 600; font-variant-numeric: tabular-nums; }
 .uc-stat-value-hot { color: var(--dsw-alias-state-warn-primary); }
 .uc-stat-label { margin-top: 4px; font-size: var(--uc-fs-small); color: var(--dsw-alias-label-secondary); }
@@ -3334,7 +3337,6 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
   position: relative;
   border-radius: var(--uc-r-card);
   background: var(--dsw-alias-settings-card-fill);
-  border: var(--uc-hairline) solid var(--dsw-alias-settings-card-stroke);
   overflow: hidden;
   isolation: isolate;
   box-shadow: var(--uc-shadow-1), inset 0 1px 0 var(--uc-highlight);

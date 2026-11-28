@@ -397,7 +397,45 @@ export function apply(ctx) {
       await writeFile(HIDDEN_PROVIDERS_FILE, JSON.stringify(map, null, 2), 'utf8')
     }
 
-    // hide：把 llm-pi-ai 里的 provider 全摘掉，摘下来的存进备份
+    // magpie 的 DSH 接入状态记在 ~/.config/magpie/applied.json 的 dsh 字段。
+    // 光摘 cordis.patch.yml 不够——magpie 那边还认为自己「已接入」，
+    // 界面会显示「配置已变更 · 重新接入」，用户点一下就又写回来了。
+    //
+    // 所以接管时把 applied.json 的 dsh 条目也挪走，让 magpie 认为没接入。
+    // 只动 dsh 这一个键，claude / pi 那些别碰。
+    const MAGPIE_APPLIED_FILE = path.join(homedir(), '.config', 'magpie', 'applied.json')
+
+    async function stashMagpieDshApplied() {
+      try {
+        const text = await readFile(MAGPIE_APPLIED_FILE, 'utf8')
+        const json = JSON.parse(text)
+        if (!json || typeof json !== 'object' || !json.dsh) return null
+        const saved = json.dsh
+        delete json.dsh
+        await writeFile(MAGPIE_APPLIED_FILE, JSON.stringify(json, null, 2), 'utf8')
+        return saved
+      } catch {
+        return null
+      }
+    }
+
+    async function restoreMagpieDshApplied(saved) {
+      if (!saved) return false
+      try {
+        const text = await readFile(MAGPIE_APPLIED_FILE, 'utf8')
+        const json = JSON.parse(text)
+        if (!json || typeof json !== 'object') return false
+        // 已经有了就别覆盖——用户可能自己在 magpie 里又接了一次
+        if (!json.dsh) json.dsh = saved
+        await writeFile(MAGPIE_APPLIED_FILE, JSON.stringify(json, null, 2), 'utf8')
+        return true
+      } catch {
+        return false
+      }
+    }
+
+    // hide：把 llm-pi-ai 里的 provider 全摘掉，摘下来的存进备份；
+    // 顺带让 magpie 认为 DSH 没接入
     async function hideGatewayProviders() {
       const file = await findProfileConfig()
       if (!file) return false
@@ -423,14 +461,25 @@ export function apply(ctx) {
 
       entry.config.providers = {}
       await writeFile(file, yaml.dump(list, { lineWidth: -1 }), 'utf8')
+
+      // 让 magpie 那边也认为没接入，否则界面会提示「重新接入」
+      const savedApplied = await stashMagpieDshApplied()
+      if (savedApplied) {
+        // 和 provider 备份放一起，让出时一起还原
+        const merged = Object.assign({}, stash)
+        merged.__applied = savedApplied
+        await writeHiddenProviders(merged)
+      }
       return true
     }
 
     // show：把之前摘下来的 provider 原样放回去
     async function showGatewayProviders() {
       const stash = await readHiddenProviders()
-      const names = Object.keys(stash)
-      if (!names.length) return false
+      const allNames = Object.keys(stash)
+      if (!allNames.length) return false
+      // __applied 是 magpie applied.json 里那条 dsh 记录的备份，不是 provider
+      const names = allNames.filter((name) => name !== '__applied')
 
       const file = await findProfileConfig()
       if (!file) return false
@@ -451,6 +500,10 @@ export function apply(ctx) {
         if (!entry.config.providers[name]) entry.config.providers[name] = stash[name]
       }
       await writeFile(file, yaml.dump(list, { lineWidth: -1 }), 'utf8')
+
+      // magpie 那边的接入状态也还原，界面才不会一直提示「配置已变更」
+      await restoreMagpieDshApplied(stash.__applied)
+
       await writeHiddenProviders({})
       return true
     }

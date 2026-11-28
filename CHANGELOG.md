@@ -7,6 +7,21 @@
 ## [Unreleased]
 
 
+## [0.26.8] - 2026-11-28
+
+> 插件接管时连 magpie 的接入状态一起关掉，界面不再提示「重新接入」
+
+### Fixed
+
+- Claude Code（ACP）: 接管时只摘 `cordis.patch.yml` 里的 provider 不够——magpie 那边 `applied.json` 里还记着 `dsh` 这条接入，界面会显示「配置已变更 · 重新接入」，用户点一下就又把 provider 写回来了。现在接管时把 `applied.json` 的 `dsh` 键也挪到备份里，让 magpie 认为没接入；让出时原样还原
+- Claude Code（ACP）: 备份文件里除了 provider 还存一条 `__applied`（magpie 那条接入记录的备份），还原时跳过它，不当成 provider 处理
+
+### 两条链路
+
+   插件开启（路由功能）：插件 → 模型 → 聊天框
+   插件关闭：           Magpie → 模型 → 聊天框
+
+接管时摘掉 `magpie-anthropic` 等 provider 并清 `applied.json` 的 `dsh`；让出时按备份原样写回。
 ## [0.26.7] - 2026-11-28
 
 > 插件不再失忆：完整对话历史都交给 CLI

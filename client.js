@@ -2220,21 +2220,13 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
     function wireWindowChromeReapply() {
       if (windowChromeRewire || typeof window === 'undefined') return
       windowChromeRewire = true
-      const reapply = () => {
-        if (windowChromeTimer) clearTimeout(windowChromeTimer)
-        windowChromeTimer = setTimeout(() => {
-          windowChromeTimer = 0
-          if (!look.enabled || !isGlassSkin()) return
-          appliedWindowChrome = null
-          applyWindowCorners(true)
-        }, 1200)
-      }
-      window.addEventListener('resize', reapply, { passive: true })
-      if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
-        document.addEventListener('visibilitychange', () => {
-          if (document.visibilityState === 'visible') reapply()
-        })
-      }
+      // 这里原来挂了 resize 和 visibilitychange：窗口一改尺寸、或切出去再切回来，
+      // 就 force 重设一次窗口圆角。但重设要走宿主 → spawn powershell.exe →
+      // Add-Type 现场编译 C#（DllImport dwmapi），在 Windows 上要 1–3 秒，
+      // 那几秒里主线程被占住，表现就是「整个界面卡一下，过几秒才好」。
+      //
+      // 而宿主那边本来就有 20 秒的 watcher 在维持窗口样式，客户端这个重设是多余的。
+      // 所以只保留「设置真的变了」时的应用（applyLook 里那次），不再监听窗口事件。
     }
 
     function applyWindowCorners(force = false) {

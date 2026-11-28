@@ -4802,7 +4802,8 @@ html[data-dsh-glass-scheme="dark"] .uc-card::after {
 
         // 首次加载用等高骨架（内容结构是可预测的，不该空转圈）；
         // 已经有数据时只加一条顶部细进度条，不要把列表清空再重建。
-        loading && !data
+        // 必须按标签门控：不加 tab 条件的话，只要在加载中，这张白卡会出现在所有标签页上
+        tab === 'update' && loading && !data
           ? h('div', { className: 'uc-skeleton', 'aria-busy': 'true' },
               h('span', { className: 'uc-sr-only' }, t('loading')),
               [0, 1, 2, 3].map((i) => h('div', { key: i, className: 'uc-skeleton-row' },
@@ -4839,7 +4840,7 @@ html[data-dsh-glass-scheme="dark"] .uc-card::after {
             )
           : null,
 
-        loadError && !data
+        tab === 'update' && loadError && !data
           ? h('div', { className: 'uc-card' },
               h('div', { className: 'uc-row-err', style: { padding: '14px 18px 0' } }, t('loadError', { error: loadError })),
               h('div', { style: { padding: '10px 18px 16px' } },

@@ -698,13 +698,16 @@ html[data-dsh-glass="1"] [role="tooltip"] {
 /* MattSkillsDeck 的「关闭整个 MattSkillsDeck」确认卡。
    它自己按点击时抓的锚点算位置，锚点一旦过期（窗口改过尺寸、上一轮点过）
    就会算到窗口右下角，甚至贴到边缘外面。
-   这里只用一条**静态** CSS 规则把它摆回会话区中间：
+   这里只用一条**静态** CSS 规则把它摆回会话区：
    写一次就生效，没有 MutationObserver、没有 JS 反复写 !important，
    所以不会像之前那样和 deck 的渲染来回拉、把弹窗弄闪。
+
+   纵向不能用 50%：矮窗口下视口正中正好压在输入框上。
+   这里取 38% 并设上下限，让它落在会话区、避开输入区。
    用独立的 translate 属性而不是 transform，是为了不覆盖 deck 自己的动效。 */
 [role="dialog"][aria-modal="true"][aria-label*="MattSkillsDeck"] {
   left: 50% !important;
-  top: 50% !important;
+  top: clamp(96px, 38%, calc(100% - 300px)) !important;
   right: auto !important;
   bottom: auto !important;
   margin: 0 !important;

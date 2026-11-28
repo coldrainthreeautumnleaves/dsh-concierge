@@ -309,9 +309,22 @@ html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-glass > di
 html[data-dsh-glass="1"][data-dsh-glass-scheme="dark"] #dsh-concierge-glass > div:first-child::after {
   background: radial-gradient(1000px 780px at 90% 2%, rgba(36, 56, 92, 0.8) 0%, rgba(36, 56, 92, 0) 60%);
 }
-/* 颗粒现在是壁纸层背景里的第一层（--dsh-grain），不再是独立元素：多一个全屏
-   元素就多一个全屏合成层，每帧都要和壁纸混一次。强度仍然烘进 SVG 自己的
-   opacity，元素上不挂 opacity。 */
+/* 颗粒：铺在玻璃根层上的一个全屏伪元素，背景就是 SVG 噪声。
+   变量 --dsh-grain 由 applyGrainImage() 写在 #dsh-concierge-glass 上；
+   颗粒为 0、非玻璃皮肤或外观关掉时它是 none，这条规则就什么都不画。
+
+   用独立的伪元素而不是并进壁纸层的 background：壁纸层那条 background 是
+   单层渐变（多层的写法一处不合法就整条丢弃，0.17.4 白屏就是那么来的），
+   再叠一层噪声会把那个坑重新挖回来。伪元素只画一条 background-image，
+   和渐变互不影响。强度仍然烘进 SVG 自己的 opacity，元素上不挂 opacity。 */
+html[data-dsh-glass="1"] #dsh-concierge-glass::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: var(--dsh-grain, none);
+  background-repeat: repeat;
+}
 /* 顶部那条 40px（窗口按钮所在的标题栏）：它是外壳的原生 WCO 遮罩，插件只能改它的
    颜色（token → windowsAppearance IPC → setTitleBarOverlay），改不了它是不是盖着页面。
    所以这里做两件事：
@@ -2221,8 +2234,35 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
     // 内容圆角边才会合成一条线，而不是中间夹着 10px 的两条边。
     let appliedWindowChrome = null
     // 只有页面加载后的第一次请求带 watch：应用在启动收尾时会重写窗口样式，把
-    // DWM 属性冲掉，需要盯一段时间；之后改设置再起一个 15 秒的进程只会叠起来。
+    // DWM 属性冲掉，需要盯一段时间；之后改设置再起一个 20 秒的进程只会叠起来。
     let windowChromeWatched = false
+
+    // 窗口被 Electron 重写样式之后 DWM 那两个属性会被冲掉：启动收尾的
+    // show / setBounds、最大化 / 还原、从最小化恢复，都会重写一次。Host 那边
+    // 第一次应用后只盯 20 秒，之后再被冲掉就没人补了——表现为「直角开关拨过去
+    // 有效，过一会儿窗口又圆回去了」。这里在缩放和重新可见时再补一次。
+    let windowChromeRewire = false
+    let windowChromeTimer = 0
+
+    function wireWindowChromeReapply() {
+      if (windowChromeRewire || typeof window === 'undefined') return
+      windowChromeRewire = true
+      const reapply = () => {
+        if (windowChromeTimer) clearTimeout(windowChromeTimer)
+        windowChromeTimer = setTimeout(() => {
+          windowChromeTimer = 0
+          if (!look.enabled || !isGlassSkin()) return
+          appliedWindowChrome = null
+          applyWindowCorners(true)
+        }, 1200)
+      }
+      window.addEventListener('resize', reapply, { passive: true })
+      if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') reapply()
+        })
+      }
+    }
 
     function applyWindowCorners(force = false) {
       if (typeof fetch !== 'function') return
@@ -2231,13 +2271,14 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
       if (!force && appliedWindowChrome === key) return
       appliedWindowChrome = key
       const wantWatch = !windowChromeWatched
+      wireWindowChromeReapply()
       fetch(`${API}/window-corners`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           square: look.squareWindow,
           borderless: look.edgeGlass === true,
-          watch: wantWatch ? 15 : 0,
+          watch: wantWatch ? 20 : 0,
         }),
       })
         .then((response) => response.json())
@@ -4715,7 +4756,11 @@ html[data-dsh-glass="1"] [data-composer-dock] > * {
                             const value = Number(event.target.value)
                             if (!Number.isFinite(value)) return
                             look.transparency = Math.max(0, Math.min(100, Math.round(value)))
+                            // 拖的时候只重算 token（短防抖），松手后再落盘。
+                            // 之前这里只有 scheduleLookApply()，值从来没被保存过，
+                            // 刷新页面就退回默认的 43——滑块看着能动，实际白拖。
                             scheduleLookApply()
+                            scheduleLookSave()
                           },
                         }),
                         h('span', { className: 'uc-typer-value' }, `${lookSnapshot.transparency}%`),
